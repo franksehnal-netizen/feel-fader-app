@@ -1841,6 +1841,8 @@ function onMidiMsg(event){
       // Find name — UACC standard or custom
       setTxt('enc-artic-name', uaccName(val));
       setTxt('enc-artic-badge', uaccName(val));
+      const idx = bank.uacc_values.indexOf(val);
+      if(idx !== -1){ encIndex = idx; renderEncChips(); }
     }
 
   }
