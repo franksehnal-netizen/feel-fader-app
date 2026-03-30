@@ -1469,7 +1469,7 @@ function encoderSectionContent(ctrl, bi) {
 function renderEncChips() {
   const el = document.getElementById('enc-chips');
   if (!el) return;
-  el.innerHTML = cfg.uacc_values.map((v,i) =>
+  el.innerHTML = cfg.banks[activeBank].uacc_values.map((v,i) =>
     `<div class="enc-chip ${i===encIndex?'active':''}">${v}</div>`
   ).join('');
 }
