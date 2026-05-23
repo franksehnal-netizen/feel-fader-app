@@ -1756,7 +1756,8 @@ function initMidi(){
 const DEVICE_NAME = 'Feel Fader';
 
 function isFeelFader(portName) {
-  return portName.toLowerCase().includes(DEVICE_NAME.toLowerCase());
+  const n = portName.toLowerCase();
+  return n.includes('feel fader') || n.includes('circuitpython audio');
 }
 
 function connectInputs(){
