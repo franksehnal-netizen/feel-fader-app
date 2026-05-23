@@ -1875,7 +1875,7 @@ function setBanner(type, m){
   } else if (type === 'searching') {
     dot.className = 'h-status-dot pulse';
     txt.classList.remove('hidden');
-    txt.textContent = t('status.disconnected');
+    txt.textContent = m || t('status.disconnected');
   } else if (type === 'error') {
     dot.className = 'h-status-dot';
     txt.classList.remove('hidden');
