@@ -1899,13 +1899,30 @@ function sendSysEx(){
   }
 }
 
+function normalizeFwConfig(p) {
+  if (!p.banks) return p;
+  if (p.banks[0] && p.banks[0].fader1) return p;
+  return {
+    banks: p.banks.map((b, i) => ({
+      name:        `Bank ${i + 1}`,
+      icon:        '',
+      tags:        [],
+      uacc_values: Array.isArray(b.uacc_values) ? b.uacc_values : [],
+      fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: b.channel ?? 0, label: '' },
+      fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: b.channel ?? 0, label: '' },
+      encoder:     { cc: typeof b.encoder === 'number' ? b.encoder : 32, channel: b.channel ?? 0 },
+    }))
+  };
+}
+
 function handleSysEx(data){
   if(data[1]!==MFR||data[2]!==DEV_ID)return;
   const cmd=data[3],payload=Array.from(data.slice(4,-1));
   if(cmd===CMD_W){
     try{
-      const p=JSON.parse(new TextDecoder().decode(new Uint8Array(dec7(payload))));
-      if(!p.banks||!p.uacc_values)throw new Error('Invalid structure');
+      let p=JSON.parse(new TextDecoder().decode(new Uint8Array(dec7(payload))));
+      if(!p.banks)throw new Error('Invalid structure');
+      p=normalizeFwConfig(p);
       cfg=p;loaded=true;dirty=false;activeBank=0;
       render();
       setBanner('connected',t('midi.synced'));
@@ -1950,7 +1967,8 @@ function onImport(e){
   const r=new FileReader();r.onload=ev=>{
     try{
       const p=JSON.parse(ev.target.result);
-      if(!p.banks||!p.uacc_values)throw new Error('Invalid preset');
+      if(!p.banks)throw new Error('Invalid preset');
+      p=normalizeFwConfig(p);
       cfg=p;dirty=true;activeBank=0;render();toast('s',t('toast.preset_imported'));
     }catch(err){toast('e',err.message);}
   };r.readAsText(f);e.target.value='';
