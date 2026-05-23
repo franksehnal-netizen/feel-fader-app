@@ -1750,7 +1750,17 @@ function initMidi(){
   navigator.requestMIDIAccess({sysex:true}).then(acc=>{
     midiAccess=acc;
     let _reconnectTimer=null;
-    midiAccess.onstatechange=()=>{ clearTimeout(_reconnectTimer); _reconnectTimer=setTimeout(connectInputs,400); };
+    midiAccess.onstatechange=(e)=>{
+      // Ignore port open/close churn (e.g. fader CC auto-opening input port at 30 Hz).
+      // Only wake connectInputs when: (a) we don't have a device yet, or
+      //                               (b) a device physically disconnected/reconnected.
+      const p = e?.port;
+      const isChurn = _ffConnected && p && p.state === 'connected';
+      if (!isChurn) {
+        clearTimeout(_reconnectTimer);
+        _reconnectTimer = setTimeout(connectInputs, 400);
+      }
+    };
     connectInputs();
   },()=>setBanner('error',t('midi.denied')));
 }
