@@ -1238,6 +1238,7 @@ let loaded     = false;
 let dirty      = false;
 let jsonOpen   = false;
 let midiAccess = null;
+let _ffConnected = false;   // true once Feel Fader input is live
 
 // ═══════════════════════════════════════════════════════════
 // RENDER
@@ -1766,6 +1767,7 @@ function connectInputs(){
 
   midiAccess.inputs.forEach(inp => {
     if (isFeelFader(inp.name)) {
+      inp.open().catch(()=>{});   // pre-open: prevents onstatechange firing on first received message
       inp.onmidimessage = onMidiMsg;
       found = true;
       names.push(inp.name);
@@ -1782,9 +1784,17 @@ function connectInputs(){
     if (statusTxt) statusTxt.textContent = t('welcome.found');
     setTimeout(() => { hideWelcome(); showFaderVisual(); }, 600);
     setBanner('connected',names.join(', '));
-    updateStatus();
-    setTimeout(requestConfigFromDevice, 300);
+    // NOTE: do NOT call updateStatus() here — when loaded=false it overwrites the
+    // 'connected' banner with 'status.disconnected', making it look like no device.
+    if (!_ffConnected) {
+      _ffConnected = true;
+      // Pre-open output port so the CMD_R send() doesn't change connection state
+      // and trigger another onstatechange → connectInputs() loop.
+      midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
+      setTimeout(requestConfigFromDevice, 300);
+    }
   } else {
+    _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {
       hideFaderVisual();
