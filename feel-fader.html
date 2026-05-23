@@ -1248,7 +1248,10 @@ function render() {
   renderPanels();
   renderUacc();
   runValidation();
-  updateStatus();
+  // NOTE: updateStatus() intentionally NOT called here.
+  // It depends on `loaded`, so calling it on every render() would flash
+  // "device disconnected" on any UI interaction before CMD_W arrives.
+  // updateStatus() is called only from: connectInputs() and handleSysEx().
   updateDeviceInfo();
   if (jsonOpen) refreshJson();
 }
@@ -1751,10 +1754,10 @@ function initMidi(){
     midiAccess=acc;
     let _reconnectTimer=null;
     midiAccess.onstatechange=(e)=>{
+      const p = e?.port;
       // Ignore port open/close churn (e.g. fader CC auto-opening input port at 30 Hz).
       // Only wake connectInputs when: (a) we don't have a device yet, or
       //                               (b) a device physically disconnected/reconnected.
-      const p = e?.port;
       const isChurn = _ffConnected && p && p.state === 'connected';
       if (!isChurn) {
         clearTimeout(_reconnectTimer);
