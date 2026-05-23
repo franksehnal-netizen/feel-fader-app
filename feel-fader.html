@@ -1959,8 +1959,16 @@ function handleSysEx(data){
 // ═══════════════════════════════════════════════════════════
 function doSave(){
   if(validate().length){toast('e', t('toast.fix_errors'));return;}
-  if(midiAccess&&getOut())sendSysEx();
-  else{dlJson(cfg,'presets.json');dirty=false;toast('s',t('toast.preset_exported'));}
+  const btn=document.getElementById('send-btn');
+  function flashBtn(ok){
+    if(!btn)return;
+    btn.disabled=true;
+    btn.textContent=ok?'✓ sent':'✗ no device';
+    btn.style.background=ok?'#3a7a3a':'#7a3a3a';
+    setTimeout(()=>{btn.disabled=false;btn.textContent=t('btn.send');btn.style.background='';},1500);
+  }
+  if(midiAccess&&getOut()){flashBtn(true);sendSysEx();}
+  else{flashBtn(false);dlJson(cfg,'presets.json');dirty=false;toast('s',t('toast.preset_exported'));}
 }
 
 function exportP(){dlJson(cfg,'feel-fader-preset.json');toast('s',t('toast.preset_exported'));}
