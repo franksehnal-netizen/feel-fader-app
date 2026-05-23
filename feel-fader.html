@@ -1748,7 +1748,8 @@ function initMidi(){
   setBanner('searching','');
   navigator.requestMIDIAccess({sysex:true}).then(acc=>{
     midiAccess=acc;
-    midiAccess.onstatechange=()=>connectInputs();
+    let _reconnectTimer=null;
+    midiAccess.onstatechange=()=>{ clearTimeout(_reconnectTimer); _reconnectTimer=setTimeout(connectInputs,400); };
     connectInputs();
   },()=>setBanner('error',t('midi.denied')));
 }
@@ -1784,10 +1785,11 @@ function connectInputs(){
     updateStatus();
     setTimeout(requestConfigFromDevice, 300);
   } else {
-    loaded=false;
-    hideFaderVisual();
-    showWelcome();
-    // Distinguish: no MIDI at all vs MIDI found but not Feel Fader
+    // Don't tear down UI if config is already loaded — device may reconnect shortly
+    if (!loaded) {
+      hideFaderVisual();
+      showWelcome();
+    }
     let anyMidi = false;
     midiAccess.inputs.forEach(() => { anyMidi = true; });
     if (anyMidi) {
