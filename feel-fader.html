@@ -2104,21 +2104,8 @@ async function doLoad() {
   const btn = document.getElementById('load-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…loading'; }
   try {
-    // Handshake: get device info — skip if already populated by auto-handshake on connect
-    if (!DEVICE_INFO.serial) {
-      try {
-        const infoJson = await _serialCmd('CMD_I', 2000);
-        const info = JSON.parse(infoJson);
-        if (info.serial)   DEVICE_INFO.serial   = info.serial;
-        if (info.firmware) DEVICE_INFO.firmware  = info.firmware;
-        if (info.model)    DEVICE_INFO.model     = info.model;
-        updateDeviceInfo();
-        applyDeviceDark(DEVICE_INFO.serial);
-      } catch(_) { /* older firmware — skip */ }
-    }
-
-    const json = await _serialCmd('CMD_R');
-    let p = JSON.parse(json);
+    const jsonStr = await sysexReadConfig();
+    let p = JSON.parse(jsonStr);
     if (!p.banks) throw new Error('Invalid structure');
     p = normalizeFwConfig(p);
     cfg = p; loaded = true; dirty = false; activeBank = 0;
@@ -2128,9 +2115,8 @@ async function doLoad() {
     toast('s', t('toast.config_loaded'));
     if (btn) { btn.textContent = '✓ loaded'; setTimeout(() => { btn.disabled = false; btn.textContent = 'load from device'; }, 1500); }
   } catch(e) {
-    await _serialClose();
-    console.warn('[Serial] load failed:', e);
-    toast('e', 'Serial: ' + e.message);
+    console.warn('[SysEx] load failed:', e);
+    toast('e', 'Load failed: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'load from device'; }
   }
 }
@@ -2140,8 +2126,7 @@ async function doSend() {
   const btn = document.getElementById('send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…sending'; btn.style.background = ''; }
   try {
-    const resp = await _serialCmd('CMD_W:' + JSON.stringify(cfg), 5000);
-    if (!resp.startsWith('OK')) throw new Error('Device: ' + resp);
+    await sysexWriteConfig(cfg);
     dirty = false;
     toast('s', t('toast.config_sent'));
     if (btn) {
@@ -2149,9 +2134,8 @@ async function doSend() {
       setTimeout(() => { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }, 1500);
     }
   } catch(e) {
-    await _serialClose();
-    console.warn('[Serial] send failed:', e);
-    toast('e', 'Serial send: ' + e.message);
+    console.warn('[SysEx] send failed:', e);
+    toast('e', 'Send failed: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }
   }
 }
