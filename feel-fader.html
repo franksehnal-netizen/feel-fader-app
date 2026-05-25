@@ -2005,6 +2005,38 @@ function handleSysEx(data){
   }
 }
 
+async function sysexReadConfig(){
+  const out=getOut();
+  if(!out) throw new Error('No MIDI output — connect Feel Fader first');
+  return new Promise((resolve,reject)=>{
+    _chunkBuf=null;
+    _pendingRead={
+      resolve,reject,
+      timer:setTimeout(()=>{
+        _pendingRead=null;_chunkBuf=null;
+        reject(new Error('Timeout — no response from device'));
+      },5000)
+    };
+    out.send([0xF0,MFR,DEV_ID,CMD_R,0xF7]);
+  });
+}
+
+async function sysexWriteConfig(cfg){
+  const out=getOut();
+  if(!out) throw new Error('No MIDI output — connect Feel Fader first');
+  return new Promise((resolve,reject)=>{
+    _pendingWrite={
+      resolve,reject,
+      timer:setTimeout(()=>{
+        _pendingWrite=null;
+        reject(new Error('Timeout — no ACK from device'));
+      },5000)
+    };
+    const bytes=Array.from(new TextEncoder().encode(JSON.stringify(cfg)));
+    out.send([0xF0,MFR,DEV_ID,CMD_W,...enc7(bytes),0xF7]);
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 // SERIAL (Web Serial API — config sync Pico→browser)
 // ═══════════════════════════════════════════════════════════
