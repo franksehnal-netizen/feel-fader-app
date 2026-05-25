@@ -107,13 +107,24 @@ main{width:100%;}
 
 
 
-/* SEND */
+/* SEND / LOAD */
 .send-callout{
   display:flex;
   justify-content:center;
+  gap:10px;
   margin-top:32px;
+  position:relative;
+  z-index:10;
 }
 .send-arrow{display:none}
+.load-btn{
+  background:transparent;color:var(--t2);border:1.5px solid var(--border);
+  border-radius:var(--r-pill);font-family:'Mulish',sans-serif;font-size:12px;font-weight:600;
+  padding:10px 22px;cursor:pointer;letter-spacing:.01em;white-space:nowrap;
+}
+.load-btn:hover{background:var(--bg-input);border-color:var(--t2);}
+.load-btn:active{transform:scale(.97);}
+.load-btn:disabled{opacity:.38;cursor:not-allowed;transform:none;}
 .send-btn{
   background:var(--red);color:#fff;border:none;border-radius:var(--r-pill);
   font-family:'Mulish',sans-serif;font-size:12px;font-weight:600;
@@ -962,6 +973,7 @@ html.dark .val-bar{background:var(--t2);}
       </div>
       <div class="send-callout">
         <div class="send-arrow"></div>
+        <button class="load-btn" id="load-btn" onclick="doLoad()">load from device</button>
         <button class="send-btn" id="send-btn" onclick="doSave()">send to device</button>
       </div>
     </div>
@@ -992,12 +1004,8 @@ html.dark .val-bar{background:var(--t2);}
         <div class="info-grid">
           <div class="info-row"><span class="info-lbl"><span data-i18n="device.product">Product</span></span><span class="info-val">Feel Fader</span></div>
           <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
-          <div class="info-row"><span class="info-lbl">Platform</span><span class="info-val">Raspberry Pi Pico 2</span></div>
           <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t3)">—</span></div>
           <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t3)">—</span></div>
-          <div class="info-row"><span class="info-lbl">Mode</span><span class="info-val" id="di-mode" style="color:var(--t3)">—</span></div>
-          <div class="info-row"><span class="info-lbl">USB Class</span><span class="info-val">MIDI 1.0</span></div>
-          <div class="info-row"><span class="info-lbl">Drive label</span><span class="info-val">FEELFADER</span></div>
         </div>
       </div>
     </div>
@@ -1483,26 +1491,17 @@ function renderUacc() {
 }
 
 function updateDeviceInfo() {
-  const mode     = DEVICE_INFO.mode;
   const serial   = DEVICE_INFO.serial;
   const firmware = DEVICE_INFO.firmware;
-
-  // Header mode badge
-  // mode badge removed from header — shown only in Device Info panel
-
-  // Modal mode label
-  const mMode = document.getElementById('m-mode-val');
-  if (mMode) mMode.textContent = mode || '—';
 
   // Device info panel — show — in muted color until data arrives
   const setVal = (id, val) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent   = val || '—';
-    el.style.color   = val ? '' : 'var(--t3)';
+    el.textContent = val || '—';
+    el.style.color = val ? '' : 'var(--t3)';
   };
   setVal('di-serial',   serial);
-  setVal('di-mode',     mode);
   setVal('di-firmware', firmware);
 }
 
@@ -1512,8 +1511,12 @@ function updateDeviceInfo() {
 function stepCtrl(bi, key, field, delta) {
   const c = cfg.banks[bi][key];
   const isCh = field === 'channel';
-  c[field] = Math.max(isCh?0:0, Math.min(isCh?15:127, c[field] + delta));
-  dirty = true; render();
+  c[field] = Math.max(0, Math.min(isCh ? 15 : 127, c[field] + delta));
+  dirty = true;
+  const inp = document.getElementById(`b${bi}-${key}-${isCh ? 'ch' : 'cc'}`);
+  if (inp) inp.value = isCh ? c[field] + 1 : c[field];
+  runValidation();
+  if (jsonOpen) refreshJson();
 }
 function onCtrl(bi, key, field, val) {
   if (isNaN(val)) return;
@@ -1689,7 +1692,7 @@ function validate() {
       errs.push({ field:`b${i}.uacc`, msg:t('validate.uacc_empty').replace('{b}', b.name||i+1) });
     ['fader1','fader2','encoder'].forEach(k => {
       const c = b[k];
-      if (!c) { errs.push({field:`b${i}.${k}`, msg:t('validate.missing_def').replace('{b}', i+1).replace('{k}', k)}); return; }
+      if (!c) { console.warn('[V] bank',i,'missing',k,'| keys:',Object.keys(b).join(',')); errs.push({field:`b${i}.${k}`, msg:t('validate.missing_def').replace('{b}', i+1).replace('{k}', k)}); return; }
       if (c.cc < 0 || c.cc > 127)
         errs.push({field:`b${i}.${k}`, msg:t('validate.cc_range').replace('{b}', b.name||i+1).replace('{k}', k)});
       if (c.channel < 0 || c.channel > 15)
@@ -1801,10 +1804,9 @@ function connectInputs(){
     // 'connected' banner with 'status.disconnected', making it look like no device.
     if (!_ffConnected) {
       _ffConnected = true;
-      // Pre-open output port so the CMD_R send() doesn't change connection state
-      // and trigger another onstatechange → connectInputs() loop.
+      // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
-      setTimeout(requestConfigFromDevice, 300);
+      _tryFetchDeviceInfo(); // fire-and-forget — populates Device Info without user clicking load
     }
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
@@ -1824,16 +1826,7 @@ function connectInputs(){
   }
 }
 
-function requestConfigFromDevice(){
-  const out=getOut();
-  if(!out)return;
-  try{
-    out.send([0xF0, MFR, DEV_ID, CMD_R, 0xF7]);
-    console.log('[SysEx] CMD_REQUEST sent');
-  } catch(e){
-    console.warn('[SysEx] CMD_REQUEST selhal:', e);
-  }
-}
+
 function getOut(){
   if(!midiAccess) return null;
   let o = null;
@@ -1847,7 +1840,9 @@ function getOut(){
 
 function onMidiMsg(event){
   const data=event.data, st=data[0];
-  if(st===0xF0){handleSysEx(data);return;}
+  if(st===0xF0){
+    handleSysEx(data);return;
+  }
   const type=st&0xF0, ch=st&0x0F;
   const bank=cfg.banks[liveBank];
   if(!bank)return;
@@ -1909,7 +1904,10 @@ function setBanner(type, m){
 // ═══════════════════════════════════════════════════════════
 // SYSEX
 // ═══════════════════════════════════════════════════════════
-const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03;
+const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03,CMD_CHUNK=0x04,CMD_ACK=0x05,CMD_ERR=0x06;
+let _pendingRead  = null;  // { resolve, reject, timer }
+let _pendingWrite = null;  // { resolve, reject, timer }
+let _chunkBuf     = null;  // { chunks: Array, received: number, total: number }
 function enc7(bytes){const o=[];for(const b of bytes){o.push((b>>7)&1);o.push(b&0x7F);}return o;}
 function dec7(data){const o=[];for(let i=0;i+1<data.length;i+=2)o.push((data[i]<<7)|data[i+1]);return o;}
 
@@ -1975,24 +1973,161 @@ function handleSysEx(data){
       applyDeviceDark(DEVICE_INFO.serial);
     }catch(e){}
   }
+  if(cmd===CMD_CHUNK){
+    const idx        = payload[0];
+    const total      = payload[1];
+    const chunkBytes = payload.slice(2);
+    if(!_chunkBuf || _chunkBuf.total !== total){
+      _chunkBuf = { chunks: new Array(total).fill(null), received: 0, total };
+    }
+    if(_chunkBuf.chunks[idx] === null){
+      _chunkBuf.chunks[idx] = chunkBytes;
+      _chunkBuf.received++;
+    }
+    if(_chunkBuf.received === _chunkBuf.total && _pendingRead){
+      clearTimeout(_pendingRead.timer);
+      const all = [].concat(..._chunkBuf.chunks);
+      const jsonStr = new TextDecoder().decode(new Uint8Array(dec7(all)));
+      const pr = _pendingRead;
+      _pendingRead = null; _chunkBuf = null;
+      pr.resolve(jsonStr);
+    }
+  }
+  if(cmd===CMD_ACK && _pendingWrite){
+    clearTimeout(_pendingWrite.timer);
+    const pw = _pendingWrite; _pendingWrite = null;
+    pw.resolve();
+  }
+  if(cmd===CMD_ERR && _pendingWrite){
+    clearTimeout(_pendingWrite.timer);
+    const pw = _pendingWrite; _pendingWrite = null;
+    pw.reject(new Error('Device rejected config'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SERIAL (Web Serial API — config sync Pico→browser)
+// ═══════════════════════════════════════════════════════════
+let _serialPort = null;
+
+async function _serialOpen() {
+  if (_serialPort) return _serialPort;
+  if (!('serial' in navigator)) throw new Error('Web Serial API not supported');
+  // Try previously granted ports first (no user gesture needed)
+  const ports = await navigator.serial.getPorts();
+  if (ports.length) { _serialPort = ports[0]; }
+  else              { _serialPort = await navigator.serial.requestPort(); } // needs user click
+  await _serialPort.open({baudRate: 115200});
+  return _serialPort;
+}
+
+async function _serialClose() {
+  if (!_serialPort) return;
+  try { await _serialPort.close(); } catch(e) {}
+  _serialPort = null;
+}
+
+async function _serialCmd(cmd, timeoutMs = 4000) {
+  const port = await _serialOpen();
+  const writer = port.writable.getWriter();
+  try { await writer.write(new TextEncoder().encode(cmd + '\n')); }
+  finally { writer.releaseLock(); }
+
+  const reader = port.readable.getReader();
+  let buf = '', deadline = Date.now() + timeoutMs;
+  try {
+    while (!buf.includes('\n') && Date.now() < deadline) {
+      const remaining = deadline - Date.now();
+      const readProm = reader.read();
+      const timeoutProm = new Promise((_,r) => setTimeout(r, remaining, new Error('timeout')));
+      const {value, done} = await Promise.race([readProm, timeoutProm]);
+      if (done) break;
+      buf += new TextDecoder().decode(value);
+    }
+  } finally { reader.releaseLock(); }
+
+  if (!buf.trim()) throw new Error('No response from device');
+  return buf.trim();
+}
+
+// Auto-handshake: called on MIDI connect. Uses only getPorts() (no user gesture needed).
+// Silently skips if port not yet paired — data will populate on first doLoad() instead.
+async function _tryFetchDeviceInfo() {
+  if (DEVICE_INFO.serial) return;
+  if (!('serial' in navigator)) return;
+  const ports = await navigator.serial.getPorts();
+  if (!ports.length) return;
+  try {
+    const infoJson = await _serialCmd('CMD_I', 2000);
+    const info = JSON.parse(infoJson);
+    if (info.serial)   DEVICE_INFO.serial   = info.serial;
+    if (info.firmware) DEVICE_INFO.firmware  = info.firmware;
+    if (info.model)    DEVICE_INFO.model     = info.model;
+    updateDeviceInfo();
+    applyDeviceDark(DEVICE_INFO.serial);
+  } catch(_) { /* device not ready yet — will retry on doLoad() */ }
+}
+
+async function doLoad() {
+  const btn = document.getElementById('load-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…loading'; }
+  try {
+    // Handshake: get device info — skip if already populated by auto-handshake on connect
+    if (!DEVICE_INFO.serial) {
+      try {
+        const infoJson = await _serialCmd('CMD_I', 2000);
+        const info = JSON.parse(infoJson);
+        if (info.serial)   DEVICE_INFO.serial   = info.serial;
+        if (info.firmware) DEVICE_INFO.firmware  = info.firmware;
+        if (info.model)    DEVICE_INFO.model     = info.model;
+        updateDeviceInfo();
+        applyDeviceDark(DEVICE_INFO.serial);
+      } catch(_) { /* older firmware — skip */ }
+    }
+
+    const json = await _serialCmd('CMD_R');
+    let p = JSON.parse(json);
+    if (!p.banks) throw new Error('Invalid structure');
+    p = normalizeFwConfig(p);
+    cfg = p; loaded = true; dirty = false; activeBank = 0;
+    render();
+    setBanner('connected', t('midi.synced'));
+    updateStatus();
+    toast('s', t('toast.config_loaded'));
+    if (btn) { btn.textContent = '✓ loaded'; setTimeout(() => { btn.disabled = false; btn.textContent = 'load from device'; }, 1500); }
+  } catch(e) {
+    await _serialClose();
+    console.warn('[Serial] load failed:', e);
+    toast('e', 'Serial: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'load from device'; }
+  }
+}
+
+async function doSend() {
+  if (validate().length) { toast('e', t('toast.fix_errors')); return; }
+  const btn = document.getElementById('send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…sending'; btn.style.background = ''; }
+  try {
+    const resp = await _serialCmd('CMD_W:' + JSON.stringify(cfg), 5000);
+    if (!resp.startsWith('OK')) throw new Error('Device: ' + resp);
+    dirty = false;
+    toast('s', t('toast.config_sent'));
+    if (btn) {
+      btn.textContent = '✓ sent'; btn.style.background = '#3a7a3a';
+      setTimeout(() => { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }, 1500);
+    }
+  } catch(e) {
+    await _serialClose();
+    console.warn('[Serial] send failed:', e);
+    toast('e', 'Serial send: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
 // FILE OPS
 // ═══════════════════════════════════════════════════════════
-function doSave(){
-  if(validate().length){toast('e', t('toast.fix_errors'));return;}
-  const btn=document.getElementById('send-btn');
-  function flashBtn(ok){
-    if(!btn)return;
-    btn.disabled=true;
-    btn.textContent=ok?'✓ sent':'✗ no device';
-    btn.style.background=ok?'#3a7a3a':'#7a3a3a';
-    setTimeout(()=>{btn.disabled=false;btn.textContent=t('btn.send');btn.style.background='';},1500);
-  }
-  if(midiAccess&&getOut()){flashBtn(true);sendSysEx();}
-  else{flashBtn(false);dlJson(cfg,'presets.json');dirty=false;toast('s',t('toast.preset_exported'));}
-}
+function doSave(){ doSend(); }
 
 function exportP(){dlJson(cfg,'feel-fader-preset.json');toast('s',t('toast.preset_exported'));}
 function importP(){document.getElementById('fi').click();}
