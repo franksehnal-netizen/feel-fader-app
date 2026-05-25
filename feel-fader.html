@@ -2037,69 +2037,6 @@ async function sysexWriteConfig(cfg){
   });
 }
 
-// ═══════════════════════════════════════════════════════════
-// SERIAL (Web Serial API — config sync Pico→browser)
-// ═══════════════════════════════════════════════════════════
-let _serialPort = null;
-
-async function _serialOpen() {
-  if (_serialPort) return _serialPort;
-  if (!('serial' in navigator)) throw new Error('Web Serial API not supported');
-  // Try previously granted ports first (no user gesture needed)
-  const ports = await navigator.serial.getPorts();
-  if (ports.length) { _serialPort = ports[0]; }
-  else              { _serialPort = await navigator.serial.requestPort(); } // needs user click
-  await _serialPort.open({baudRate: 115200});
-  return _serialPort;
-}
-
-async function _serialClose() {
-  if (!_serialPort) return;
-  try { await _serialPort.close(); } catch(e) {}
-  _serialPort = null;
-}
-
-async function _serialCmd(cmd, timeoutMs = 4000) {
-  const port = await _serialOpen();
-  const writer = port.writable.getWriter();
-  try { await writer.write(new TextEncoder().encode(cmd + '\n')); }
-  finally { writer.releaseLock(); }
-
-  const reader = port.readable.getReader();
-  let buf = '', deadline = Date.now() + timeoutMs;
-  try {
-    while (!buf.includes('\n') && Date.now() < deadline) {
-      const remaining = deadline - Date.now();
-      const readProm = reader.read();
-      const timeoutProm = new Promise((_,r) => setTimeout(r, remaining, new Error('timeout')));
-      const {value, done} = await Promise.race([readProm, timeoutProm]);
-      if (done) break;
-      buf += new TextDecoder().decode(value);
-    }
-  } finally { reader.releaseLock(); }
-
-  if (!buf.trim()) throw new Error('No response from device');
-  return buf.trim();
-}
-
-// Auto-handshake: called on MIDI connect. Uses only getPorts() (no user gesture needed).
-// Silently skips if port not yet paired — data will populate on first doLoad() instead.
-async function _tryFetchDeviceInfo() {
-  if (DEVICE_INFO.serial) return;
-  if (!('serial' in navigator)) return;
-  const ports = await navigator.serial.getPorts();
-  if (!ports.length) return;
-  try {
-    const infoJson = await _serialCmd('CMD_I', 2000);
-    const info = JSON.parse(infoJson);
-    if (info.serial)   DEVICE_INFO.serial   = info.serial;
-    if (info.firmware) DEVICE_INFO.firmware  = info.firmware;
-    if (info.model)    DEVICE_INFO.model     = info.model;
-    updateDeviceInfo();
-    applyDeviceDark(DEVICE_INFO.serial);
-  } catch(_) { /* device not ready yet — will retry on doLoad() */ }
-}
-
 async function doLoad() {
   const btn = document.getElementById('load-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…loading'; }
