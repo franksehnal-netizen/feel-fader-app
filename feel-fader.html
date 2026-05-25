@@ -1806,7 +1806,7 @@ function connectInputs(){
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
-      _tryFetchDeviceInfo(); // fire-and-forget — populates Device Info without user clicking load
+      _requestDeviceInfoSysex(); // request CMD_INFO via SysEx — no Serial needed
     }
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
@@ -1908,6 +1908,10 @@ const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03,CMD_CHUNK=0x04,CM
 let _pendingRead  = null;  // { resolve, reject, timer }
 let _pendingWrite = null;  // { resolve, reject, timer }
 let _chunkBuf     = null;  // { chunks: Array, received: number, total: number }
+function _requestDeviceInfoSysex(){
+  const out=getOut();
+  if(out) try{ out.send([0xF0,MFR,DEV_ID,CMD_INFO,0xF7]); }catch(e){}
+}
 function enc7(bytes){const o=[];for(const b of bytes){o.push((b>>7)&1);o.push(b&0x7F);}return o;}
 function dec7(data){const o=[];for(let i=0;i+1<data.length;i+=2)o.push((data[i]<<7)|data[i+1]);return o;}
 
