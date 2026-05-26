@@ -1235,14 +1235,24 @@ const DEVICE_INFO = {
   mode:     null,
 };
 
-let cfg        = JSON.parse(JSON.stringify(DEFAULT_CFG));
+const LS_CFG_KEY = 'ff-cfg';
+function cfgSave() {
+  try { localStorage.setItem(LS_CFG_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+function cfgLoad() {
+  try { const s = localStorage.getItem(LS_CFG_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return null;
+}
+
+const _savedCfg = cfgLoad();
+let cfg        = _savedCfg || JSON.parse(JSON.stringify(DEFAULT_CFG));
 let activeBank = 0;
 let liveBank   = 0;
 let liveValues = { f1:64, f2:64 };
 let encIndex   = 0;
 let encLiveVal = null; // null = not yet received from device
 let dragging   = null;
-let loaded     = false;
+let loaded     = !!_savedCfg;
 let dirty      = false;
 let jsonOpen   = false;
 let midiAccess = null;
@@ -2041,33 +2051,26 @@ async function sysexWriteConfig(cfg){
   });
 }
 
-async function doLoad() {
-  const btn = document.getElementById('load-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '…loading'; }
-  try {
-    const jsonStr = await sysexReadConfig();
-    let p = JSON.parse(jsonStr);
-    if (!p.banks) throw new Error('Invalid structure');
-    p = normalizeFwConfig(p);
-    cfg = p; loaded = true; dirty = false; activeBank = 0;
-    render();
-    setBanner('connected', t('midi.synced'));
-    updateStatus();
-    toast('s', t('toast.config_loaded'));
-    if (btn) { btn.textContent = '✓ loaded'; setTimeout(() => { btn.disabled = false; btn.textContent = 'load from device'; }, 1500); }
-  } catch(e) {
-    console.warn('[SysEx] load failed:', e);
-    toast('e', 'Load failed: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'load from device'; }
-  }
+function doLoad() {
+  const saved = cfgLoad();
+  if (!saved) { toast('i', 'No saved config — use Import to load from file'); return; }
+  cfg = saved; loaded = true; dirty = false; activeBank = 0;
+  render();
+  setBanner('connected', t('midi.synced'));
+  updateStatus();
+  toast('s', t('toast.config_loaded'));
 }
 
 async function doSend() {
   if (validate().length) { toast('e', t('toast.fix_errors')); return; }
   const btn = document.getElementById('send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…sending'; btn.style.background = ''; }
+  const out = getOut();
+  if (!out) { toast('e', t('toast.no_midi_out')); if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); } return; }
   try {
-    await sysexWriteConfig(cfg);
+    const bytes = Array.from(new TextEncoder().encode(JSON.stringify(cfg)));
+    out.send([0xF0, MFR, DEV_ID, CMD_W, ...enc7(bytes), 0xF7]);
+    cfgSave();
     dirty = false;
     toast('s', t('toast.config_sent'));
     if (btn) {
@@ -2075,7 +2078,7 @@ async function doSend() {
       setTimeout(() => { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }, 1500);
     }
   } catch(e) {
-    console.warn('[SysEx] send failed:', e);
+    console.warn('[Send] failed:', e);
     toast('e', 'Send failed: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }
   }
@@ -2092,14 +2095,15 @@ function onImport(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=ev=>{
     try{
-      const p=JSON.parse(ev.target.result);
+      let p=JSON.parse(ev.target.result);
       if(!p.banks)throw new Error('Invalid preset');
       p=normalizeFwConfig(p);
-      cfg=p;dirty=true;activeBank=0;render();toast('s',t('toast.preset_imported'));
+      cfg=p;loaded=true;dirty=false;activeBank=0;cfgSave();render();toast('s',t('toast.preset_imported'));
     }catch(err){toast('e',err.message);}
   };r.readAsText(f);e.target.value='';
 }
 function doReset(){
+  localStorage.removeItem(LS_CFG_KEY);
   cfg=JSON.parse(JSON.stringify(DEFAULT_CFG));
   activeBank=0;liveBank=0;liveValues={f1:64,f2:64};encIndex=0;loaded=false;dirty=false;
   render();positionThumbs();toast('i',t('toast.reset'));
