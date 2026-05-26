@@ -1235,7 +1235,8 @@ const DEVICE_INFO = {
   mode:     null,
 };
 
-const LS_CFG_KEY = 'ff-cfg';
+const LS_CFG_KEY        = 'ff-cfg';
+const LS_SERIAL_PID_KEY = 'ff-serial-pid';
 function cfgSave() {
   try { localStorage.setItem(LS_CFG_KEY, JSON.stringify(cfg)); } catch(e) {}
 }
@@ -2060,7 +2061,12 @@ async function _serialEnsureOpen() {
   // Auto-connect to previously granted Pico port (no picker)
   try {
     const ports = await navigator.serial.getPorts();
-    for (const p of ports) {
+    // Prefer port with saved ProductID (the one that worked last time)
+    const savedPid = parseInt(localStorage.getItem(LS_SERIAL_PID_KEY) || '0');
+    const sorted = savedPid
+      ? [...ports].sort((a, b) => (b.getInfo().usbProductId === savedPid ? 1 : 0) - (a.getInfo().usbProductId === savedPid ? 1 : 0))
+      : ports;
+    for (const p of sorted) {
       try {
         if (p.readable) { _serialPort = p; return; }
         await p.open({ baudRate: 115200 });
@@ -2118,6 +2124,7 @@ async function doLoad() {
     p = normalizeFwConfig(p);
     cfg = p; loaded = true; dirty = false; activeBank = 0;
     cfgSave();
+    try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
     render();
     setBanner('connected', t('midi.synced'));
     updateStatus();
