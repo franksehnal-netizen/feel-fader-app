@@ -2146,11 +2146,11 @@ async function doSend() {
   if (validate().length) { toast('e', t('toast.fix_errors')); return; }
   const btn = document.getElementById('send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…sending'; btn.style.background = ''; }
-  const out = getOut();
-  if (!out) { toast('e', t('toast.no_midi_out')); if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); } return; }
   try {
-    const bytes = Array.from(new TextEncoder().encode(JSON.stringify(cfg)));
-    out.send([0xF0, MFR, DEV_ID, CMD_W, ...enc7(bytes), 0xF7]);
+    await _serialEnsureOpen();
+    const writer = _serialPort.writable.getWriter();
+    await writer.write(new TextEncoder().encode('CMD_W:' + JSON.stringify(cfg) + '\n'));
+    writer.releaseLock();
     cfgSave();
     dirty = false;
     toast('s', t('toast.config_sent'));
@@ -2160,7 +2160,10 @@ async function doSend() {
     }
   } catch(e) {
     console.warn('[Send] failed:', e);
-    toast('e', 'Send failed: ' + e.message);
+    if (e.name !== 'AbortError' && _serialPort) {
+      try { await _serialPort.close(); } catch(_) {} _serialPort = null;
+    }
+    toast('e', 'Send failed: ' + (e.name === 'AbortError' ? 'Cancelled' : e.message));
     if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); btn.style.background = ''; }
   }
 }
