@@ -668,22 +668,22 @@ html.dark #welcome-device-img{
 }
 
 /* connect transition */
-@keyframes welcome-flash-in{
-  0%  {opacity:0}
-  10% {opacity:1}
-  70% {opacity:.9}
-  100%{opacity:0}
+@keyframes welcome-device-glow{
+  0%  {box-shadow:0 16px 48px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.1)}
+  12% {box-shadow:0 0 0 10px rgba(52,199,89,.55),0 0 50px rgba(52,199,89,.45)}
+  65% {box-shadow:0 0 0 16px rgba(52,199,89,.22),0 0 70px rgba(52,199,89,.18)}
+  100%{box-shadow:0 16px 48px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.1)}
 }
 @keyframes welcome-text-out{
   from{opacity:1;transform:translateY(0)}
-  to  {opacity:0;transform:translateY(-8px)}
+  to  {opacity:0;transform:translateY(-10px)}
 }
 @keyframes welcome-screen-out{
   from{opacity:1}
   to  {opacity:0}
 }
 #welcome-screen.connecting{
-  animation:welcome-screen-out .5s ease .3s forwards;
+  animation:welcome-screen-out .65s ease .4s forwards;
   pointer-events:none;
 }
 
@@ -2677,28 +2677,28 @@ function connectTransitionWelcome() {
   const THUMB_H = 72;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (thumbL && railL) {
-      thumbL.style.transition = 'top 0.55s ease-in-out';
+      thumbL.style.transition = 'top 0.7s ease-in-out';
       thumbL.style.top = ((railL.offsetHeight - THUMB_H) * 0.47) + 'px';
     }
     if (thumbR && railR) {
-      thumbR.style.transition = 'top 0.55s ease-in-out';
+      thumbR.style.transition = 'top 0.7s ease-in-out';
       thumbR.style.top = ((railR.offsetHeight - THUMB_H) * 0.47) + 'px';
     }
   }));
 
-  // 4. Green flash (z-index:5, behind device image)
-  const flash = document.getElementById('welcome-flash');
-  if (flash) flash.style.animation = 'welcome-flash-in 0.8s ease-out forwards';
+  // 4. Green glow on device image (box-shadow — reliable across compositing layers)
+  const devImg = document.getElementById('welcome-device-img');
+  if (devImg) devImg.style.animation = 'welcome-device-glow 1.0s ease-out forwards';
 
   // 5. Fade out welcome text
   setTimeout(() => {
     const tb = document.getElementById('welcome-text-block');
-    if (tb) tb.style.animation = 'welcome-text-out 0.4s ease-in forwards';
-  }, 50);
+    if (tb) tb.style.animation = 'welcome-text-out 0.55s ease-in forwards';
+  }, 100);
 
   // 6. Fade out entire welcome screen, then hide
   ws.classList.add('connecting');
-  setTimeout(() => ws.classList.add('hidden'), 1050);
+  setTimeout(() => ws.classList.add('hidden'), 1350);
 }
 
 function hideWelcome() {
