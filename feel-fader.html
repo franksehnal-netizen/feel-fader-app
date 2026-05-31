@@ -670,9 +670,9 @@ html.dark #welcome-device-img{
 /* connect transition */
 @keyframes welcome-device-glow{
   0%  {box-shadow:0 16px 48px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2)}
-  7%  {box-shadow:0 0 0 2px rgba(160,255,160,.95),0 0 30px rgba(52,199,89,.9),0 0 80px rgba(52,199,89,.65),0 0 140px rgba(52,199,89,.3)}
-  25% {box-shadow:0 0 30px rgba(52,199,89,.4),0 0 70px rgba(52,199,89,.25),0 0 130px rgba(52,199,89,.12)}
-  70% {box-shadow:0 0 20px rgba(52,199,89,.18),0 0 50px rgba(52,199,89,.08)}
+  38% {box-shadow:0 0 0 3px rgba(160,255,160,.98),0 0 40px rgba(52,199,89,.95),0 0 90px rgba(52,199,89,.7),0 0 160px rgba(52,199,89,.35)}
+  55% {box-shadow:0 0 18px rgba(52,199,89,.35),0 0 55px rgba(52,199,89,.18),0 0 110px rgba(52,199,89,.08)}
+  82% {box-shadow:0 0 8px rgba(52,199,89,.1),0 0 25px rgba(52,199,89,.04)}
   100%{box-shadow:0 16px 48px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2)}
 }
 @keyframes welcome-text-out{
@@ -2689,7 +2689,7 @@ function connectTransitionWelcome() {
 
   // 4. Green glow on device image (box-shadow — reliable across compositing layers)
   const devImg = document.getElementById('welcome-device-img');
-  if (devImg) devImg.style.animation = 'welcome-device-glow 1.3s ease-out forwards';
+  if (devImg) devImg.style.animation = 'welcome-device-glow 1.4s ease-in-out forwards';
 
   // 5. Fade out welcome text
   setTimeout(() => {
