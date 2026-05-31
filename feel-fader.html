@@ -606,6 +606,7 @@ html.dark .dark-toggle svg{transform:rotate(180deg)}
   height:auto;
   border-radius:18px;
   box-shadow:0 16px 48px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.1);
+  position:relative;z-index:1;
 }
 .welcome-status{display:flex;align-items:center;gap:6px;justify-content:center;}
 .welcome-status-dot{
@@ -626,7 +627,7 @@ html.dark #welcome-device-img{
 
 /* ── WELCOME FADER OVERLAY ── */
 .welcome-flash{
-  position:absolute;inset:0;z-index:-1;
+  position:absolute;inset:0;z-index:0;
   border-radius:18px;
   background:radial-gradient(ellipse 90% 70% at 50% 45%,
     rgba(52,199,89,.85) 0%,rgba(52,199,89,.2) 50%,transparent 100%);
@@ -634,7 +635,7 @@ html.dark #welcome-device-img{
 }
 .welcome-fader-tracks{
   position:absolute;top:0;left:0;right:0;bottom:0;
-  pointer-events:none;
+  pointer-events:none;z-index:2;
 }
 .welcome-fader-track{
   position:absolute;
@@ -2669,7 +2670,7 @@ function connectTransitionWelcome() {
 
   // 2. Stop float on .welcome-device wrapper
   const devWrap = document.querySelector('#welcome-screen .welcome-device');
-  if (devWrap) devWrap.style.animation = 'none';
+  if (devWrap) devWrap.style.animationPlayState = 'paused';
 
   // 3. Settle faders to default v=64 (top ≈ 47% of rail)
   //    Thumb height at 220px device width = round(220 * 0.22 * 1.506) = 72px
