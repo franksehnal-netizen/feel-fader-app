@@ -595,13 +595,17 @@ html.dark .dark-toggle svg{transform:rotate(180deg)}
   padding:0;
   margin:0 auto;
 }
+.welcome-device{
+  position:relative;
+  z-index:10;
+  animation:float 3s ease-in-out infinite;
+}
 #welcome-device-img{
   display:block;
-  width:120px;
+  width:220px;
   height:auto;
   border-radius:18px;
   box-shadow:0 16px 48px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.1);
-  animation:float 3s ease-in-out infinite;
 }
 .welcome-status{display:flex;align-items:center;gap:6px;justify-content:center;}
 .welcome-status-dot{
@@ -620,6 +624,66 @@ html.dark #welcome-device-img{
   box-shadow:0 24px 64px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
 }
 
+/* ── WELCOME FADER OVERLAY ── */
+.welcome-flash{
+  position:absolute;inset:0;z-index:5;
+  border-radius:18px;
+  background:radial-gradient(ellipse 90% 70% at 50% 45%,
+    rgba(52,199,89,.85) 0%,rgba(52,199,89,.2) 50%,transparent 100%);
+  opacity:0;pointer-events:none;
+}
+.welcome-fader-tracks{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  pointer-events:none;
+}
+.welcome-fader-track{
+  position:absolute;
+  width:22%;
+}
+#welcome-track-l{left:11.89%;top:11.64%;height:68.10%;}
+#welcome-track-r{left:65.84%;top:11.64%;height:68.10%;}
+.welcome-fader-thumb{
+  position:absolute;left:50%;transform:translateX(-50%);
+}
+.welcome-fader-thumb img{
+  display:block;width:100%;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.45));
+}
+#welcome-thumb-l{animation:welcome-fader-master 5.5s ease-in-out infinite;}
+#welcome-thumb-r{animation:welcome-fader-slave  5.5s ease-in-out .5s infinite;}
+
+@keyframes welcome-fader-master{
+  0%  {top:32%}
+  38% {top:58%}
+  70% {top:28%}
+  100%{top:32%}
+}
+@keyframes welcome-fader-slave{
+  0%  {top:44%}
+  38% {top:56%}
+  70% {top:42%}
+  100%{top:44%}
+}
+
+/* connect transition */
+@keyframes welcome-flash-in{
+  0%  {opacity:0}
+  12% {opacity:1}
+  55% {opacity:.6}
+  100%{opacity:0}
+}
+@keyframes welcome-text-out{
+  from{opacity:1;transform:translateY(0)}
+  to  {opacity:0;transform:translateY(-8px)}
+}
+@keyframes welcome-screen-out{
+  from{opacity:1}
+  to  {opacity:0}
+}
+#welcome-screen.connecting{
+  animation:welcome-screen-out .5s ease .3s forwards;
+  pointer-events:none;
+}
 
 /* ── LIVE FADER VISUAL ── */
 .fader-visual-wrap{
@@ -1137,25 +1201,32 @@ html.dark .val-bar{background:var(--t2);}
 <div id="welcome-screen">
   <div class="welcome-inner">
 
-    <!-- Controller photo with float animation -->
+    <!-- Device + fader overlay + flash (flash is z-index:5, behind device image) -->
     <div class="welcome-device">
+      <div id="welcome-flash" class="welcome-flash"></div>
       <img id="welcome-device-img" alt="Feel Fader" />
+      <div class="welcome-fader-tracks" id="welcome-fader-tracks" style="display:none">
+        <div class="welcome-fader-track" id="welcome-track-l">
+          <div class="welcome-fader-thumb" id="welcome-thumb-l"><img alt=""/></div>
+        </div>
+        <div class="welcome-fader-track" id="welcome-track-r">
+          <div class="welcome-fader-thumb" id="welcome-thumb-r"><img alt=""/></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Waiting status -->
-    <div class="welcome-status">
-      <div class="welcome-status-dot"></div>
-      <span style="font-size:11px;color:var(--t3);letter-spacing:.04em;text-transform:uppercase" data-i18n="welcome.waiting">Waiting for device</span>
+    <!-- Text block — fades out on connect -->
+    <div id="welcome-text-block">
+      <div class="welcome-status">
+        <div class="welcome-status-dot"></div>
+        <span style="font-size:11px;color:var(--t3);letter-spacing:.04em;text-transform:uppercase" data-i18n="welcome.waiting">Waiting for device</span>
+      </div>
+      <div class="welcome-title" data-i18n="welcome.connect">Connect Feel Fader</div>
+      <div class="welcome-sub" data-i18n="welcome.sub">Plug in via USB-C — configuration loads automatically.</div>
+      <button class="welcome-skip" onclick="skipWelcome()">
+        <span data-i18n="welcome.skip">Continue without device</span>
+      </button>
     </div>
-
-    <!-- Instruction -->
-    <div class="welcome-title" data-i18n="welcome.connect">Connect Feel Fader</div>
-    <div class="welcome-sub" data-i18n="welcome.sub">Plug in via USB-C — configuration loads automatically.</div>
-
-    <!-- Skip -->
-    <button class="welcome-skip" onclick="skipWelcome()">
-      <span data-i18n="welcome.skip">Continue without device</span>
-    </button>
 
   </div>
 </div>
@@ -1384,7 +1455,7 @@ function faderSectionContent(key, ctrl, bi) {
         </div>
 
       </div>
-      ${err ? `<div style="font-size:11px;color:var(--red);margin-top:4px">${err}</div>` : ''}
+      <div id="err-b${bi}-${key}" style="font-size:11px;color:var(--red);margin-top:4px;display:${err?'block':'none'}">${err}</div>
     </div>`;
 }
 
@@ -1435,7 +1506,7 @@ function encoderPanel(ctrl, bi) {
             </div>
           </div>
         </div>
-        ${encErr ? `<div style="font-size:11px;color:var(--red);margin-top:6px">${encErr}</div>` : ''}
+        <div id="err-b${bi}-encoder" style="font-size:11px;color:var(--red);margin-top:6px;display:${encErr?'block':'none'}">${encErr}</div>
       </div>
 
       <!-- Divider -->
@@ -1709,6 +1780,16 @@ function validate() {
       if (c.channel < 0 || c.channel > 15)
         errs.push({field:`b${i}.${k}`, msg:t('validate.ch_range').replace('{b}', b.name||i+1).replace('{k}', k)});
     });
+    const ctrls = ['fader1','fader2','encoder'];
+    for (let a = 0; a < ctrls.length - 1; a++) {
+      for (let bb = a + 1; bb < ctrls.length; bb++) {
+        const ca = b[ctrls[a]], cb = b[ctrls[bb]];
+        if (ca && cb && ca.cc === cb.cc && ca.channel === cb.channel)
+          errs.push({field:`b${i}.${ctrls[a]}`, msg:t('validate.cc_conflict')
+            .replace('{b}', b.name||i+1).replace('{k1}', ctrls[a]).replace('{k2}', ctrls[bb])
+            .replace('{cc}', ca.cc).replace('{ch}', ca.channel+1)});
+      }
+    }
   });
   return errs;
 }
@@ -1716,6 +1797,15 @@ function runValidation() {
   const errs=validate(), bar=document.getElementById('vbar'), btn=document.getElementById('send-btn');
   if(errs.length===0){bar.className='vbar';btn.disabled=false;}
   else{bar.className='vbar err';bar.innerHTML='⚠ '+errs[0].msg+(errs.length>1?` (+${errs.length-1} more)`:'');btn.disabled=true;}
+  cfg.banks.forEach((b,bi) => {
+    ['fader1','fader2','encoder'].forEach(key => {
+      const el = document.getElementById(`err-b${bi}-${key}`);
+      if (!el) return;
+      const e = errs.find(x => x.field === `b${bi}.${key}`);
+      el.textContent = e ? e.msg : '';
+      el.style.display = e ? 'block' : 'none';
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2366,6 +2456,7 @@ var TRANSLATIONS = {
     'validate.cc_range': 'Bank "{b}" {k}: CC must be 0–127',
     'validate.uacc_empty': 'Bank "{b}": articulation list must not be empty',
     'validate.ch_range': 'Bank "{b}" {k}: channel must be 0–15',
+    'validate.cc_conflict': 'Bank "{b}": {k1} and {k2} share CC {cc}/ch {ch} — assign unique CCs',
     'modal.banks.title': 'Banks',
     'modal.banks.desc': 'Banks are switched via the physical button on the device.',
     'btn.copy': 'Copy to clipboard',
@@ -2464,6 +2555,7 @@ var TRANSLATIONS = {
     'validate.cc_range': 'Bank "{b}" {k}: CC musí být 0–127',
     'validate.uacc_empty': 'Bank "{b}": seznam artikulací nesmí být prázdný',
     'validate.ch_range': 'Bank "{b}" {k}: channel musí být 0–15',
+    'validate.cc_conflict': 'Bank "{b}": {k1} a {k2} mají stejné CC {cc}/ch {ch} — přiřaď různá CC',
     'modal.banks.title': 'Banky',
     'modal.banks.desc': 'Banky se přepínají fyzickým tlačítkem na zařízení.',
     'btn.copy': 'Zkopírovat do schránky',
@@ -2544,12 +2636,77 @@ function showWelcome() {
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden');
 }
+function initWelcomeFaderOverlay() {
+  const srcL = document.querySelector('#thumb-l img');
+  const srcR = document.querySelector('#thumb-r img');
+  const wL   = document.querySelector('#welcome-thumb-l img');
+  const wR   = document.querySelector('#welcome-thumb-r img');
+  if (srcL && wL) wL.src = srcL.src;
+  if (srcR && wR) wR.src = srcR.src;
+  const tracks = document.getElementById('welcome-fader-tracks');
+  if (tracks) tracks.style.display = 'block';
+}
+function connectTransitionWelcome() {
+  const ws = document.getElementById('welcome-screen');
+  if (!ws || ws.classList.contains('hidden') || ws.classList.contains('connecting')) return;
+
+  // 1. Freeze fader animations at current rendered position
+  const thumbL = document.getElementById('welcome-thumb-l');
+  const thumbR = document.getElementById('welcome-thumb-r');
+  const railL  = document.getElementById('welcome-track-l');
+  const railR  = document.getElementById('welcome-track-r');
+  if (thumbL && railL) {
+    const curL = thumbL.getBoundingClientRect().top - railL.getBoundingClientRect().top;
+    thumbL.style.animation = 'none';
+    thumbL.style.top = curL + 'px';
+  }
+  if (thumbR && railR) {
+    const curR = thumbR.getBoundingClientRect().top - railR.getBoundingClientRect().top;
+    thumbR.style.animation = 'none';
+    thumbR.style.top = curR + 'px';
+  }
+
+  // 2. Stop float on .welcome-device wrapper
+  const devWrap = document.querySelector('#welcome-screen .welcome-device');
+  if (devWrap) devWrap.style.animation = 'none';
+
+  // 3. Settle faders to default v=64 (top ≈ 47% of rail)
+  //    Thumb height at 220px device width = round(220 * 0.22 * 1.506) = 72px
+  const THUMB_H = 72;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (thumbL && railL) {
+      thumbL.style.transition = 'top 0.55s ease-in-out';
+      thumbL.style.top = ((railL.offsetHeight - THUMB_H) * 0.47) + 'px';
+    }
+    if (thumbR && railR) {
+      thumbR.style.transition = 'top 0.55s ease-in-out';
+      thumbR.style.top = ((railR.offsetHeight - THUMB_H) * 0.47) + 'px';
+    }
+  }));
+
+  // 4. Green flash (z-index:5, behind device image)
+  const flash = document.getElementById('welcome-flash');
+  if (flash) flash.style.animation = 'welcome-flash-in 0.6s ease-out forwards';
+
+  // 5. Fade out welcome text
+  setTimeout(() => {
+    const tb = document.getElementById('welcome-text-block');
+    if (tb) tb.style.animation = 'welcome-text-out 0.4s ease-in forwards';
+  }, 50);
+
+  // 6. Fade out entire welcome screen, then hide
+  ws.classList.add('connecting');
+  setTimeout(() => ws.classList.add('hidden'), 850);
+}
+
 function hideWelcome() {
+  connectTransitionWelcome();
+}
+
+function skipWelcome() {
+  // Bypass animation — instant hide
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.add('hidden');
-}
-function skipWelcome() {
-  hideWelcome();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -2829,6 +2986,7 @@ window.addEventListener('load',()=>{
   const welcomeImg = document.getElementById('welcome-device-img');
   // Copy src to welcome img — device-img has inline base64 so always available
   if (deviceImg && welcomeImg) welcomeImg.src = deviceImg.src;
+  initWelcomeFaderOverlay();
   try {
     render();
     applyLang();
