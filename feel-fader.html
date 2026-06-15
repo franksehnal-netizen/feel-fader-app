@@ -2041,9 +2041,9 @@ function normalizeFwConfig(p) {
       icon:        '',
       tags:        [],
       uacc_values: Array.isArray(b.uacc_values) ? b.uacc_values : [],
-      fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: b.channel ?? 0, label: '' },
-      fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: b.channel ?? 0, label: '' },
-      encoder:     { cc: typeof b.encoder === 'number' ? b.encoder : 32, channel: b.channel ?? 0 },
+      fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: Array.isArray(b.fader_ch) ? b.fader_ch[0] : (b.channel ?? 0), label: '' },
+      fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: Array.isArray(b.fader_ch) ? b.fader_ch[1] : (b.channel ?? 0), label: '' },
+      encoder:     { cc: typeof b.encoder === 'number' ? b.encoder : 32, channel: typeof b.encoder_ch === 'number' ? b.encoder_ch : (b.channel ?? 0) },
     }))
   };
 }

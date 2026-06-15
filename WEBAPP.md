@@ -322,7 +322,21 @@ Data jsou 7-bit enkódovaná (`enc7()` / `dec7()`) — každý byte rozdělen na
 1. Odešle CMD_R SysEx
 2. Čeká na příchozí CMD_CHUNK zprávy
 3. Sestaví buffer, dekóduje JSON
-4. Aktualizuje `cfg` + `render()`
+4. `normalizeFwConfig()` mapuje device formát → web formát, pak `cfg` + `render()`
+
+### Formát konfigurace: app vs. device
+
+App drží **web formát** (`cfg` — per-control, viz §4), device drží **interní kompaktní formát**:
+
+```js
+// Device (banks[i]) — co posílá v CMD_R/CMD_CHUNK
+{ fader_cc:[cc1,cc2], fader_ch:[ch1,ch2], encoder:cc, encoder_ch:ch, uacc_values:[...] }
+```
+
+- **App → device** (CMD_W): posílá celý `cfg`; firmware `apply_web_config()` si vezme `fader1/2/encoder.cc` + `.channel`.
+- **Device → app** (CMD_R): device posílá interní formát; `normalizeFwConfig()` (L2035) ho převede zpět na web formát.
+- **Každý ovladač má vlastní MIDI kanál** (fader1, fader2, encoder samostatně). `normalizeFwConfig` čte `fader_ch[0/1]` a `encoder_ch`; pro starý formát (jeden `channel` na banku) má fallback.
+- ⚠️ Tento formát musí zůstat v synchronu s firmwarem — viz `CLAUDE.md` (pravidlo app↔firmware).
 
 ### Serial (backup transport)
 
