@@ -688,32 +688,6 @@ html.dark #welcome-device-img{
   pointer-events:none;
 }
 
-/* ── LIVE FADER VISUAL ── */
-.fader-visual-wrap{
-  display:none;  /* shown only when connected */
-  gap:20px;justify-content:center;align-items:flex-end;
-  width:100%;max-width:600px;
-  background:var(--bg-card);border:1px solid var(--border);
-  border-radius:var(--r);padding:16px 20px 12px;
-  box-shadow:var(--shadow);
-}
-.fader-visual-wrap.visible{display:flex}
-.fader-visual{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;max-width:120px}
-.fader-visual-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
-.fader-track-v{
-  width:6px;height:100px;
-  background:var(--border-s);border-radius:var(--r-sm);
-  position:relative;
-}
-.fader-thumb-v{
-  width:28px;height:10px;
-  background:var(--red);border-radius:var(--r-sm);
-  position:absolute;left:50%;transform:translateX(-50%);
-  box-shadow:0 2px 6px rgba(232,80,58,.4);
-  transition:bottom .06s linear;
-}
-.fader-val-v{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--t1)}
-
 /* ── INSTRUMENT ICON PICKER ── */
 .icon-picker-overlay{
   position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);
@@ -1234,11 +1208,6 @@ html.dark .val-bar{background:var(--t2);}
   </div>
 </div>
 
-<!-- LIVE FADER VISUAL (shown when connected) -->
-<div class="fader-visual-wrap" id="fader-visual-wrap" style="display:none">
-  <!-- injected by renderFaderVisual() -->
-</div>
-
 <!-- ICON PICKER MODAL -->
 <div class="icon-picker-overlay" id="icon-picker" style="display:none" onclick="if(event.target===this)closeIconPicker()">
   <div class="icon-picker-modal">
@@ -1611,7 +1580,7 @@ function onCtrl(bi, key, field, val) {
 }
 
 // BANKS
-function selectBank(i) { activeBank = i; render(); if(loaded) renderFaderVisual(); }
+function selectBank(i) { activeBank = i; render(); }
 
 function onBankRename(bi, val) {
   cfg.banks[bi].name = val.trim() || ('Bank ' + (bi+1));
@@ -1902,7 +1871,7 @@ function connectInputs(){
     if (dot) { dot.style.background = 'var(--green)'; dot.style.animation = 'none'; }
     const statusTxt = document.querySelector('.welcome-status span');
     if (statusTxt) statusTxt.textContent = t('welcome.found');
-    setTimeout(() => { hideWelcome(); showFaderVisual(); }, 600);
+    setTimeout(() => { hideWelcome(); }, 600);
     setBanner('connected',names.join(', '));
     // NOTE: do NOT call updateStatus() here — when loaded=false it overwrites the
     // 'connected' banner with 'status.disconnected', making it look like no device.
@@ -1916,7 +1885,6 @@ function connectInputs(){
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {
-      hideFaderVisual();
       showWelcome();
     }
     let anyMidi = false;
@@ -1954,11 +1922,9 @@ function onMidiMsg(event){
     const cc=data[1],val=data[2];
     if(cc===bank.fader1.cc && ch===bank.fader1.channel){
       liveValues.f1=val;pF('track-l','thumb-l',val);setTxt('f1-val',val);setBar('f1-bar',val);
-      updateFaderVisual();
     }
     if(cc===bank.fader2.cc && ch===bank.fader2.channel){
       liveValues.f2=val;pF('track-r','thumb-r',val);setTxt('f2-val',val);setBar('f2-bar',val);
-      updateFaderVisual();
     }
     if(cc===bank.encoder.cc && ch===bank.encoder.channel){
       encLiveVal = val;
@@ -1980,7 +1946,6 @@ function onMidiMsg(event){
       renderBankTabs();
           renderPanels();
       renderUacc();
-      if(loaded) renderFaderVisual();
     }
   }
 }
@@ -2710,53 +2675,6 @@ function skipWelcome() {
   // Bypass animation — instant hide
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.add('hidden');
-}
-
-// ════════════════════════════════════════════════════════════════
-// LIVE FADER VISUAL
-// ════════════════════════════════════════════════════════════════
-function renderFaderVisual() {
-  const wrap = document.getElementById('fader-visual-wrap');
-  if (!wrap) return;
-  const b = cfg.banks[activeBank] || {};
-  const f1label = (b.fader1 && b.fader1.label) || 'Fader 1';
-  const f2label = (b.fader2 && b.fader2.label) || 'Fader 2';
-  wrap.innerHTML = `
-    <div class="fader-visual">
-      <div class="fader-visual-label">${f1label}</div>
-      <div class="fader-track-v">
-        <div class="fader-thumb-v" id="fv-thumb-l" style="bottom:${(liveValues.f1/127*90).toFixed(1)}%"></div>
-      </div>
-      <div class="fader-val-v" id="fv-val-l">${liveValues.f1}</div>
-    </div>
-    <div class="fader-visual">
-      <div class="fader-visual-label">${f2label}</div>
-      <div class="fader-track-v">
-        <div class="fader-thumb-v" id="fv-thumb-r" style="bottom:${(liveValues.f2/127*90).toFixed(1)}%"></div>
-      </div>
-      <div class="fader-val-v" id="fv-val-r">${liveValues.f2}</div>
-    </div>
-  `;
-}
-
-function updateFaderVisual() {
-  const tl = document.getElementById('fv-thumb-l');
-  const tr = document.getElementById('fv-thumb-r');
-  const vl = document.getElementById('fv-val-l');
-  const vr = document.getElementById('fv-val-r');
-  if (tl) tl.style.bottom = (liveValues.f1/127*90).toFixed(1) + '%';
-  if (tr) tr.style.bottom = (liveValues.f2/127*90).toFixed(1) + '%';
-  if (vl) vl.textContent = liveValues.f1;
-  if (vr) vr.textContent = liveValues.f2;
-}
-
-function showFaderVisual() {
-  const wrap = document.getElementById('fader-visual-wrap');
-  if (wrap) { wrap.style.display = 'flex'; renderFaderVisual(); }
-}
-function hideFaderVisual() {
-  const wrap = document.getElementById('fader-visual-wrap');
-  if (wrap) wrap.style.display = 'none';
 }
 
 // ════════════════════════════════════════════════════════════════
