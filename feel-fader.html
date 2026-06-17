@@ -1265,9 +1265,9 @@ const MAX_BANKS = 10;
 
 const DEFAULT_CFG = {
   banks: [
-    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0} },
-    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1} },
-    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2} },
+    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
+    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
+    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
   ]
 };
 
@@ -1683,6 +1683,10 @@ function addBank() {
     fader1:      {cc:1,  channel:bi%16, label:'Expression'},
     fader2:      {cc:2,  channel:bi%16, label:'Dynamics'},
     encoder:     {cc:32, channel:bi%16},
+    roller_mode: 'cc',
+    ks_notes:    [],
+    ks_channel:  bi % 16,
+    ks_velocity: 100,
   });
   dirty = true; render();
 }
@@ -2009,6 +2013,10 @@ function normalizeFwConfig(p) {
       fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: Array.isArray(b.fader_ch) ? b.fader_ch[0] : (b.channel ?? 0), label: '' },
       fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: Array.isArray(b.fader_ch) ? b.fader_ch[1] : (b.channel ?? 0), label: '' },
       encoder:     { cc: typeof b.encoder === 'number' ? b.encoder : 32, channel: typeof b.encoder_ch === 'number' ? b.encoder_ch : (b.channel ?? 0) },
+      roller_mode: (b.roller_mode === 'keyswitch' || b.roller_mode === 'track_nav') ? b.roller_mode : 'cc',
+      ks_notes:    Array.isArray(b.ks_notes) ? b.ks_notes : [],
+      ks_channel:  typeof b.ks_channel === 'number' ? b.ks_channel : (typeof b.encoder_ch === 'number' ? b.encoder_ch : 0),
+      ks_velocity: typeof b.ks_velocity === 'number' ? b.ks_velocity : 100,
     }))
   };
 }
