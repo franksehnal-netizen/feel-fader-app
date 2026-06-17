@@ -1470,6 +1470,18 @@ function encoderPanel(ctrl, bi) {
       <span class="panel-name">Articulation Encoder</span>
       <span class="section-live-val" id="enc-artic-badge">${initName}</span>
     </div>
+      <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
+        ${['cc','keyswitch','track_nav'].map(m => {
+          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID — P3)'};
+          const disabled = (m === 'track_nav');
+          const active = (cfg.banks[bi].roller_mode || 'cc') === m;
+          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje HID (P1/P3)"':''}
+            onclick="setRollerMode(${bi},'${m}')"
+            style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
+                   background:${active?'var(--t1)':'var(--bg-card)'};color:${active?'var(--bg)':'var(--t2)'};
+                   cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.45:1};font-size:11px">${labels[m]}</button>`;
+        }).join('')}
+      </div>
     <div class="enc-unified-body">
 
       <!-- Left: live display + MIDI config -->
@@ -1595,6 +1607,11 @@ function onCtrl(bi, key, field, val) {
   const isCh = field === 'channel';
   cfg.banks[bi][key][field] = Math.max(isCh?0:0, Math.min(isCh?15:127, val));
   dirty = true; runValidation();
+}
+function setRollerMode(bi, mode) {
+  if (mode === 'track_nav') { toast('i','Track-nav přijde v P3 (vyžaduje HID)'); return; }
+  cfg.banks[bi].roller_mode = mode;
+  dirty = true; render();
 }
 
 // BANKS
