@@ -1883,8 +1883,16 @@ function validate() {
   if (!cfg.banks || cfg.banks.length === 0)
     errs.push({ field:'banks', msg:t('toast.bank_min') });
   cfg.banks.forEach((b,i) => {
-    if (!b.uacc_values || b.uacc_values.length === 0)
-      errs.push({ field:`b${i}.uacc`, msg:t('validate.uacc_empty').replace('{b}', b.name||i+1) });
+    const mode = b.roller_mode || 'cc';
+    if (mode === 'cc') {
+      if (!b.uacc_values || b.uacc_values.length === 0)
+        errs.push({ field:`b${i}.uacc`, msg:t('validate.uacc_empty').replace('{b}', b.name||i+1) });
+    } else if (mode === 'keyswitch') {
+      if (!b.ks_notes || b.ks_notes.length === 0)
+        errs.push({ field:`b${i}.uacc`, msg:`Banka ${b.name||i+1}: keyswitch režim potřebuje aspoň jednu notu` });
+      if (b.ks_notes && b.ks_notes.some(n => n < 0 || n > 127))
+        errs.push({ field:`b${i}.uacc`, msg:`Banka ${b.name||i+1}: nota mimo 0–127` });
+    }
     ['fader1','fader2','encoder'].forEach(k => {
       const c = b[k];
       if (!c) { console.warn('[V] bank',i,'missing',k,'| keys:',Object.keys(b).join(',')); errs.push({field:`b${i}.${k}`, msg:t('validate.missing_def').replace('{b}', i+1).replace('{k}', k)}); return; }
