@@ -191,6 +191,7 @@ main{width:100%;}
 .step-btn:hover{background:rgba(0,0,0,.05);color:var(--t1);}
 .step-btn:active{background:rgba(0,0,0,.1);transform:scale(.9);}
 .step-btn:hover{background:rgba(0,0,0,.1);color:var(--t1)}
+.step-btn.active{background:var(--t1);color:var(--bg);}
 
 /* TWO-ROW FIELD (label + controls stacked) */
 .field-block{display:flex;flex-direction:column;gap:4px}
@@ -1449,10 +1450,10 @@ function faderSectionContent(key, ctrl, bi) {
     </div>`;
 }
 
-function encoderPanel(ctrl, bi) {
-  const errs     = validate();
-  const encErr   = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
-  const uaccErr  = errs.find(e => e.field === `b${bi}.uacc`)?.msg || '';
+function ccEncoderBody(ctrl, bi) {
+  const errs    = validate();
+  const encErr  = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
+  const uaccErr = errs.find(e => e.field === `b${bi}.uacc`)?.msg || '';
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
@@ -1464,25 +1465,7 @@ function encoderPanel(ctrl, bi) {
     </div>`).join('');
 
   return `
-  <div class="panel panel-wide">
-    <div class="panel-head">
-      <div class="panel-dot solid"></div>
-      <span class="panel-name">Articulation Encoder</span>
-      <span class="section-live-val" id="enc-artic-badge">${initName}</span>
-    </div>
-      <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
-        ${['cc','keyswitch','track_nav'].map(m => {
-          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID — P3)'};
-          const disabled = (m === 'track_nav');
-          const active = (cfg.banks[bi].roller_mode || 'cc') === m;
-          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje HID (P1/P3)"':''}
-            onclick="setRollerMode(${bi},'${m}')"
-            style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
-                   background:${active?'var(--t1)':'var(--bg-card)'};color:${active?'var(--bg)':'var(--t2)'};
-                   cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.45:1};font-size:11px">${labels[m]}</button>`;
-        }).join('')}
-      </div>
-    <div class="enc-unified-body">
+  <div class="enc-unified-body">
 
       <!-- Left: live display + MIDI config -->
       <div class="enc-left">
@@ -1547,7 +1530,87 @@ function encoderPanel(ctrl, bi) {
         <p class="uacc-note">Encoder steps through these articulations. Values follow the UACC standard (Spitfire, East West, Orchestral Tools).</p>
       </div>
 
+    </div>`;
+}
+
+function keyswitchBody(bi) {
+  const b = cfg.banks[bi];
+  const tags = (b.ks_notes || []).map((n,i) => `
+    <div class="uacc-tag" title="MIDI ${n}">
+      <span class="uacc-num">${n}</span>
+      <span class="uacc-label">${noteName(n)}</span>
+      <button onclick="removeKsNote(${bi},${i})" title="Odebrat">✕</button>
+    </div>`).join('');
+  return `
+  <div class="enc-unified-body">
+    <div class="section-field-row" style="margin-top:10px">
+      <div class="field-block">
+        <span class="field-label">MIDI CHANNEL</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="stepKs(${bi},'ks_channel',-1)">−</button><div class="stepper-sep"></div>
+          <input type="number" id="b${bi}-ks-ch" value="${(b.ks_channel ?? 0)+1}" min="1" max="16"
+            oninput="onKs(${bi},'ks_channel',+this.value-1)"/>
+          <button class="step-btn" onclick="stepKs(${bi},'ks_channel',1)">+</button>
+        </div>
+      </div>
+      <div class="field-block">
+        <span class="field-label">VELOCITY</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="stepKs(${bi},'ks_velocity',-1)">−</button><div class="stepper-sep"></div>
+          <input type="number" id="b${bi}-ks-vel" value="${b.ks_velocity ?? 100}" min="1" max="127"
+            oninput="onKs(${bi},'ks_velocity',+this.value)"/>
+          <button class="step-btn" onclick="stepKs(${bi},'ks_velocity',1)">+</button>
+        </div>
+      </div>
+      <div class="field-block">
+        <span class="field-label">KONVENCE</span>
+        <div class="stepper">
+          <button class="step-btn${noteConvention==='C-2'?' active':''}" onclick="setNoteConvention('C-2')">C-2</button>
+          <button class="step-btn${noteConvention==='C-1'?' active':''}" onclick="setNoteConvention('C-1')">C-1</button>
+        </div>
+      </div>
     </div>
+
+    <div class="uacc-grid" style="margin-top:10px">${tags || '<span class="uacc-note">Žádné keyswitche — přidej notu nebo vygeneruj rozsah.</span>'}</div>
+
+    <div class="uacc-add-row">
+      <input type="number" id="ks-note-input-${bi}" placeholder="MIDI 0–127" min="0" max="127" />
+      <button class="step-btn" onclick="addKsNote(${bi})">+ nota</button>
+    </div>
+    <div class="uacc-add-row" style="margin-top:6px">
+      <input type="number" id="ks-gen-base-${bi}" placeholder="od (MIDI)" min="0" max="127" value="0" />
+      <input type="number" id="ks-gen-count-${bi}" placeholder="počet" min="1" max="128" value="12" />
+      <button class="step-btn" onclick="genKsRange(${bi})">Vygenerovat rozsah</button>
+    </div>
+    <div class="uacc-note">Pořadí v seznamu = pořadí krokování rolleru.</div>
+  </div>`;
+}
+
+function encoderPanel(ctrl, bi) {
+  const bankUacc = cfg.banks[bi].uacc_values || [];
+  const initVal  = bankUacc[0] ?? 0;
+  const initName = uaccName(initVal);
+
+  return `
+  <div class="panel panel-wide">
+    <div class="panel-head">
+      <div class="panel-dot solid"></div>
+      <span class="panel-name">Articulation Encoder</span>
+      <span class="section-live-val" id="enc-artic-badge">${initName}</span>
+    </div>
+      <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
+        ${['cc','keyswitch','track_nav'].map(m => {
+          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID — P3)'};
+          const disabled = (m === 'track_nav');
+          const active = (cfg.banks[bi].roller_mode || 'cc') === m;
+          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje HID (P1/P3)"':''}
+            onclick="setRollerMode(${bi},'${m}')"
+            style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
+                   background:${active?'var(--t1)':'var(--bg-card)'};color:${active?'var(--bg)':'var(--t2)'};
+                   cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.45:1};font-size:11px">${labels[m]}</button>`;
+        }).join('')}
+      </div>
+    ${cfg.banks[bi].roller_mode === 'keyswitch' ? keyswitchBody(bi) : ccEncoderBody(ctrl, bi)}
   </div>`;
 }
 
@@ -1770,6 +1833,45 @@ function addUaccFromPreset(values) {
   const bank = cfg.banks[activeBank];
   values.forEach(v => { if (!bank.uacc_values.includes(v)) bank.uacc_values.push(v); });
   bank.uacc_values.sort((a,b)=>a-b);
+  dirty = true; render();
+}
+
+// ── KEYSWITCH (roller_mode === 'keyswitch') ───────────────────────────────────
+function stepKs(bi, field, delta) {
+  const b = cfg.banks[bi];
+  const max = field === 'ks_channel' ? 15 : 127;
+  const min = field === 'ks_channel' ? 0 : 1;
+  b[field] = Math.max(min, Math.min(max, (b[field] ?? (field==='ks_velocity'?100:0)) + delta));
+  dirty = true; render();
+}
+function onKs(bi, field, val) {
+  if (isNaN(val)) return;
+  const max = field === 'ks_channel' ? 15 : 127;
+  const min = field === 'ks_channel' ? 0 : 1;
+  cfg.banks[bi][field] = Math.max(min, Math.min(max, val));
+  dirty = true; runValidation();
+}
+function addKsNote(bi) {
+  const inp = document.getElementById(`ks-note-input-${bi}`);
+  const v = parseInt(inp.value, 10);
+  if (isNaN(v) || v < 0 || v > 127) { toast('e','Nota mimo rozsah 0–127'); return; }
+  if (!cfg.banks[bi].ks_notes) cfg.banks[bi].ks_notes = [];
+  cfg.banks[bi].ks_notes.push(v);   // NEsortovat — pořadí = krokování
+  inp.value = '';
+  dirty = true; render();
+}
+function removeKsNote(bi, i) {
+  cfg.banks[bi].ks_notes.splice(i, 1);
+  dirty = true; render();
+}
+function genKsRange(bi) {
+  const base  = parseInt(document.getElementById(`ks-gen-base-${bi}`).value, 10);
+  const count = parseInt(document.getElementById(`ks-gen-count-${bi}`).value, 10);
+  if (isNaN(base) || base < 0 || base > 127) { toast('e','Základní nota mimo rozsah'); return; }
+  if (isNaN(count) || count < 1) { toast('e','Neplatný počet'); return; }
+  const notes = [];
+  for (let n = base; n < base + count && n <= 127; n++) notes.push(n);
+  cfg.banks[bi].ks_notes = notes;
   dirty = true; render();
 }
 
