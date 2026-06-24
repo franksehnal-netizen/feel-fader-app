@@ -191,7 +191,7 @@ main{width:100%;}
 .step-btn:hover{background:rgba(0,0,0,.05);color:var(--t1);}
 .step-btn:active{background:rgba(0,0,0,.1);transform:scale(.9);}
 .step-btn:hover{background:rgba(0,0,0,.1);color:var(--t1)}
-.step-btn.active{background:var(--t1);color:var(--bg);}
+.step-btn.active{background:var(--red);color:#fff;}
 /* keyswitch dual-handle range slider (custom handles) */
 .ks-slider{position:relative;height:30px;margin:12px 18px 2px;touch-action:none;user-select:none}
 .ks-track{position:absolute;top:8px;left:0;right:0;height:14px;background:var(--bg-input);border-radius:999px;box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}
@@ -1651,7 +1651,7 @@ function encoderPanel(ctrl, bi) {
           return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje HID (P1/P3)"':''}
             onclick="setRollerMode(${bi},'${m}')"
             style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
-                   background:${active?'var(--t1)':'var(--bg-card)'};color:${active?'var(--bg)':'var(--t2)'};
+                   background:${active?'var(--red)':'var(--bg-card)'};color:${active?'#fff':'var(--t2)'};
                    cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.45:1};font-size:11px">${labels[m]}</button>`;
         }).join('')}
       </div>
