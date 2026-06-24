@@ -192,6 +192,16 @@ main{width:100%;}
 .step-btn:active{background:rgba(0,0,0,.1);transform:scale(.9);}
 .step-btn:hover{background:rgba(0,0,0,.1);color:var(--t1)}
 .step-btn.active{background:var(--t1);color:var(--bg);}
+/* keyswitch dual-handle range slider */
+.ks-slider{position:relative;height:34px;margin:6px 9px 2px}
+.ks-track{position:absolute;top:15px;left:0;right:0;height:4px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:2px}
+.ks-fill{position:absolute;top:15px;height:4px;background:var(--t1);border-radius:2px}
+.ks-range{position:absolute;top:7px;left:0;width:100%;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none;height:20px}
+.ks-range:focus{outline:none}
+.ks-range::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--bg-card,#fff);border:2px solid var(--t1);cursor:pointer;box-shadow:var(--shadow-sm)}
+.ks-range::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--bg-card,#fff);border:2px solid var(--t1);cursor:pointer}
+.ks-preset-sel{border:1px solid var(--border-s);border-radius:var(--r-sm);background:var(--bg-input);color:var(--t2);font-family:'Mulish',sans-serif;font-size:12px;padding:5px 8px;cursor:pointer;outline:none}
+.ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:66px;text-align:center;color:var(--t1)}
 
 /* TWO-ROW FIELD (label + controls stacked) */
 .field-block{display:flex;flex-direction:column;gap:4px}
@@ -1541,6 +1551,11 @@ function keyswitchBody(bi) {
       <span class="uacc-label">${noteName(n)}</span>
       <button onclick="removeKsNote(${bi},${i})" title="Odebrat">✕</button>
     </div>`).join('');
+  const ksN = b.ks_notes || [];
+  const lo = ksN.length ? Math.min(...ksN) : 0;
+  const hi = ksN.length ? Math.max(...ksN) : 0;
+  const fillW = Math.max(0, hi - lo) / 127 * 100;
+  const presetOpts = KEYSWITCH_PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
   return `
   <div class="enc-unified-body">
     <div class="section-field-row" style="margin-top:10px">
@@ -1571,18 +1586,49 @@ function keyswitchBody(bi) {
       </div>
     </div>
 
-    <div class="uacc-grid" style="margin-top:10px">${tags || '<span class="uacc-note">Žádné keyswitche — přidej notu nebo vygeneruj rozsah.</span>'}</div>
+    <div class="field-label" style="margin:16px 0 0 9px">Rozsah keyswitchů</div>
+    <div class="ks-slider">
+      <div class="ks-track"></div>
+      <div class="ks-fill" style="left:${lo/127*100}%;width:${fillW}%"></div>
+      <input type="range" class="ks-range" min="0" max="127" value="${lo}" oninput="setKsBound(${bi},'lo',+this.value)">
+      <input type="range" class="ks-range" min="0" max="127" value="${hi}" oninput="setKsBound(${bi},'hi',+this.value)">
+    </div>
+    <div class="section-field-row" style="margin-top:2px">
+      <div class="field-block">
+        <span class="field-label">OD</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="setKsBound(${bi},'lo',${lo-1})">−</button><div class="stepper-sep"></div>
+          <span class="ks-stepval">${noteName(lo)} · ${lo}</span>
+          <button class="step-btn" onclick="setKsBound(${bi},'lo',${lo+1})">+</button>
+        </div>
+      </div>
+      <div class="field-block">
+        <span class="field-label">DO</span>
+        <div class="stepper">
+          <button class="step-btn" onclick="setKsBound(${bi},'hi',${hi-1})">−</button><div class="stepper-sep"></div>
+          <span class="ks-stepval">${noteName(hi)} · ${hi}</span>
+          <button class="step-btn" onclick="setKsBound(${bi},'hi',${hi+1})">+</button>
+        </div>
+      </div>
+      <div class="field-block" style="align-self:flex-end">
+        <span class="uacc-note" style="margin-top:0">= ${ksN.length} not</span>
+      </div>
+    </div>
 
-    <div class="uacc-add-row">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+      <button class="step-btn" style="width:auto;padding:0 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)" onclick="resetKs(${bi})">Reset</button>
+      <select class="ks-preset-sel" onchange="applyKsPreset(${bi},this.value);this.selectedIndex=0">
+        <option value="">Presety ▾</option>
+        ${presetOpts}
+      </select>
+    </div>
+
+    <div class="uacc-grid" style="margin-top:14px">${tags || '<span class="uacc-note">Žádné keyswitche — nastav rozsah nebo přidej notu.</span>'}</div>
+    <div class="uacc-add-row" style="margin-top:8px">
       <input type="number" id="ks-note-input-${bi}" placeholder="MIDI 0–127" min="0" max="127" />
-      <button class="step-btn" onclick="addKsNote(${bi})">+ nota</button>
+      <button class="step-btn" style="width:auto;padding:0 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)" onclick="addKsNote(${bi})">+ nota</button>
     </div>
-    <div class="uacc-add-row" style="margin-top:6px">
-      <input type="number" id="ks-gen-base-${bi}" placeholder="od (MIDI)" min="0" max="127" value="0" />
-      <input type="number" id="ks-gen-count-${bi}" placeholder="počet" min="1" max="128" value="12" />
-      <button class="step-btn" onclick="genKsRange(${bi})">Vygenerovat rozsah</button>
-    </div>
-    <div class="uacc-note">Pořadí v seznamu = pořadí krokování rolleru.</div>
+    <div class="uacc-note">Slider/steppery mění jen okraje — ruční výjimky (mezery) zůstanou. Pořadí = krokování rolleru.</div>
   </div>`;
 }
 
@@ -1674,6 +1720,9 @@ function onCtrl(bi, key, field, val) {
 function setRollerMode(bi, mode) {
   if (mode === 'track_nav') { toast('i','Track-nav přijde v P3 (vyžaduje HID)'); return; }
   cfg.banks[bi].roller_mode = mode;
+  if (mode === 'keyswitch' && (!cfg.banks[bi].ks_notes || cfg.banks[bi].ks_notes.length === 0)) {
+    cfg.banks[bi].ks_notes = ksRange(0, 11);   // default standard C-2..B-2
+  }
   dirty = true; render();
 }
 
@@ -1855,8 +1904,8 @@ function addKsNote(bi) {
   const inp = document.getElementById(`ks-note-input-${bi}`);
   const v = parseInt(inp.value, 10);
   if (isNaN(v) || v < 0 || v > 127) { toast('e','Nota mimo rozsah 0–127'); return; }
-  if (!cfg.banks[bi].ks_notes) cfg.banks[bi].ks_notes = [];
-  cfg.banks[bi].ks_notes.push(v);   // NEsortovat — pořadí = krokování
+  const cur = cfg.banks[bi].ks_notes || [];
+  cfg.banks[bi].ks_notes = [...new Set([...cur, v])].sort((a, b) => a - b);
   inp.value = '';
   dirty = true; render();
 }
@@ -1864,14 +1913,51 @@ function removeKsNote(bi, i) {
   cfg.banks[bi].ks_notes.splice(i, 1);
   dirty = true; render();
 }
-function genKsRange(bi) {
-  const base  = parseInt(document.getElementById(`ks-gen-base-${bi}`).value, 10);
-  const count = parseInt(document.getElementById(`ks-gen-count-${bi}`).value, 10);
-  if (isNaN(base) || base < 0 || base > 127) { toast('e','Základní nota mimo rozsah'); return; }
-  if (isNaN(count) || count < 1) { toast('e','Neplatný počet'); return; }
-  const notes = [];
-  for (let n = base; n < base + count && n <= 127; n++) notes.push(n);
-  cfg.banks[bi].ks_notes = notes;
+// Keyswitch presety (rozšiřitelné — reálné knihovní mapy doplní Frank později).
+// Souvislý rozsah: {name, lo, hi}. Nesouvislé (pozdější): {name, notes:[...]}.
+const KEYSWITCH_PRESETS = [
+  { name: 'Od C-2 (MIDI 0–11)',  lo: 0,  hi: 11 },
+  { name: 'Od C-1 (MIDI 12–23)', lo: 12, hi: 23 },
+];
+
+function ksRange(lo, hi) {
+  const a = [], from = Math.max(0, Math.min(lo, hi)), to = Math.min(127, Math.max(lo, hi));
+  for (let n = from; n <= to; n++) a.push(n);
+  return a;
+}
+
+// Edge-edit: slider/steppery sahají jen na okraje, ruční výjimky (mezery) zůstanou.
+function setKsBound(bi, which, val) {
+  val = Math.max(0, Math.min(127, val | 0));
+  const b = cfg.banks[bi];
+  let notes = (b.ks_notes || []).slice();
+  if (!notes.length) { notes = [val]; }
+  else {
+    const lo = Math.min(...notes), hi = Math.max(...notes);
+    if (which === 'lo') {
+      if (val > hi) { notes = [val]; }
+      else if (val < lo) { for (let n = val; n < lo; n++) notes.push(n); }   // rozšíř dolů
+      else { notes = notes.filter(n => n >= val); }                          // ořízni zespod
+    } else { // hi
+      if (val < lo) { notes = [val]; }
+      else if (val > hi) { for (let n = hi + 1; n <= val; n++) notes.push(n); } // rozšíř nahoru
+      else { notes = notes.filter(n => n <= val); }                            // ořízni navrch
+    }
+  }
+  b.ks_notes = [...new Set(notes)].sort((x, y) => x - y);
+  dirty = true; render();
+}
+
+function applyKsPreset(bi, idx) {
+  if (idx === '' || idx == null) return;
+  const p = KEYSWITCH_PRESETS[+idx];
+  if (!p) return;
+  cfg.banks[bi].ks_notes = p.notes ? p.notes.slice() : ksRange(p.lo, p.hi);
+  dirty = true; render();
+}
+
+function resetKs(bi) {
+  cfg.banks[bi].ks_notes = ksRange(0, 11);   // default standard C-2..B-2
   dirty = true; render();
 }
 
