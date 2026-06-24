@@ -192,14 +192,13 @@ main{width:100%;}
 .step-btn:active{background:rgba(0,0,0,.1);transform:scale(.9);}
 .step-btn:hover{background:rgba(0,0,0,.1);color:var(--t1)}
 .step-btn.active{background:var(--t1);color:var(--bg);}
-/* keyswitch dual-handle range slider */
-.ks-slider{position:relative;height:34px;margin:6px 9px 2px}
-.ks-track{position:absolute;top:15px;left:0;right:0;height:4px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:2px}
-.ks-fill{position:absolute;top:15px;height:4px;background:var(--t1);border-radius:2px}
-.ks-range{position:absolute;top:7px;left:0;width:100%;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none;height:20px}
-.ks-range:focus{outline:none}
-.ks-range::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--bg-card,#fff);border:2px solid var(--t1);cursor:pointer;box-shadow:var(--shadow-sm)}
-.ks-range::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--bg-card,#fff);border:2px solid var(--t1);cursor:pointer}
+/* keyswitch dual-handle range slider (custom handles) */
+.ks-slider{position:relative;height:28px;margin:10px 16px 2px;touch-action:none;user-select:none}
+.ks-track{position:absolute;top:12px;left:0;right:0;height:4px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:2px}
+.ks-fill{position:absolute;top:12px;height:4px;background:var(--t1);border-radius:2px}
+.ks-handle{position:absolute;top:2px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--bg-card,#fff);border:2px solid var(--t1);box-shadow:var(--shadow-sm);cursor:grab;touch-action:none;z-index:2}
+.ks-handle:hover{background:var(--bg-input)}
+.ks-handle.grabbing{cursor:grabbing;z-index:5;transform:scale(1.12)}
 .ks-preset-sel{border:1px solid var(--border-s);border-radius:var(--r-sm);background:var(--bg-input);color:var(--t2);font-family:'Mulish',sans-serif;font-size:12px;padding:5px 8px;cursor:pointer;outline:none}
 .ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:66px;text-align:center;color:var(--t1)}
 
@@ -1587,18 +1586,18 @@ function keyswitchBody(bi) {
     </div>
 
     <div class="field-label" style="margin:16px 0 0 9px">Rozsah keyswitchů</div>
-    <div class="ks-slider">
+    <div class="ks-slider" id="ks-sl-${bi}">
       <div class="ks-track"></div>
-      <div class="ks-fill" style="left:${lo/127*100}%;width:${fillW}%"></div>
-      <input type="range" class="ks-range" min="0" max="127" value="${lo}" oninput="setKsBound(${bi},'lo',+this.value)">
-      <input type="range" class="ks-range" min="0" max="127" value="${hi}" oninput="setKsBound(${bi},'hi',+this.value)">
+      <div class="ks-fill" id="ks-fill-${bi}" style="left:${lo/127*100}%;width:${fillW}%"></div>
+      <div class="ks-handle" id="ks-hlo-${bi}" style="left:${lo/127*100}%" onmousedown="ksDragStart(event,${bi},'lo')" ontouchstart="ksDragStart(event,${bi},'lo')"></div>
+      <div class="ks-handle" id="ks-hhi-${bi}" style="left:${hi/127*100}%" onmousedown="ksDragStart(event,${bi},'hi')" ontouchstart="ksDragStart(event,${bi},'hi')"></div>
     </div>
     <div class="section-field-row" style="margin-top:2px">
       <div class="field-block">
         <span class="field-label">OD</span>
         <div class="stepper">
           <button class="step-btn" onclick="setKsBound(${bi},'lo',${lo-1})">−</button><div class="stepper-sep"></div>
-          <span class="ks-stepval">${noteName(lo)} · ${lo}</span>
+          <span class="ks-stepval" id="ks-od-${bi}">${noteName(lo)} · ${lo}</span>
           <button class="step-btn" onclick="setKsBound(${bi},'lo',${lo+1})">+</button>
         </div>
       </div>
@@ -1606,12 +1605,12 @@ function keyswitchBody(bi) {
         <span class="field-label">DO</span>
         <div class="stepper">
           <button class="step-btn" onclick="setKsBound(${bi},'hi',${hi-1})">−</button><div class="stepper-sep"></div>
-          <span class="ks-stepval">${noteName(hi)} · ${hi}</span>
+          <span class="ks-stepval" id="ks-do-${bi}">${noteName(hi)} · ${hi}</span>
           <button class="step-btn" onclick="setKsBound(${bi},'hi',${hi+1})">+</button>
         </div>
       </div>
       <div class="field-block" style="align-self:flex-end">
-        <span class="uacc-note" style="margin-top:0">= ${ksN.length} not</span>
+        <span class="uacc-note" id="ks-cnt-${bi}" style="margin-top:0">= ${ksN.length} not</span>
       </div>
     </div>
 
@@ -1927,25 +1926,70 @@ function ksRange(lo, hi) {
 }
 
 // Edge-edit: slider/steppery sahají jen na okraje, ruční výjimky (mezery) zůstanou.
-function setKsBound(bi, which, val) {
+function _ksEdge(notes, which, val) {
   val = Math.max(0, Math.min(127, val | 0));
-  const b = cfg.banks[bi];
-  let notes = (b.ks_notes || []).slice();
-  if (!notes.length) { notes = [val]; }
-  else {
-    const lo = Math.min(...notes), hi = Math.max(...notes);
-    if (which === 'lo') {
-      if (val > hi) { notes = [val]; }
-      else if (val < lo) { for (let n = val; n < lo; n++) notes.push(n); }   // rozšíř dolů
-      else { notes = notes.filter(n => n >= val); }                          // ořízni zespod
-    } else { // hi
-      if (val < lo) { notes = [val]; }
-      else if (val > hi) { for (let n = hi + 1; n <= val; n++) notes.push(n); } // rozšíř nahoru
-      else { notes = notes.filter(n => n <= val); }                            // ořízni navrch
-    }
+  notes = (notes || []).slice();
+  if (!notes.length) return [val];
+  const lo = Math.min(...notes), hi = Math.max(...notes);
+  if (which === 'lo') {
+    if (val > hi) notes = [val];
+    else if (val < lo) { for (let n = val; n < lo; n++) notes.push(n); }   // rozšíř dolů
+    else notes = notes.filter(n => n >= val);                              // ořízni zespod
+  } else { // hi
+    if (val < lo) notes = [val];
+    else if (val > hi) { for (let n = hi + 1; n <= val; n++) notes.push(n); } // rozšíř nahoru
+    else notes = notes.filter(n => n <= val);                                 // ořízni navrch
   }
-  b.ks_notes = [...new Set(notes)].sort((x, y) => x - y);
+  return [...new Set(notes)].sort((x, y) => x - y);
+}
+function setKsBound(bi, which, val) {   // steppery → plný render
+  cfg.banks[bi].ks_notes = _ksEdge(cfg.banks[bi].ks_notes, which, val);
   dirty = true; render();
+}
+
+// Lehký refresh slideru během tažení (bez plného render — plynulé)
+function ksLiveRefresh(bi) {
+  const n = cfg.banks[bi].ks_notes || [];
+  const lo = n.length ? Math.min(...n) : 0, hi = n.length ? Math.max(...n) : 0;
+  const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+  set('ks-fill-' + bi, el => { el.style.left = (lo / 127 * 100) + '%'; el.style.width = (Math.max(0, hi - lo) / 127 * 100) + '%'; });
+  set('ks-hlo-' + bi, el => el.style.left = (lo / 127 * 100) + '%');
+  set('ks-hhi-' + bi, el => el.style.left = (hi / 127 * 100) + '%');
+  set('ks-od-' + bi, el => el.textContent = noteName(lo) + ' · ' + lo);
+  set('ks-do-' + bi, el => el.textContent = noteName(hi) + ' · ' + hi);
+  set('ks-cnt-' + bi, el => el.textContent = '= ' + n.length + ' not');
+}
+
+let ksDrag = null;   // { bi, which, el }
+function ksDragStart(e, bi, which) {
+  e.preventDefault();
+  ksDrag = { bi, which, el: e.currentTarget };
+  e.currentTarget.classList.add('grabbing');
+  document.addEventListener('mousemove', ksDragMove);
+  document.addEventListener('mouseup', ksDragEnd);
+  document.addEventListener('touchmove', ksDragMove, { passive: false });
+  document.addEventListener('touchend', ksDragEnd);
+}
+function ksDragMove(e) {
+  if (!ksDrag) return;
+  if (e.cancelable) e.preventDefault();
+  const sl = document.getElementById('ks-sl-' + ksDrag.bi);
+  if (!sl) return;
+  const rect = sl.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const frac = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  cfg.banks[ksDrag.bi].ks_notes = _ksEdge(cfg.banks[ksDrag.bi].ks_notes, ksDrag.which, Math.round(frac * 127));
+  dirty = true;
+  ksLiveRefresh(ksDrag.bi);
+}
+function ksDragEnd() {
+  if (!ksDrag) return;
+  ksDrag = null;
+  document.removeEventListener('mousemove', ksDragMove);
+  document.removeEventListener('mouseup', ksDragEnd);
+  document.removeEventListener('touchmove', ksDragMove);
+  document.removeEventListener('touchend', ksDragEnd);
+  render();   // doplnit seznam tagů + přepočítat steppery
 }
 
 function applyKsPreset(bi, idx) {
