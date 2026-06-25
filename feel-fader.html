@@ -1057,6 +1057,13 @@ html.dark .val-bar{background:var(--t2);}
           <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
           <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t3)">—</span></div>
           <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t3)">—</span></div>
+          <div class="info-row">
+            <span class="info-lbl">Keyboard (HID)</span>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="hid-toggle" onchange="onHidToggle(this.checked)">
+              <span class="info-val" id="hid-state">—</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -1301,9 +1308,11 @@ const DEFAULT_CFG = {
 
 // Device info (populated from SysEx or defaults)
 const DEVICE_INFO = {
-  serial:   null,
-  firmware: null,
-  mode:     null,
+  serial:        null,
+  firmware:      null,
+  mode:          null,
+  hid_available: false,
+  hid_enabled:   false,
 };
 
 const LS_CFG_KEY        = 'ff-cfg';
@@ -1682,6 +1691,36 @@ function renderUacc() {
   // UACC list is now rendered inline inside encoderPanel — no separate render needed
 }
 
+let _hidRebootPending=false;
+function updateHidToggle(){
+  const el=document.getElementById('hid-toggle');
+  if(el){ el.checked = !!DEVICE_INFO.hid_enabled; el.disabled = !DEVICE_INFO.hid_available; }
+  const s=document.getElementById('hid-state');
+  if(s) s.textContent = DEVICE_INFO.hid_available ? (DEVICE_INFO.hid_enabled?'ON':'OFF') : 'N/A';
+}
+function onHidToggle(want){
+  if(want && !confirm(
+    'Zapnout ovládání klávesnicí (HID)?\n\n' +
+    '• macOS při prvním připojení ukáže „Keyboard Setup Assistant" — zavři ho.\n' +
+    '• Klávesy jdou do aktuálně zaostřeného okna (měj fokus na DAW).\n\n' +
+    'Zařízení se po potvrzení restartuje.'
+  )){ updateHidToggle(); return; }
+  sendHidRequest(want);
+}
+async function sendHidRequest(enabled){
+  const out=getOut();
+  if(!out){ toast('e','Připoj Feel Fader (MIDI) nejdřív'); updateHidToggle(); return; }
+  const bytes=Array.from(new TextEncoder().encode(JSON.stringify({enabled})));
+  _hidRebootPending=true;
+  out.send([0xF0,MFR,DEV_ID,CMD_HID,...enc7(bytes),0xF7]);
+  toast('i', enabled?'Zapínám HID, zařízení se restartuje…':'Vypínám HID, zařízení se restartuje…');
+}
+function hidRebootCleanup(){
+  if(_serialPort){ try{ _serialPort.close(); }catch(e){} _serialPort=null; }
+  _hidRebootPending=false;
+  setTimeout(()=>{ const o=getOut(); if(o){ try{ o.send([0xF0,MFR,DEV_ID,CMD_INFO,0xF7]); }catch(e){} } }, 2500);
+}
+
 function updateDeviceInfo() {
   const serial   = DEVICE_INFO.serial;
   const firmware = DEVICE_INFO.firmware;
@@ -1695,6 +1734,7 @@ function updateDeviceInfo() {
   };
   setVal('di-serial',   serial);
   setVal('di-firmware', firmware);
+  updateHidToggle();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2252,7 +2292,7 @@ function setBanner(type, m){
 // ═══════════════════════════════════════════════════════════
 // SYSEX
 // ═══════════════════════════════════════════════════════════
-const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03,CMD_CHUNK=0x04,CMD_ACK=0x05,CMD_ERR=0x06;
+const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03,CMD_CHUNK=0x04,CMD_ACK=0x05,CMD_ERR=0x06,CMD_HID=0x07;
 let _pendingRead  = null;  // { resolve, reject, timer }
 let _pendingWrite = null;  // { resolve, reject, timer }
 let _chunkBuf     = null;  // { chunks: Array, received: number, total: number }
@@ -2325,6 +2365,9 @@ function handleSysEx(data){
       if(info.serial)DEVICE_INFO.serial=info.serial;
       if(info.mode)DEVICE_INFO.mode=info.mode;
       if(info.firmware)DEVICE_INFO.firmware=info.firmware;
+      if(typeof info.hid_available==='boolean') DEVICE_INFO.hid_available=info.hid_available;
+      if(typeof info.hid_enabled==='boolean')   DEVICE_INFO.hid_enabled=info.hid_enabled;
+      updateHidToggle();
       updateDeviceInfo();
       // Apply device-specific theme preference
       applyDeviceDark(DEVICE_INFO.serial);
@@ -2350,6 +2393,7 @@ function handleSysEx(data){
       pr.resolve(jsonStr);
     }
   }
+  if(cmd===CMD_ACK && _hidRebootPending){ hidRebootCleanup(); }
   if(cmd===CMD_ACK && _pendingWrite){
     clearTimeout(_pendingWrite.timer);
     const pw = _pendingWrite; _pendingWrite = null;
