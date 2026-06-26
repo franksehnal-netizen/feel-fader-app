@@ -1326,9 +1326,9 @@ const MAX_BANKS = 10;
 
 const DEFAULT_CFG = {
   banks: [
-    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
-    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
-    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
+    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
+    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
+    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
   ]
 };
 
@@ -1698,8 +1698,8 @@ function encoderPanel(ctrl, bi) {
 
 function trackNavBody(bi){
   const b = cfg.banks[bi];
-  const cwLbl  = keyComboLabel(b.nav_keys_cw  || [0x51]);
-  const ccwLbl = keyComboLabel(b.nav_keys_ccw || [0x52]);
+  const cwLbl  = keyComboLabel(b.nav_keys_cw  || [0x52]);
+  const ccwLbl = keyComboLabel(b.nav_keys_ccw || [0x51]);
   return `
   <div class="enc-unified-body">
     <div class="uacc-note" style="margin:8px 0">Otáčení rolleru posílá klávesu (HID). Klikni na pole a stiskni klávesu (i s Ctrl/Shift/Alt/Cmd).</div>
@@ -1961,8 +1961,8 @@ function addBank() {
     ks_notes:    [],
     ks_channel:  bi % 16,
     ks_velocity: 100,
-    nav_keys_cw:  [0x51],
-    nav_keys_ccw: [0x52],
+    nav_keys_cw:  [0x52],
+    nav_keys_ccw: [0x51],
     nav_invert:   false,
   });
   dirty = true; render();
@@ -2424,8 +2424,8 @@ function normalizeFwConfig(p) {
       ks_notes:    Array.isArray(b.ks_notes) ? b.ks_notes : [],
       ks_channel:  typeof b.ks_channel === 'number' ? b.ks_channel : (typeof b.encoder_ch === 'number' ? b.encoder_ch : 0),
       ks_velocity: typeof b.ks_velocity === 'number' ? b.ks_velocity : 100,
-      nav_keys_cw:  Array.isArray(b.nav_keys_cw)  ? b.nav_keys_cw  : [0x51],
-      nav_keys_ccw: Array.isArray(b.nav_keys_ccw) ? b.nav_keys_ccw : [0x52],
+      nav_keys_cw:  Array.isArray(b.nav_keys_cw)  ? b.nav_keys_cw  : [0x52],
+      nav_keys_ccw: Array.isArray(b.nav_keys_ccw) ? b.nav_keys_ccw : [0x51],
       nav_invert:   !!b.nav_invert,
     }))
   };
@@ -2464,6 +2464,7 @@ function handleSysEx(data){
       if(typeof info.hid_enabled==='boolean')   DEVICE_INFO.hid_enabled=info.hid_enabled;
       updateHidToggle();
       updateDeviceInfo();
+      render();   // překresli roller volič — track_nav gating závisí na hid_enabled
       // Apply device-specific theme preference
       applyDeviceDark(DEVICE_INFO.serial);
     }catch(e){}
@@ -2623,6 +2624,7 @@ async function serialReadInfo() {
   if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
   try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
   updateDeviceInfo(); updateHidToggle();
+  render();   // překresli roller volič — track_nav gating závisí na hid_enabled
   return info;
 }
 
