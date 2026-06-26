@@ -1772,7 +1772,10 @@ async function sendHidRequest(enabled){
     // zařízení se po zápisu flagu restartuje → serial spadne; po náběhu znovu načti stav
     setTimeout(async () => {
       if (_serialPort) { try { await _serialPort.close(); } catch(e){} _serialPort = null; }
-      try { await serialReadInfo(); } catch(e) { toast('i','HID přepnuto — stav obnov přes „Load from device"'); }
+      try { await serialReadInfo(); } catch(e) {
+        toast('i','HID přepnuto — stav obnov přes „Load from device"');
+        updateHidToggle();   // refresh selhal → srovnej checkbox+text na poslední potvrzený stav (nikdy nezůstat rozhozené)
+      }
     }, 3500);
   } catch(e) {
     if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
