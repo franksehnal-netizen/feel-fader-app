@@ -1326,9 +1326,9 @@ const MAX_BANKS = 10;
 
 const DEFAULT_CFG = {
   banks: [
-    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
-    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
-    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100 },
+    { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
+    { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
+    { name:'Bank 3', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x51], nav_keys_ccw:[0x52], nav_invert:false },
   ]
 };
 
@@ -1680,17 +1680,45 @@ function encoderPanel(ctrl, bi) {
     </div>
       <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
         ${['cc','keyswitch','track_nav'].map(m => {
-          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID — P3)'};
-          const disabled = (m === 'track_nav');
+          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID)'};
+          const disabled = (m === 'track_nav') && !DEVICE_INFO.hid_enabled;
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
-          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje HID (P1/P3)"':''}
+          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Vyžaduje zapnuté HID (Device Info → Keyboard)"':''}
             onclick="setRollerMode(${bi},'${m}')"
             style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
                    background:${active?'var(--red)':'var(--bg-card)'};color:${active?'#fff':'var(--t2)'};
                    cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.45:1};font-size:11px">${labels[m]}</button>`;
         }).join('')}
       </div>
-    ${cfg.banks[bi].roller_mode === 'keyswitch' ? keyswitchBody(bi) : ccEncoderBody(ctrl, bi)}
+    ${cfg.banks[bi].roller_mode === 'keyswitch' ? keyswitchBody(bi)
+       : cfg.banks[bi].roller_mode === 'track_nav' ? trackNavBody(bi)
+       : ccEncoderBody(ctrl, bi)}
+  </div>`;
+}
+
+function trackNavBody(bi){
+  const b = cfg.banks[bi];
+  const cwLbl  = keyComboLabel(b.nav_keys_cw  || [0x51]);
+  const ccwLbl = keyComboLabel(b.nav_keys_ccw || [0x52]);
+  return `
+  <div class="enc-unified-body">
+    <div class="uacc-note" style="margin:8px 0">Otáčení rolleru posílá klávesu (HID). Klikni na pole a stiskni klávesu (i s Ctrl/Shift/Alt/Cmd).</div>
+    <div class="section-field-row">
+      <div class="field-block">
+        <span class="field-label">PO SMĚRU (CW)</span>
+        <button class="step-btn" style="width:auto;padding:6px 14px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+          id="navcap-${bi}-cw" onclick="startKeyCapture(${bi},'cw')">${cwLbl}</button>
+      </div>
+      <div class="field-block">
+        <span class="field-label">PROTI SMĚRU (CCW)</span>
+        <button class="step-btn" style="width:auto;padding:6px 14px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+          id="navcap-${bi}-ccw" onclick="startKeyCapture(${bi},'ccw')">${ccwLbl}</button>
+      </div>
+      <div class="field-block">
+        <span class="field-label">INVERT</span>
+        <input type="checkbox" ${b.nav_invert?'checked':''} onchange="cfg.banks[${bi}].nav_invert=this.checked;dirty=true;render()">
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1789,7 +1817,9 @@ function onCtrl(bi, key, field, val) {
   dirty = true; runValidation();
 }
 function setRollerMode(bi, mode) {
-  if (mode === 'track_nav') { toast('i','Track-nav přijde v P3 (vyžaduje HID)'); return; }
+  if (mode === 'track_nav' && !DEVICE_INFO.hid_enabled) {
+    toast('i','Track-nav vyžaduje zapnuté HID (Device Info → Keyboard)'); return;
+  }
   cfg.banks[bi].roller_mode = mode;
   if (mode === 'keyswitch' && (!cfg.banks[bi].ks_notes || cfg.banks[bi].ks_notes.length === 0)) {
     cfg.banks[bi].ks_notes = ksRange(0, 11);   // default standard C-2..B-2
@@ -1931,6 +1961,9 @@ function addBank() {
     ks_notes:    [],
     ks_channel:  bi % 16,
     ks_velocity: 100,
+    nav_keys_cw:  [0x51],
+    nav_keys_ccw: [0x52],
+    nav_invert:   false,
   });
   dirty = true; render();
 }
@@ -2391,6 +2424,9 @@ function normalizeFwConfig(p) {
       ks_notes:    Array.isArray(b.ks_notes) ? b.ks_notes : [],
       ks_channel:  typeof b.ks_channel === 'number' ? b.ks_channel : (typeof b.encoder_ch === 'number' ? b.encoder_ch : 0),
       ks_velocity: typeof b.ks_velocity === 'number' ? b.ks_velocity : 100,
+      nav_keys_cw:  Array.isArray(b.nav_keys_cw)  ? b.nav_keys_cw  : [0x51],
+      nav_keys_ccw: Array.isArray(b.nav_keys_ccw) ? b.nav_keys_ccw : [0x52],
+      nav_invert:   !!b.nav_invert,
     }))
   };
 }
