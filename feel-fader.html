@@ -1694,9 +1694,9 @@ function renderUacc() {
 let _hidRebootPending=false;
 function updateHidToggle(){
   const el=document.getElementById('hid-toggle');
-  if(el){ el.checked = !!DEVICE_INFO.hid_enabled; el.disabled = !DEVICE_INFO.hid_available; }
+  if(el){ el.checked = !!DEVICE_INFO.hid_enabled; el.disabled = !(_ffConnected || DEVICE_INFO.hid_available); }
   const s=document.getElementById('hid-state');
-  if(s) s.textContent = DEVICE_INFO.hid_available ? (DEVICE_INFO.hid_enabled?'ON':'OFF') : 'N/A';
+  if(s) s.textContent = DEVICE_INFO.hid_available ? (DEVICE_INFO.hid_enabled?'ON':'OFF') : '—';
 }
 function onHidToggle(want){
   if(want && !confirm(
@@ -1708,17 +1708,23 @@ function onHidToggle(want){
   sendHidRequest(want);
 }
 async function sendHidRequest(enabled){
-  const out=getOut();
-  if(!out){ toast('e','Připoj Feel Fader (MIDI) nejdřív'); updateHidToggle(); return; }
-  const bytes=Array.from(new TextEncoder().encode(JSON.stringify({enabled})));
-  _hidRebootPending=true;
-  out.send([0xF0,MFR,DEV_ID,CMD_HID,...enc7(bytes),0xF7]);
-  toast('i', enabled?'Zapínám HID, zařízení se restartuje…':'Vypínám HID, zařízení se restartuje…');
-}
-function hidRebootCleanup(){
-  if(_serialPort){ try{ _serialPort.close(); }catch(e){} _serialPort=null; }
-  _hidRebootPending=false;
-  setTimeout(()=>{ const o=getOut(); if(o){ try{ o.send([0xF0,MFR,DEV_ID,CMD_INFO,0xF7]); }catch(e){} } }, 2500);
+  // HID set jde přes Web Serial (spolehlivá cesta; MIDI SysEx v některých setupech neprochází).
+  try {
+    await _serialEnsureOpen();
+    const writer = _serialPort.writable.getWriter();
+    await writer.write(new TextEncoder().encode('CMD_HID:' + JSON.stringify({enabled}) + '\n'));
+    writer.releaseLock();
+    toast('i', enabled?'Zapínám HID, zařízení se restartuje…':'Vypínám HID, zařízení se restartuje…');
+    // zařízení se po zápisu flagu restartuje → serial spadne; po náběhu znovu načti stav
+    setTimeout(async () => {
+      if (_serialPort) { try { await _serialPort.close(); } catch(e){} _serialPort = null; }
+      try { await serialReadInfo(); } catch(e) { toast('i','HID přepnuto — stav obnov přes „Load from device"'); }
+    }, 3500);
+  } catch(e) {
+    if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
+    toast('e', 'HID příkaz selhal: ' + (e.name === 'AbortError' ? 'zrušeno' : e.message));
+    updateHidToggle();
+  }
 }
 
 function updateDeviceInfo() {
@@ -2198,7 +2204,8 @@ function connectInputs(){
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
-      _requestDeviceInfoSysex(); // request CMD_INFO via SysEx — no Serial needed
+      _requestDeviceInfoSysex(); // request CMD_INFO via SysEx (MIDI)
+      serialReadInfoIfGranted();  // + serial fallback (spolehlivá cesta pro device-info/HID)
     }
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
@@ -2393,7 +2400,6 @@ function handleSysEx(data){
       pr.resolve(jsonStr);
     }
   }
-  if(cmd===CMD_ACK && _hidRebootPending){ hidRebootCleanup(); }
   if(cmd===CMD_ACK && _pendingWrite){
     clearTimeout(_pendingWrite.timer);
     const pw = _pendingWrite; _pendingWrite = null;
@@ -2498,6 +2504,47 @@ async function serialReadConfig() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+async function serialReadInfo() {
+  await _serialEnsureOpen();
+  const port = _serialPort;
+  const writer = port.writable.getWriter();
+  await writer.write(new TextEncoder().encode('CMD_INFO\n'));
+  writer.releaseLock();
+  const line = await new Promise((resolve, reject) => {
+    const reader = port.readable.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    const timer = setTimeout(() => { reader.releaseLock(); reject(new Error('Timeout — no info')); }, 5000);
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) { clearTimeout(timer); reader.releaseLock(); reject(new Error('Port closed')); return; }
+          buf += dec.decode(value);
+          const nl = buf.indexOf('\n');
+          if (nl !== -1) { clearTimeout(timer); reader.releaseLock(); resolve(buf.slice(0, nl).trim()); return; }
+        }
+      } catch(e) { clearTimeout(timer); try { reader.releaseLock(); } catch(_) {} reject(e); }
+    })();
+  });
+  const info = JSON.parse(line);
+  if (info.firmware) DEVICE_INFO.firmware = info.firmware;
+  if (info.serial)   DEVICE_INFO.serial   = info.serial;
+  if (typeof info.hid_available === 'boolean') DEVICE_INFO.hid_available = info.hid_available;
+  if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
+  try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
+  updateDeviceInfo(); updateHidToggle();
+  return info;
+}
+
+// Načti info přes serial jen pokud už je port udělený (bez pickeru) — pro auto-populate na connectu.
+async function serialReadInfoIfGranted() {
+  try {
+    const ports = await navigator.serial.getPorts();
+    if (ports && ports.length) await serialReadInfo();
+  } catch(e) {}
+}
 
 async function doLoad() {
   const btn = document.getElementById('load-btn');
