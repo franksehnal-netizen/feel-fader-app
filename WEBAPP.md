@@ -49,7 +49,7 @@ Načtení stránky
   → initWelcomeFaderOverlay() — zobrazí animované fadery na welcome screenu
   → render() — vykreslí UI
   → initMidi() — požádá o Web MIDI přístup
-  → showWelcome() — zobrazí welcome overlay
+  → showWelcome() — zobrazí welcome overlay (+ fallback timer pro Start, viz §3.1)
 ```
 
 ### Klíčové globální proměnné
@@ -78,6 +78,13 @@ Načtení stránky
 - Device image (220 px) s float animací (vertikální houpání, 3s)
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
 - Text: „Waiting for device" → „Connect Feel Fader" → skip tlačítko
+
+**„Start" tlačítko (`#welcome-start`):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Logika v `onDeviceConnected()` + fallback timer v `showWelcome()`:
+- **Zařízení detekováno + port už schválený** (vracející se uživatel) → žádný Start, `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup).
+- **Zařízení detekováno + port neschválený** (první připojení) → zobrazí se **Start**. Klik (`doStart()`) = grant + load + transition.
+- **MIDI detekce neproběhne** (port quirk) → po ~3,5 s (`_welcomeStartTimer`) se Start ukáže i tak; klik obejde MIDI přes serial picker.
+- **Skip → pak připojíš zařízení** → `onDeviceConnected()` znovu vyjede welcome se Startem.
+- Při zrušení pickeru / chybě / timeoutu → zůstane na welcome + hláška (`#welcome-start-msg`), Start zůstává.
 
 **Connect transition** (spouští se přes `hideWelcome()` → `connectTransitionWelcome()`):
 1. Fadery zamrznou na aktuální pozici, pak se plynule přesunou na v=64 (střed)
@@ -119,16 +126,16 @@ Načtení stránky
 
 ---
 
-### 3.4 Send / Load tlačítka
+### 3.4 Načítání configu (Start) + Send
 
-| Tlačítko | Co dělá |
+**Načítání ze zařízení už nemá tlačítko na hlavní stránce** — nahradil ho **„Start" na welcome screenu** (viz §3.1). Load proběhne přes sdílené `loadConfigFromDevice()` (otevře port → `serialReadInfo` → `CMD_R` → `cfg` → `render()`), volané buď ze Startu (první gesto), nebo automaticky při reconnectu.
+
+| Akce | Co dělá |
 |---|---|
-| **load from device** | Přečte konfiguraci ze zařízení přes SysEx CMD_R → přepíše `cfg` → `render()` |
-| **send to device** | Zapíše aktuální `cfg` do zařízení přes SysEx CMD_W v chunked formátu |
+| **Start** (welcome) | `doStart()` → grant serial portu + `loadConfigFromDevice()` → transition na hlavní stránku s reálnými hodnotami |
+| **send to device** | `doSend()` → zapíše `cfg` do zařízení přes Web Serial (`CMD_W`) |
 
-Obě tlačítka jsou zakázána (`disabled`) pokud `!_ffConnected`.
-
-**Klíčové funkce:** `doLoad()` (L2210), `doSend()` (L2238)
+**Klíčové funkce:** `loadConfigFromDevice()`, `doStart()`, `onDeviceConnected()`, `showStartBtn()`, `doSend()`
 
 ---
 
@@ -282,9 +289,12 @@ initMidi()
   → isFeelFader(portName) — hledá port obsahující "Feel Fader"
   → connectInputs()
     → inp.onmidimessage = onMidiMsg
-    → _requestDeviceInfoSysex() — odešle CMD_INFO
-    → setTimeout(hideWelcome, 600) — spustí connect transition
+    → _requestDeviceInfoSysex() — odešle CMD_INFO (MIDI)
+    → onDeviceConnected() — rozhodne: auto-vstup (port schválený → loadConfigFromDevice + transition)
+                            vs. zobrazit Start (gesto nutné) vs. re-welcome (po skipu)
 ```
+
+> Welcome se už **neskrývá automaticky po 600 ms** — vstup na hlavní stránku řídí buď auto-load (port schválený), nebo klik na Start.
 
 ### SysEx konstanty (řádek 2011)
 
@@ -363,7 +373,9 @@ Používá se pro `doSend()` přes CMD_W — při připojení přes USB-C je Ser
 | `sysexWriteConfig(cfg)` | 2133 | Async. Zapíše celý cfg do zařízení přes chunked SysEx. |
 | `sysexReadConfig()` | 2117 | Async. Načte cfg ze zařízení přes SysEx. |
 | `doSend()` | 2238 | UI handler pro „send to device" — validuje, pak volá `sysexWriteConfig`. |
-| `doLoad()` | 2210 | UI handler pro „load from device" — volá `sysexReadConfig`. |
+| `doStart()` | — | Welcome „Start": grant serial portu + `loadConfigFromDevice()` + transition. |
+| `loadConfigFromDevice()` | — | Sdílené: otevře port → `serialReadInfo` → `CMD_R` → `cfg` → `render()`. |
+| `onDeviceConnected()` | — | Po detekci zařízení: auto-vstup (port schválený) vs Start vs re-welcome. |
 | `updateStatus()` | 2325 | Aktualizuje MIDI banner a header status dot. |
 | `connectTransitionWelcome()` | 2652 | Animovaný přechod welcome screenu při připojení zařízení. |
 | `hideWelcome()` | 2705 | Spustí connect transition. Volá `connectTransitionWelcome()`. |
@@ -430,4 +442,4 @@ Aktuálně podporován pouze **anglický jazyk**. Česká lokalizace není imple
 
 ---
 
-*Naposledy aktualizováno: 2026-05-31*
+*Naposledy aktualizováno: 2026-06-27*
