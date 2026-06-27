@@ -1756,8 +1756,7 @@ function onHidToggle(want){
   if(want && !confirm(
     'Zapnout ovládání klávesnicí (HID)?\n\n' +
     '• macOS při prvním připojení ukáže „Keyboard Setup Assistant" — zavři ho.\n' +
-    '• Klávesy jdou do aktuálně zaostřeného okna (měj fokus na DAW).\n\n' +
-    'Zařízení se po potvrzení restartuje.'
+    '• Klávesy jdou do aktuálně zaostřeného okna (měj fokus na DAW).'
   )){ updateHidToggle(); return; }
   sendHidRequest(want);
 }
@@ -1768,15 +1767,14 @@ async function sendHidRequest(enabled){
     const writer = _serialPort.writable.getWriter();
     await writer.write(new TextEncoder().encode('CMD_HID:' + JSON.stringify({enabled}) + '\n'));
     writer.releaseLock();
-    toast('i', enabled?'Zapínám HID, zařízení se restartuje…':'Vypínám HID, zařízení se restartuje…');
-    // zařízení se po zápisu flagu restartuje → serial spadne; po náběhu znovu načti stav
-    setTimeout(async () => {
-      if (_serialPort) { try { await _serialPort.close(); } catch(e){} _serialPort = null; }
-      try { await serialReadInfo(); } catch(e) {
-        toast('i','HID přepnuto — stav obnov přes „Load from device"');
-        updateHidToggle();   // refresh selhal → srovnej checkbox+text na poslední potvrzený stav (nikdy nezůstat rozhozené)
-      }
-    }, 3500);
+    toast('i', enabled?'Zapínám HID…':'Vypínám HID…');
+    // zařízení nerebootuje (HID rozhraní je vždy v deskriptoru) → port zůstává otevřený.
+    // Malá prodleva, ať firmware stihne zpracovat CMD_HID, pak re-fetch info.
+    await new Promise(r => setTimeout(r, 200));
+    try { await serialReadInfo(); } catch(e) {
+      toast('i','HID přepnuto — stav obnov přes „Load from device"');
+      updateHidToggle();   // refresh selhal → srovnej checkbox+text na poslední potvrzený stav
+    }
   } catch(e) {
     if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
     toast('e', 'HID příkaz selhal: ' + (e.name === 'AbortError' ? 'zrušeno' : e.message));
