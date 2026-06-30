@@ -1080,6 +1080,11 @@ html.dark .val-bar{background:var(--t2);}
               <span class="info-val" id="hid-state">—</span>
             </label>
           </div>
+          <div class="info-row">
+            <span class="info-lbl">Button macro (long-press)</span>
+            <button id="macro-capture" class="step-btn" style="width:auto;padding:4px 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+              onclick="startMacroCapture()">—</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1343,6 +1348,7 @@ const DEFAULT_UACC = [1,2,3,4,5,20,21,22,23,26,31,32,40,41,42,43,44,45,46,47,49,
 const MAX_BANKS = 10;
 
 const DEFAULT_CFG = {
+  macro_keys: [],
   banks: [
     { name:'Bank 1', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
     { name:'Bank 2', icon:'', tags:[], uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
@@ -1820,6 +1826,15 @@ function updateDeviceInfo() {
   setVal('di-serial',   serial);
   setVal('di-firmware', firmware);
   updateHidToggle();
+  updateMacroUI();
+}
+function updateMacroUI(){
+  const el = document.getElementById('macro-capture');
+  if (!el) return;
+  el.textContent = keyComboLabel(cfg.macro_keys || []);
+  el.disabled = !DEVICE_INFO.hid_enabled;
+  el.style.opacity = DEVICE_INFO.hid_enabled ? '1' : '0.45';
+  el.title = DEVICE_INFO.hid_enabled ? 'Click and press a key (incl. Ctrl/Shift/Alt/Cmd)' : 'Requires HID enabled';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1859,6 +1874,12 @@ function startKeyCapture(bi, which){
   const el = document.getElementById(`navcap-${bi}-${which}`);
   if (el) el.textContent = 'press a key…';
 }
+function startMacroCapture(){
+  if (!DEVICE_INFO.hid_enabled) { toast('i','Macro requires HID enabled (Device Info → Keyboard)'); return; }
+  _keyCapture = { macro: true };
+  const el = document.getElementById('macro-capture');
+  if (el) el.textContent = 'press a key…';
+}
 window.addEventListener('keydown', e => {
   if (!_keyCapture) return;
   e.preventDefault();
@@ -1872,8 +1893,12 @@ window.addEventListener('keydown', e => {
   // if the user pressed only a modifier, wait for the main key
   if (main >= 0xE0 && main <= 0xE3) return;
   const keys = [...mods, main];
-  const { bi, which } = _keyCapture;
-  cfg.banks[bi][which === 'cw' ? 'nav_keys_cw' : 'nav_keys_ccw'] = keys;
+  if (_keyCapture.macro) {
+    cfg.macro_keys = keys;
+  } else {
+    const { bi, which } = _keyCapture;
+    cfg.banks[bi][which === 'cw' ? 'nav_keys_cw' : 'nav_keys_ccw'] = keys;
+  }
   _keyCapture = null;
   dirty = true; render();
 });
@@ -2437,6 +2462,7 @@ function normalizeFwConfig(p) {
   if (!p.banks) return p;
   if (p.banks[0] && p.banks[0].fader1) return p;
   return {
+    macro_keys: Array.isArray(p.macro_keys) ? p.macro_keys : [],
     banks: p.banks.map((b, i) => ({
       name:        `Bank ${i + 1}`,
       icon:        '',
