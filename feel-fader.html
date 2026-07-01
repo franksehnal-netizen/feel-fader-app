@@ -1700,17 +1700,19 @@ function encoderPanel(ctrl, bi) {
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
+  const rmode    = cfg.banks[bi].roller_mode || 'cc';
+  const badge    = rmode === 'cc' ? initName : '';
 
   return `
   <div class="panel panel-wide">
     <div class="panel-head">
       <div class="panel-dot solid"></div>
-      <span class="panel-name">Articulation Encoder</span>
-      <span class="section-live-val" id="enc-artic-badge">${initName}</span>
+      <span class="panel-name">Roller</span>
+      <span class="section-live-val" id="enc-artic-badge">${badge}</span>
     </div>
       <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
         ${['cc','keyswitch','track_nav'].map(m => {
-          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Track nav (HID)'};
+          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)'};
           const disabled = (m === 'track_nav') && !DEVICE_INFO.hid_enabled;
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
           return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Requires HID enabled (Device Info → Keyboard)"':''}
@@ -2392,7 +2394,7 @@ function onMidiMsg(event){
       setTxt('enc-val', val);
       // Find name — UACC standard or custom
       setTxt('enc-artic-name', uaccName(val));
-      setTxt('enc-artic-badge', uaccName(val));
+      if((bank.roller_mode||'cc')==='cc') setTxt('enc-artic-badge', uaccName(val));
       const idx = bank.uacc_values.indexOf(val);
       if(idx !== -1){ encIndex = idx; renderEncChips(); }
     }
