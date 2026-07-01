@@ -1436,9 +1436,17 @@ function renderPanels() {
       ${tg}<button class="bank-tag-remove" onclick="removeTag(${bi},${ti})">×</button>
     </span>`).join('');
 
-  const tagSuggestions = ['SF','EW','OT','NI','VSL','CS','KT','8Dio','BBCSO','CSS','HS','LA',
-    'Spitfire','East West','Orchestral Tools','Native Instruments','Vienna',
-    'Cinematic Studio','Kontakt','8Dio','Hans Zimmer'].map(s=>`<option value="${s}">`).join('');
+  // Návrhy tagů = sjednocení všech tagů napříč bankami, mimo ty už na aktivní bance.
+  // Case-insensitive dedup, zobrazí se první výskyt.
+  const usedOnBank = new Set((b.tags||[]).map(x=>x.toLowerCase()));
+  const seen = new Set();
+  const suggestList = [];
+  cfg.banks.forEach(bk => (bk.tags||[]).forEach(tg => {
+    const k = tg.toLowerCase();
+    if (usedOnBank.has(k) || seen.has(k)) return;
+    seen.add(k); suggestList.push(tg);
+  }));
+  const tagSuggestions = suggestList.map(s=>`<option value="${s}">`).join('');
 
   // Name row goes into bank-name-area (inside bank-block)
   document.getElementById('bank-name-area').innerHTML = `
