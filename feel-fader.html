@@ -413,6 +413,8 @@ html.dark .lib-tag{background:#e0e0e0;color:#111;}
 
 /* DEVICE INFO */
 .info-grid{display:flex;flex-direction:column;gap:8px;}
+.field-block-invert{justify-content:flex-start;}
+.field-block-invert input[type=checkbox]{height:32px;margin:0;align-self:flex-start;transform:scale(1.15);transform-origin:left center;}
 .info-row{display:flex;flex-direction:row;align-items:baseline;gap:8px;}
 .info-lbl{font-size:11px;font-family:'Mulish',sans-serif;color:var(--t2);min-width:100px;flex-shrink:0;}
 .info-val{font-family:'Mulish',sans-serif;font-size:13px;color:var(--t1);font-weight:400;}
@@ -1345,7 +1347,7 @@ function hidLabel(code){
 function keyComboLabel(keys){ return (keys&&keys.length) ? keys.map(hidLabel).join('+') : '—'; }
 
 const DEFAULT_UACC = [1,2,3,4,5,20,21,22,23,26,31,32,40,41,42,43,44,45,46,47,49,50,52,70,71,72,73,74,75,90,91,100,101,110,112];
-const MAX_BANKS = 10;
+const MAX_BANKS = 8;
 
 const DEFAULT_CFG = {
   macro_keys: [],
@@ -1737,16 +1739,16 @@ function trackNavBody(bi){
     <div class="uacc-note" style="margin:8px 0">Rotating the roller sends a key (HID). Click a field and press a key (also with Ctrl/Shift/Alt/Cmd).</div>
     <div class="section-field-row">
       <div class="field-block">
-        <span class="field-label">roll up</span>
+        <span class="field-label">ROLL UP</span>
         <button class="step-btn" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
           id="navcap-${bi}-cw" onclick="startKeyCapture(${bi},'cw')">${cwLbl}</button>
       </div>
       <div class="field-block">
-        <span class="field-label">roll down</span>
+        <span class="field-label">ROLL DOWN</span>
         <button class="step-btn" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
           id="navcap-${bi}-ccw" onclick="startKeyCapture(${bi},'ccw')">${ccwLbl}</button>
       </div>
-      <div class="field-block">
+      <div class="field-block field-block-invert">
         <span class="field-label">INVERT</span>
         <input type="checkbox" ${b.nav_invert?'checked':''} onchange="cfg.banks[${bi}].nav_invert=this.checked;dirty=true;render()">
       </div>
