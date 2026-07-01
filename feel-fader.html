@@ -319,6 +319,7 @@ html.dark .lib-tag{background:#e0e0e0;color:#111;}
 .lib-tag-input::placeholder{color:var(--t3);font-size:11px;}
 
 /* PANEL NAME EDITABLE */
+.fader-side-cap{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:4px;}
 .panel-name-input{
   background:transparent;border:none;border-bottom:1px solid transparent;
   font-family:'Mulish',sans-serif;font-size:13px;font-weight:600;color:var(--t1);
@@ -1501,8 +1502,10 @@ function faderSectionContent(key, ctrl, bi) {
   const lv    = key==='fader1' ? liveValues.f1 : liveValues.f2;
   const valId = key==='fader1' ? 'f1' : 'f2';
   const displayLabel = ctrl.label || (key==='fader1' ? 'Expression' : 'Dynamics');
+  const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
   return `
-    <div class="section-head">
+    <div class="fader-side-cap">${sideCap}</div>
+    <div class="section-head" data-fader="${key}">
       <div class="panel-dot"></div>
       <input class="panel-name-input" value="${displayLabel}"
         onchange="onFaderLabel(${bi},'${key}',this.value)" />
