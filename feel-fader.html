@@ -163,6 +163,13 @@ main{width:100%;}
   to{opacity:1;transform:translateY(0)}
 }
 .bank-card{animation:fadeSlideIn .22s ease-out;}
+/* Smooth theme cross-fade — active only during a light/dark toggle (scoped so normal interactions stay snappy) */
+html.theming, html.theming body,
+html.theming .panel, html.theming .bank-card, html.theming .bank-section,
+html.theming input, html.theming .stepper, html.theming .step-btn,
+html.theming .advanced-toggle-btn, html.theming .bank-block, html.theming header{
+  transition:background-color .45s ease,color .45s ease,border-color .45s ease !important;
+}
 .bank-name-row{animation:fadeSlideIn .18s ease-out;}
 .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px;flex:1;min-width:160px;box-shadow:var(--shadow)}
 .panel-wide{width:100%;max-width:none;box-sizing:border-box;}
@@ -3037,8 +3044,13 @@ function applyLang() {
 // Preference is stored globally AND per device serial number.
 // When a device connects, its saved theme preference is applied.
 // ════════════════════════════════════════════════════════════════
+let _themingTimer = null;
 function toggleDark() {
-  const isDark = document.documentElement.classList.toggle('dark');
+  const root = document.documentElement;
+  root.classList.add('theming');
+  clearTimeout(_themingTimer);
+  _themingTimer = setTimeout(() => root.classList.remove('theming'), 500);
+  const isDark = root.classList.toggle('dark');
   localStorage.setItem('ff-dark', isDark ? '1' : '0');
   // Also save for current device if connected
   const serial = DEVICE_INFO.serial;
