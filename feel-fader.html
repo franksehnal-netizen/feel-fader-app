@@ -417,12 +417,16 @@ html.dark .lib-tag{background:#e0e0e0;color:#111;}
 .field-block-invert{justify-content:flex-start;}
 .field-block-invert input[type=checkbox]{height:32px;margin:0;align-self:flex-start;transform:scale(1.15);transform-origin:left center;}
 .info-row{display:flex;flex-direction:row;align-items:baseline;gap:8px;}
+.info-row.info-row-action{align-items:center;justify-content:space-between;}
+.info-row.info-row-action .info-lbl{min-width:0;}
+.settings-subhead{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:0 0 8px;}
+.settings-divider{height:1px;background:var(--border);margin:16px 0;}
 .info-lbl{font-size:11px;font-family:'Mulish',sans-serif;color:var(--t2);min-width:100px;flex-shrink:0;}
 .info-val{font-family:'Mulish',sans-serif;font-size:13px;color:var(--t1);font-weight:400;}
 html.dark .info-lbl{color:#888}
 html.dark .info-val{color:#e0e0e0}
 html.dark .device-info-toggle{color:var(--t1)}
-html.dark #device-info-chevron{color:#888}
+html.dark #device-settings-chevron{color:#888}
 
 /* BOTTOM */
 .bottom-row{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:600px;flex-wrap:wrap;gap:8px}
@@ -1061,49 +1065,43 @@ html.dark .val-bar{background:var(--t2);}
 
   
 
-  <!-- DEVICE INFO -->
+  <!-- DEVICE & SETTINGS (sloučené Device Info + Advanced) -->
   <div class="panel panel-wide" style="padding:0;overflow:hidden;width:100%">
-      <button class="device-info-toggle" onclick="toggleDeviceInfo()">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div class="panel-dot"></div>
-          <span class="panel-name" style="margin:0">Device Info</span>
-        </div>
-        <span id="device-info-chevron" style="font-size:11px;color:var(--t3)">▼</span>
-      </button>
-      <div id="device-info-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border)">
-        <div class="info-grid">
-          <div class="info-row"><span class="info-lbl"><span data-i18n="device.product">Product</span></span><span class="info-val">Feel Fader</span></div>
-          <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
-          <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t2)">—</span></div>
-          <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t2)">—</span></div>
-          <div class="info-row">
-            <span class="info-lbl">Keyboard (HID)</span>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-              <input type="checkbox" id="hid-toggle" onchange="onHidToggle(this.checked)">
-              <span class="info-val" id="hid-state">—</span>
-            </label>
-          </div>
-          <div class="info-row">
-            <span class="info-lbl">Button macro (long-press)</span>
-            <button id="macro-capture" class="step-btn" style="width:auto;padding:4px 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
-              onclick="startMacroCapture()">—</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  <!-- ADVANCED SECTION (collapsible) -->
-  <div class="advanced-wrap panel panel-wide" style="padding:0;overflow:hidden;width:100%;">
-    <button class="advanced-toggle-btn" onclick="toggleAdvanced()" id="advanced-toggle-btn">
+    <button class="advanced-toggle-btn" onclick="toggleDeviceSettings()" id="device-settings-toggle-btn">
       <div style="display:flex;align-items:center;gap:7px">
         <div class="panel-dot"></div>
-        <span data-i18n="btn.advanced">Advanced</span>
+        <span class="panel-name" style="margin:0">Device &amp; Settings</span>
       </div>
-      <span id="advanced-chevron" style="font-size:11px;color:var(--t3)">▼</span>
+      <span id="device-settings-chevron" style="font-size:11px;color:var(--t3)">▼</span>
     </button>
-    <div id="advanced-body" style="display:none">
+    <div id="device-settings-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border)">
+
+      <!-- Subsekce: Device -->
+      <div class="settings-subhead">Device</div>
+      <div class="info-grid">
+        <div class="info-row"><span class="info-lbl"><span data-i18n="device.product">Product</span></span><span class="info-val">Feel Fader</span></div>
+        <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
+        <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t2)">—</span></div>
+        <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t2)">—</span></div>
+        <div class="info-row info-row-action">
+          <span class="info-lbl">Keyboard (HID)</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="hid-toggle" onchange="onHidToggle(this.checked)">
+            <span class="info-val" id="hid-state">—</span>
+          </label>
+        </div>
+        <div class="info-row info-row-action">
+          <span class="info-lbl">Button macro (long-press)</span>
+          <button id="macro-capture" class="step-btn" style="width:auto;padding:4px 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+            onclick="startMacroCapture()">—</button>
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <!-- Subsekce: Preset & data -->
+      <div class="settings-subhead">Preset &amp; data</div>
       <div class="advanced-inner">
-        <!-- Export -->
         <div class="advanced-item">
           <div class="advanced-item-info">
             <span class="advanced-item-title" data-i18n="btn.export">↓ Export preset</span>
@@ -1111,7 +1109,6 @@ html.dark .val-bar{background:var(--t2);}
           </div>
           <button class="btn btn-ghost" onclick="exportP()" data-i18n="btn.export">↓ Export preset</button>
         </div>
-        <!-- Import -->
         <div class="advanced-item">
           <div class="advanced-item-info">
             <span class="advanced-item-title" data-i18n="btn.import">↑ Import preset</span>
@@ -1119,7 +1116,6 @@ html.dark .val-bar{background:var(--t2);}
           </div>
           <button class="btn btn-ghost" onclick="importP()" data-i18n="btn.import">↑ Import preset</button>
         </div>
-        <!-- Reset -->
         <div class="advanced-item">
           <div class="advanced-item-info">
             <span class="advanced-item-title" data-i18n="btn.reset">Reset</span>
@@ -1127,7 +1123,6 @@ html.dark .val-bar{background:var(--t2);}
           </div>
           <button class="btn btn-del" onclick="doReset()" data-i18n="btn.reset">Reset</button>
         </div>
-        <!-- JSON preview -->
         <div class="advanced-item" style="flex-direction:column;align-items:stretch">
           <div class="json-toggle" onclick="toggleJson()" style="border-radius:8px;border:1px solid var(--border);padding:10px 14px">
             <span style="font-size:12px;color:var(--t2)">presets.json</span>
@@ -2821,10 +2816,10 @@ function toggleJson(){
   if(jsonOpen)refreshJson();
 }
 
-function toggleAdvanced(){
-  const body    = document.getElementById('advanced-body');
-  const chevron = document.getElementById('advanced-chevron');
-  const btn     = document.getElementById('advanced-toggle-btn');
+function toggleDeviceSettings(){
+  const body    = document.getElementById('device-settings-body');
+  const chevron = document.getElementById('device-settings-chevron');
+  const btn     = document.getElementById('device-settings-toggle-btn');
   const open    = body.style.display !== 'none';
   body.style.display  = open ? 'none' : 'block';
   chevron.textContent = open ? '▼' : '▲';
@@ -2835,13 +2830,6 @@ function refreshJson(){document.getElementById('json-pre').textContent=JSON.stri
 function copyJson(){navigator.clipboard.writeText(JSON.stringify(cfg,null,2)).then(()=>toast('s',t('toast.copied'))).catch(()=>toast('e', t('toast.clipboard_fail')));}
 function openModal(){document.getElementById('m-banks').value=cfg.banks.length;document.getElementById('modal').style.display='flex';}
 function closeModal(){document.getElementById('modal').style.display='none';}
-function toggleDeviceInfo() {
-  const body     = document.getElementById('device-info-body');
-  const chevron  = document.getElementById('device-info-chevron');
-  const expanded = body.style.display !== 'none';
-  body.style.display    = expanded ? 'none' : 'block';
-  chevron.textContent   = expanded ? '▼' : '▲';
-}
 
 function updateStatus(){
   const dot  = document.getElementById('h-status-dot');
@@ -3334,8 +3322,7 @@ window.closeIconPicker   = closeIconPicker;
 window.selectIcon        = selectIcon;
 window.clearIcon         = clearIcon;
 window.toggleJson        = toggleJson;
-window.toggleAdvanced    = toggleAdvanced;
-window.toggleDeviceInfo  = toggleDeviceInfo;
+window.toggleDeviceSettings = toggleDeviceSettings;
 window.exportP           = exportP;
 window.importP           = importP;
 window.onImport          = onImport;
