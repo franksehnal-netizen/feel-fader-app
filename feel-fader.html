@@ -1171,6 +1171,8 @@ html.dark .val-bar{background:var(--t2);}
       <p style="margin:0 0 12px"><b>Articulation (CC)</b> — the roller steps through articulations (UACC). <b>Keyswitch</b> — the roller sends note keyswitches. <b>Navigation (keys)</b> — the roller sends a keyboard key per detent (e.g. arrows) to navigate your DAW. Navigation requires Keyboard (HID) enabled.</p>
       <div class="settings-subhead">Keyboard (HID)</div>
       <p style="margin:0 0 12px">Enable HID (in Device &amp; Settings) to let the device send keystrokes — required for the Navigation roller mode and the button long-press macro.</p>
+      <div class="settings-subhead">Service: DEV mode</div>
+      <p style="margin:0 0 12px">Hold the bank button while plugging in USB to boot in DEV mode — the FEELFADER drive becomes visible for firmware updates. Unplug and reconnect normally to return to regular use. Recovery: hold BOOTSEL while plugging USB → RPI-RP2 drive appears.</p>
       <div class="settings-subhead">Switching banks</div>
       <p style="margin:0">On the hardware, the button cycles through your banks. You can define up to 8 banks.</p>
     </div>
@@ -1213,37 +1215,6 @@ html.dark .val-bar{background:var(--t2);}
   </footer>
 </div><!-- /center-col -->
 </main>
-
-<!-- SETTINGS MODAL -->
-<div class="overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="m-head"><span class="m-title">Settings</span><button class="m-close" onclick="closeModal()">✕</button></div>
-    <div class="m-body">
-      <div class="m-section" data-i18n="modal.banks.title">Banks</div>
-      <div class="m-row">
-        <span class="m-lbl">Number of banks (1–10)</span>
-        <div class="stepper">
-          <button class="step-btn" onclick="stepBanks(-1)">−</button>
-          <input type="number" id="m-banks" value="3" min="1" max="10" oninput="onBankCount(+this.value)"/>
-          <button class="step-btn" onclick="stepBanks(1)">+</button>
-        </div>
-      </div>
-      <p class="m-note"><span data-i18n="modal.banks.desc">Banks are switched via the physical button on the device. Each bank has its own CC mappings and MIDI channel per control.</span></p>
-
-      <div class="m-section" style="margin-top:4px" data-i18n="modal.mode">Firmware mode</div>
-      <div class="m-row">
-        <span class="m-lbl" data-i18n="modal.mode">Firmware mode</span>
-        <span id="m-mode-val" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--t2)">—</span>
-      </div>
-      <p class="m-note"><span data-i18n="modal.dev_mode">DEV mode: FEELFADER drive visible, serial console active.</span><br><span data-i18n="modal.prod_mode">PROD mode: USB MIDI only, drive hidden.</span><br><span data-i18n="modal.switch_mode">Switch mode by editing boot.py on the device.</span></p>
-
-      <div class="m-section" style="margin-top:4px" data-i18n="modal.recovery">Recovery</div>
-      <p class="m-note"><span data-i18n="modal.recovery_desc">If drive is hidden: hold BOOTSEL, plug USB → RPI-RP2 appears → copy DEV boot.py.</span></p>
-    </div>
-    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()" data-i18n="modal.close">Close</button></div>
-  </div>
-</div>
-
 
 <input type="file" id="fi" accept=".json" style="display:none" onchange="onImport(event)"/>
 <div id="toasts"></div>
@@ -2095,22 +2066,6 @@ function removeBank(bi) {
   if (activeBank >= cfg.banks.length) activeBank = cfg.banks.length - 1;
   dirty = true; render();
 }
-function stepBanks(delta) {
-  const n = cfg.banks.length + delta;
-  if (n < 1 || n > MAX_BANKS) return;
-  if (delta > 0) addBank();
-  else removeBank(cfg.banks.length - 1);
-  document.getElementById('m-banks').value = cfg.banks.length;
-}
-function onBankCount(val) {
-  if (isNaN(val)||val<1||val>MAX_BANKS) return;
-  while (cfg.banks.length < val) addBank();
-  while (cfg.banks.length > val) { cfg.banks.pop(); }
-  if (activeBank >= cfg.banks.length) activeBank = cfg.banks.length - 1;
-  document.getElementById('m-banks').value = cfg.banks.length;
-  dirty = true; render();
-}
-
 // UACC
 function addUacc() {
   const inp = document.getElementById('uacc-input');
@@ -2911,8 +2866,6 @@ function hoverFaderLink(faderKey, on){
 }
 function refreshJson(){document.getElementById('json-pre').textContent=JSON.stringify(cfg,null,2);}
 function copyJson(){navigator.clipboard.writeText(JSON.stringify(cfg,null,2)).then(()=>toast('s',t('toast.copied'))).catch(()=>toast('e', t('toast.clipboard_fail')));}
-function openModal(){document.getElementById('m-banks').value=cfg.banks.length;document.getElementById('modal').style.display='flex';}
-function closeModal(){document.getElementById('modal').style.display='none';}
 
 function updateStatus(){
   const dot  = document.getElementById('h-status-dot');
@@ -2990,7 +2943,6 @@ var TRANSLATIONS = {
     'advanced.import_desc': 'Load a previously saved preset.',
     'advanced.reset_desc': 'Reset all settings to factory defaults.',
     // Device info
-    'device.title': 'Device Info',
     'device.product': 'Product',
     'device.manufacturer': 'Manufacturer',
     'device.platform': 'Platform',
@@ -3002,15 +2954,6 @@ var TRANSLATIONS = {
     'device.show': '▼ show',
     'device.hide': '▲ hide',
     // Settings modal
-    'modal.title': 'Settings',
-    'modal.banks': 'Number of banks (1–10)',
-    'modal.mode': 'Current mode',
-    'modal.dev_mode': 'DEV mode: FEELFADER drive visible, serial console active.',
-    'modal.prod_mode': 'PROD mode: USB MIDI only, drive hidden.',
-    'modal.switch_mode': 'Switch mode by editing boot.py on the device.',
-    'modal.recovery': 'Recovery',
-    'modal.recovery_desc': 'If the drive is hidden: hold BOOTSEL, plug USB → RPI-RP2 appears → copy DEV boot.py.',
-    'modal.close': 'Close',
     // Icon picker
     'icon.title': 'Instrument category',
     'icon.no_icon': 'No icon',
@@ -3052,8 +2995,6 @@ var TRANSLATIONS = {
     'validate.uacc_empty': 'Bank "{b}": articulation list must not be empty',
     'validate.ch_range': 'Bank "{b}" {k}: channel must be 0–15',
     'validate.cc_conflict': 'Bank "{b}": {k1} and {k2} share CC {cc}/ch {ch} — assign unique CCs',
-    'modal.banks.title': 'Banks',
-    'modal.banks.desc': 'Banks are switched via the physical button on the device.',
     'btn.copy': 'Copy to clipboard',
   }
 };
@@ -3389,13 +3330,9 @@ function applyLibraryPreset(name) {
 window.skipWelcome       = () => { const ws=document.getElementById('welcome-screen'); if(ws) ws.classList.add('hidden'); };
 window.onImgLoad         = onImgLoad;
 window.toggleDark        = toggleDark;
-window.openModal         = openModal;
-window.closeModal        = closeModal;
 window.selectBank        = selectBank;
 window.addBank           = addBank;
 window.removeBank        = removeBank;
-window.stepBanks         = stepBanks;
-window.onBankCount       = onBankCount;
 window.onBankRename      = onBankRename;
 window.onFaderLabel      = onFaderLabel;
 window.stepCtrl          = stepCtrl;
