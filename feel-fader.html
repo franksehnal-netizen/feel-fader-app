@@ -934,6 +934,8 @@ button:focus-visible{outline-offset:3px;}
   display:flex;align-items:center;gap:4px;
 }
 .bank-block-tab span{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bank-tab-idx{font-family:'IBM Plex Mono',monospace;font-size:10px;opacity:.55;}
+.bank-block-tabs.tabs-fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);}
 .bank-block-tab:hover{color:var(--t2);background:var(--bg-input);}
 .bank-block-tab.active{
   color:var(--t1);
@@ -1429,12 +1431,19 @@ function renderBankTabs() {
   const el = document.getElementById('bank-tabs');
   const tabsHtml = cfg.banks.map((b,i) => {
     const iconHtml = b.icon ? `<span style="font-size:13px;line-height:1">${b.icon}</span>` : '';
-    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})">${iconHtml}<span>${b.name || 'Bank '+(i+1)}</span></button>`;
+    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${iconHtml}<span>${b.name || 'Bank '+(i+1)}</span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
     ? `<button class="bank-block-tab-add" onclick="addBank()" title="Add bank">+</button>`
     : '';
   el.innerHTML = tabsHtml + addHtml;
+  const act = el.querySelector('.bank-block-tab.active');
+  if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  _updateTabsFade(el);
+  if (!el._fadeHooked) { el._fadeHooked = true; el.addEventListener('scroll', () => _updateTabsFade(el)); }
+}
+function _updateTabsFade(el) {   // audit S9 — naznačit, že řada tabů přetéká
+  el.classList.toggle('tabs-fade-r', el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
 }
 
 
