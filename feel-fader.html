@@ -1763,7 +1763,7 @@ function encoderPanel(ctrl, bi) {
           const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)'};
           const disabled = (m === 'track_nav') && !DEVICE_INFO.hid_enabled;
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
-          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Requires HID enabled (Device Info → Keyboard)"':''}
+          return `<button class="roller-mode-btn${active?' active':''}" ${disabled?'disabled title="Requires Keyboard (HID) — enable it in Device & Settings"':''}
             onclick="setRollerMode(${bi},'${m}')"
             style="flex:1;padding:6px;border-radius:var(--r-sm);border:1px solid var(--border);
                    background:${active?'var(--red)':'var(--bg-card)'};color:${active?'#fff':'var(--t2)'};
@@ -1908,7 +1908,7 @@ function onCtrl(bi, key, field, val) {
 }
 function setRollerMode(bi, mode) {
   if (mode === 'track_nav' && !DEVICE_INFO.hid_enabled) {
-    toast('i','Track-nav requires HID enabled (Device Info → Keyboard)'); return;
+    toast('i','Navigation requires Keyboard (HID) — enable it in Device & Settings'); return;
   }
   cfg.banks[bi].roller_mode = mode;
   if (mode === 'keyswitch' && (!cfg.banks[bi].ks_notes || cfg.banks[bi].ks_notes.length === 0)) {
@@ -1925,7 +1925,7 @@ function startKeyCapture(bi, which){
   if (el) el.textContent = 'press a key…';
 }
 function startMacroCapture(){
-  if (!DEVICE_INFO.hid_enabled) { toast('i','Macro requires HID enabled (Device Info → Keyboard)'); return; }
+  if (!DEVICE_INFO.hid_enabled) { toast('i','Macro requires Keyboard (HID) — enable it in Device & Settings'); return; }
   _keyCapture = { macro: true };
   const el = document.getElementById('macro-capture');
   if (el) el.textContent = 'press a key…';
@@ -2189,7 +2189,7 @@ function ksLiveRefresh(bi) {
   set('ks-hhi-' + bi, el => el.style.left = (hi / 127 * 100) + '%');
   set('ks-od-' + bi, el => el.textContent = noteName(lo) + ' · ' + lo);
   set('ks-do-' + bi, el => el.textContent = noteName(hi) + ' · ' + hi);
-  set('ks-cnt-' + bi, el => el.textContent = '= ' + n.length + ' not');
+  set('ks-cnt-' + bi, el => el.textContent = '= ' + n.length + ' notes');
 }
 
 let ksDrag = null;   // { bi, which, el }
@@ -2251,9 +2251,9 @@ function validate() {
         errs.push({ field:`b${i}.uacc`, msg:t('validate.uacc_empty').replace('{b}', b.name||i+1) });
     } else if (mode === 'keyswitch') {
       if (!b.ks_notes || b.ks_notes.length === 0)
-        errs.push({ field:`b${i}.uacc`, msg:`Bank ${b.name||i+1}: keyswitch mode needs at least one note` });
+        errs.push({ field:`b${i}.uacc`, msg:`${b.name || 'Bank ' + (i+1)}: keyswitch mode needs at least one note` });
       if (b.ks_notes && b.ks_notes.some(n => n < 0 || n > 127))
-        errs.push({ field:`b${i}.uacc`, msg:`Bank ${b.name||i+1}: note out of 0–127` });
+        errs.push({ field:`b${i}.uacc`, msg:`${b.name || 'Bank ' + (i+1)}: note out of 0–127` });
     }
     ['fader1','fader2','encoder'].forEach(k => {
       const c = b[k];
