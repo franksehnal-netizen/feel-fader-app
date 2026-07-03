@@ -195,6 +195,8 @@ html.theming .advanced-toggle-btn, html.theming .bank-block, html.theming header
 .step-btn:hover{background:rgba(0,0,0,.1);color:var(--t1);}
 .step-btn:active{background:rgba(0,0,0,.1);transform:scale(.9);}
 .step-btn.active{background:var(--red);color:#fff;}
+.step-btn.capturing{border-color:var(--red)!important;color:var(--red);animation:cap-pulse 1.2s ease-in-out infinite}
+@keyframes cap-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.35)}50%{box-shadow:0 0 0 4px rgba(255,59,48,0)}}
 /* keyswitch dual-handle range slider (custom handles) */
 .ks-slider{position:relative;height:30px;margin:12px 18px 2px;touch-action:none;user-select:none}
 .ks-track{position:absolute;top:8px;left:0;right:0;height:14px;background:var(--bg-input);border-radius:999px;box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}
@@ -1921,23 +1923,36 @@ function setRollerMode(bi, mode) {
 }
 
 // ── Track-nav key capture ─────────────────────────────────────────────────────
-let _keyCapture = null;   // { bi, which }
-function startKeyCapture(bi, which){
-  _keyCapture = { bi, which };
-  const el = document.getElementById(`navcap-${bi}-${which}`);
-  if (el) el.textContent = 'press a key…';
+let _keyCapture = null;   // { bi, which } | { macro:true }
+function _captureEl(){
+  if (!_keyCapture) return null;
+  return document.getElementById(_keyCapture.macro ? 'macro-capture' : `navcap-${_keyCapture.bi}-${_keyCapture.which}`);
 }
+function _captureBegin(target){
+  _keyCapture = target;
+  const el = _captureEl();
+  if (el) { el.textContent = 'press a key…'; el.classList.add('capturing'); }
+}
+function cancelKeyCapture(){   // Esc / klik mimo / blur (audit I4)
+  if (!_keyCapture) return;
+  _keyCapture = null;
+  render();   // vrátí původní label z cfg
+}
+function startKeyCapture(bi, which){ _captureBegin({ bi, which }); }
 function startMacroCapture(){
   if (!DEVICE_INFO.hid_enabled) { toast('i','Macro requires Keyboard (HID) — enable it in Device & Settings'); return; }
-  _keyCapture = { macro: true };
-  const el = document.getElementById('macro-capture');
-  if (el) el.textContent = 'press a key…';
+  _captureBegin({ macro: true });
 }
 window.addEventListener('keydown', e => {
   if (!_keyCapture) return;
   e.preventDefault();
+  if (e.code === 'Escape') { cancelKeyCapture(); return; }   // Esc = zrušit, ne přiřadit
   const main = HID_CODES[e.code];
-  if (main === undefined) return;
+  if (main === undefined) {   // nenamapovaná klávesa → hint, capture běží dál
+    const el = _captureEl();
+    if (el) { el.textContent = 'unsupported key — try another'; setTimeout(() => { if (_keyCapture && el.isConnected) el.textContent = 'press a key…'; }, 900); }
+    return;
+  }
   const mods = [];
   if (e.ctrlKey)  mods.push(0xE0);
   if (e.shiftKey) mods.push(0xE1);
@@ -1955,6 +1970,10 @@ window.addEventListener('keydown', e => {
   _keyCapture = null;
   dirty = true; render();
 });
+window.addEventListener('pointerdown', e => {   // klik mimo capture tlačítko = zrušit
+  if (_keyCapture && e.target !== _captureEl()) cancelKeyCapture();
+});
+window.addEventListener('blur', () => cancelKeyCapture());
 
 // BANKS
 function selectBank(i) { activeBank = i; render(); }
