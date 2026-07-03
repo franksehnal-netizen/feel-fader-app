@@ -1401,6 +1401,11 @@ const LS_SERIAL_PID_KEY = 'ff-serial-pid';
 function cfgSave() {
   try { localStorage.setItem(LS_CFG_KEY, JSON.stringify(cfg)); } catch(e) {}
 }
+let _autosaveT = null;
+function cfgAutosave() {   // audit S5 — edits přežijí refresh; dirty dál = „liší se od zařízení"
+  clearTimeout(_autosaveT);
+  _autosaveT = setTimeout(cfgSave, 400);
+}
 function cfgLoad() {
   try { const s = localStorage.getItem(LS_CFG_KEY); if (s) return JSON.parse(s); } catch(e) {}
   return null;
@@ -1430,6 +1435,7 @@ function reflectDirty() {
   if (h) h.hidden = !dirty;
 }
 function render() {
+  cfgAutosave();
   renderBankTabs();
   renderPanels();
   renderUacc();
@@ -1443,6 +1449,7 @@ function render() {
 }
 
 function renderBankTabs() {
+  cfgAutosave();
   const el = document.getElementById('bank-tabs');
   const tabsHtml = cfg.banks.map((b,i) => {
     const iconHtml = b.icon ? `<span style="font-size:13px;line-height:1">${b.icon}</span>` : '';
@@ -2173,6 +2180,7 @@ function setKsBound(bi, which, val) {   // steppers → full render
 
 // Light slider refresh during drag (without full render — smooth)
 function ksLiveRefresh(bi) {
+  cfgAutosave();
   const n = cfg.banks[bi].ks_notes || [];
   const lo = n.length ? Math.min(...n) : 0, hi = n.length ? Math.max(...n) : 0;
   const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
@@ -3391,6 +3399,10 @@ window.dragT             = dragT;
 window.onTagKeydown      = onTagKeydown;
 window.removeTag         = removeTag;
 window.renderBankIndicator = typeof renderBankIndicator === 'function' ? renderBankIndicator : ()=>{};
+
+window.addEventListener('beforeunload', e => {   // audit S5 — druhá síť
+  if (dirty) { e.preventDefault(); e.returnValue = ''; }
+});
 
 // ═══════════════════════════════════════════════════════════
 // INIT
