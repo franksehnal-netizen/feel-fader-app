@@ -1166,7 +1166,7 @@ html.dark .val-bar{background:var(--t2);}
       <div class="settings-subhead">Getting started</div>
       <p style="margin:0 0 12px">Connect your Feel Fader via USB and click <b>Start</b>. The configurator reads the device config; edits are sent back automatically.</p>
       <div class="settings-subhead">Banks &amp; tags</div>
-      <p style="margin:0 0 12px">Each bank stores fader/roller assignments, a name, an icon and free-text tags. Names, icons and tags are saved both in this browser and on the device. Tag suggestions come from tags you have used before.</p>
+      <p style="margin:0 0 12px">Each bank stores fader/roller assignments, a name, an icon and free-text tags. Names, icons and tags live in this browser and are kept across device syncs; CC/channel assignments live on the device. Tag suggestions come from tags you have used before.</p>
       <div class="settings-subhead">Roller modes</div>
       <p style="margin:0 0 12px"><b>Articulation (CC)</b> — the roller steps through articulations (UACC). <b>Keyswitch</b> — the roller sends note keyswitches. <b>Navigation (keys)</b> — the roller sends a keyboard key per detent (e.g. arrows) to navigate your DAW. Navigation requires Keyboard (HID) enabled.</p>
       <div class="settings-subhead">Keyboard (HID)</div>
@@ -2491,13 +2491,17 @@ function normalizeFwConfig(p) {
   if (p.banks[0] && p.banks[0].fader1) return p;
   return {
     macro_keys: Array.isArray(p.macro_keys) ? p.macro_keys : [],
-    banks: p.banks.map((b, i) => ({
-      name:        `Bank ${i + 1}`,
-      icon:        '',
-      tags:        [],
+    banks: p.banks.map((b, i) => {
+      // audit C1 — device prezentační pole (name/icon/tags/label) nezná;
+      // drž je z dosavadního cfg (localStorage), funkční data ber ze zařízení
+      const prev = (typeof cfg === 'object' && cfg && Array.isArray(cfg.banks) && cfg.banks[i]) || {};
+      return ({
+      name:        prev.name || `Bank ${i + 1}`,
+      icon:        prev.icon || '',
+      tags:        Array.isArray(prev.tags) ? prev.tags : [],
       uacc_values: Array.isArray(b.uacc_values) ? b.uacc_values : [],
-      fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: Array.isArray(b.fader_ch) ? b.fader_ch[0] : (b.channel ?? 0), label: '' },
-      fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: Array.isArray(b.fader_ch) ? b.fader_ch[1] : (b.channel ?? 0), label: '' },
+      fader1:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, channel: Array.isArray(b.fader_ch) ? b.fader_ch[0] : (b.channel ?? 0), label: (prev.fader1 && prev.fader1.label) || '' },
+      fader2:      { cc: Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1,  channel: Array.isArray(b.fader_ch) ? b.fader_ch[1] : (b.channel ?? 0), label: (prev.fader2 && prev.fader2.label) || '' },
       encoder:     { cc: typeof b.encoder === 'number' ? b.encoder : 32, channel: typeof b.encoder_ch === 'number' ? b.encoder_ch : (b.channel ?? 0) },
       roller_mode: (b.roller_mode === 'keyswitch' || b.roller_mode === 'track_nav') ? b.roller_mode : 'cc',
       ks_notes:    Array.isArray(b.ks_notes) ? b.ks_notes : [],
@@ -2506,7 +2510,8 @@ function normalizeFwConfig(p) {
       nav_keys_cw:  Array.isArray(b.nav_keys_cw)  ? b.nav_keys_cw  : [0x52],
       nav_keys_ccw: Array.isArray(b.nav_keys_ccw) ? b.nav_keys_ccw : [0x51],
       nav_invert:   !!b.nav_invert,
-    }))
+      });
+    })
   };
 }
 
