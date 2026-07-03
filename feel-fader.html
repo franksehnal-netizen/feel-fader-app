@@ -1759,7 +1759,7 @@ function encoderPanel(ctrl, bi) {
     <div class="panel-head">
       <div class="panel-dot solid"></div>
       <span class="panel-name">Roller</span>
-      <span class="section-live-val" id="enc-artic-badge">${badge}</span>
+      ${badge ? `<span class="section-live-val" id="enc-artic-badge">${badge}</span>` : ''}
     </div>
       <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
         ${['cc','keyswitch','track_nav'].map(m => {
