@@ -2783,7 +2783,11 @@ async function onDeviceConnected() {
   if (granted) {
     // Returning user / in-app reconnect: load silently (skip if unsaved edits), no gesture needed.
     if (!dirty) {
-      try { await loadConfigFromDevice(); setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded')); } catch(e) {}
+      try { await loadConfigFromDevice(); setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded')); }
+      catch(e) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
+        toast('e', "Couldn't sync with device — showing local config");
+        setBanner('searching', '');
+      }
     }
     if (onWelcome) hideWelcome();               // auto-transition into main page
     return;
