@@ -2324,7 +2324,7 @@ function mF(k,cy){
   const v=Math.round((1-Math.max(0,Math.min(1,(cy-rect.top-thH/2)/(rect.height-thH))))*127);
   if(k==='l'){liveValues.f1=v;pF('track-l','thumb-l',v);setTxt('f1-val',v);setBar('f1-bar',v);}
   else{liveValues.f2=v;pF('track-r','thumb-r',v);setTxt('f2-val',v);setBar('f2-bar',v);}
-  dirty=true; if(jsonOpen)refreshJson();
+  if(jsonOpen)refreshJson();   // drag = jen vizualizace, nemění config (audit I5)
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2553,7 +2553,7 @@ function handleSysEx(data){
       }, 200);
     }catch(e){
       toast('e', t('toast.config_error') + ': ' + e.message);
-      setBanner('connected', document.getElementById('midi-text').textContent.replace(t('midi.loading'),''));
+      setBanner('connected', '');
     }
   }
   if(cmd===CMD_INFO){
