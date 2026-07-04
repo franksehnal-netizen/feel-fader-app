@@ -53,6 +53,7 @@ Interní bank dict přibude klíč `"m"`:
 - Loader: v2 (validní CRC) → fallback v1 marker (jednorázová migrace, první save přepíše na v2) → soubor → `DEFAULT_PRESETS`; výsledek do `config_source`.
 - Footer (HID flag, 8 B na konci NVM) beze změny.
 - `json.dumps(..., separators=(',',':'))` všude (dnešní default přidává mezery).
+- **Sparse serializace (rozhodnuto 2026-07-04 po Task 0 spiku):** hustá serializace worst-case configu měří 4506 B > 4080 B strop — `serialize_state` proto vynechává bank pole rovná defaultům (`parse_banks` i obě verze appky je rekonstruují). Výjimky: `uacc_values` se serializují VŽDY (starý app při absenci nastaví `[]`, ne default — legacy safety) a `m` vždy (vlastní omit-if-empty pravidlo). `ks_channel` se vynechá, když == `encoder_ch` banky (parse ho tak re-derivuje). Roundtrip sparse→parse→sparse je bajt-stabilní → hash stabilní. Extrémní configy dál chrání viditelný `ERR:too_large`.
 - Překročení rozpočtu při `CMD_W` → `ERR:<rid>:too_large`, stav zařízení se nemění.
 
 ## 5. `config_hash` — sémantika

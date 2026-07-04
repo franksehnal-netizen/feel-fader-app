@@ -59,7 +59,7 @@ def test_worst_case_fits_nvm():
     assert len(data) <= budget * 0.9, f"worst case {len(data)} B > 90% budgetu {budget} B"
 ```
 
-- [ ] **Step 2: Spusť** `python -m pytest tests/test_wave2_budget.py -v`. Očekávání: PASS. Pokud FAIL → zmenši meta limity (nejdřív `t` 4→3, pak name 24→16) v tomto testu i ve specu §3 a Global Constraints, a poznamenej do specu.
+- [x] **Step 2: VÝSLEDEK SPIKU (2026-07-04):** FAIL — hustá serializace worst-case = **4506 B** > 4080 B strop. Rozhodnutí (Frank): **sparse serializace** (viz spec §4) místo osekání meta limitů. Budget test se přepisuje na realistický a přesouvá do Tasku 1 (testuje `serialize_state`); worst-case dense test se NEcommituje.
 - [ ] **Step 3: Device check `binascii.crc32`** — zařízení v DEV bootu (drž tlačítko při připojení USB, CIRCUITPY viditelný). Přes REPL (`screen`/Putty na REPL COM port, nebo dočasný řádek v `code.py`): `import binascii; print(binascii.crc32(b'test'))`. Očekávání: číslo (3632233996). Zapiš výsledek:
   - [ ] `binascii.crc32` dostupné → Task 1 použije crc32 primárně (fallback FNV zůstane v kódu).
   - [ ] Nedostupné → `state_hash`/`blob_checksum` běží na FNV-1a fallbacku (kód identický, jen se cvičí druhá větev).
@@ -104,6 +104,39 @@ def test_both_hash_impls_deterministic():
     assert ff_config._fnv1a_hash(data) == ff_config._fnv1a_hash(data)
     assert ff_config._fnv1a_hash(b"a") != ff_config._fnv1a_hash(b"b")
 
+def test_sparse_roundtrip_stable_and_legacy_safe():
+    # sparse → parse → sparse musí být bajt-stabilní (hash stabilita přes boot)
+    web = {"banks": [{"fader1": {"cc": 21, "channel": 3}, "fader2": {"cc": 22, "channel": 4},
+                      "encoder": {"cc": 110, "channel": 5}, "name": "Test"}]}
+    banks = ff_config.normalize_web_config(web)
+    s1 = ff_config.serialize_state(banks, [])
+    reparsed = ff_config.parse_banks(__import__("json").loads(s1))
+    s2 = ff_config.serialize_state(reparsed["banks"], reparsed["macro_keys"])
+    assert s1 == s2
+    # uacc_values NIKDY nevynechat (starý app při absenci nastaví [])
+    assert '"uacc_values":' in s1
+    # defaultní pole vynechána
+    assert '"roller_mode"' not in s1 and '"nav_keys_cw"' not in s1
+
+
+def test_realistic_heavy_config_fits_nvm():
+    # 8 bank, každá plné meta + data svého módu (Task 0 rozhodnutí: sparse)
+    def bank(mode):
+        b = {"fader_cc": [21, 22], "fader_ch": [3, 4], "encoder": 110, "encoder_ch": 5,
+             "uacc_values": list(range(36)), "roller_mode": mode,
+             "m": {"n": "X" * 24, "i": "Y" * 16, "t": ["Z" * 12] * 4, "l": ["L" * 12, "L" * 12]}}
+        if mode == "keyswitch":
+            b.update(ks_notes=list(range(24, 48)), ks_channel=9, ks_velocity=101)
+        if mode == "track_nav":
+            b.update(nav_keys_cw=[82] * 4, nav_keys_ccw=[81] * 4, nav_invert=True)
+        return b
+    modes = ["cc", "cc", "cc", "cc", "keyswitch", "keyswitch", "track_nav", "track_nav"]
+    parsed = ff_config.parse_banks({"banks": [bank(m) for m in modes], "macro_keys": [4, 5, 6, 7]})
+    data = ff_config.serialize_state(parsed["banks"], parsed["macro_keys"]).encode("utf-8")
+    budget = 4096 - 8 - 8
+    assert len(data) <= budget * 0.9, f"realistic heavy {len(data)} B > 90% budgetu"
+
+
 def test_build_info_dict_v2():
     info = ff_config.build_info_dict("1.1.0", "FF", "AB12", config_hash="deadbeef", config_source="nvm")
     assert info["schema_version"] == 2
@@ -147,11 +180,40 @@ def blob_checksum(data_bytes):
     return _crc32_hash(data_bytes) if _HAS_CRC32 else _fnv1a_hash(data_bytes)
 
 
+_SPARSE_KEEP = ("uacc_values", "m")   # uacc: starý app při absenci nastaví [] (ne default)
+                                       # m: má vlastní omit-if-empty pravidlo
+
+
+def _bank_defaults(bank):
+    """Defaulty shodné s parse_banks — pole s touto hodnotou lze vynechat."""
+    return {
+        "fader_cc": [11, 1], "fader_ch": [0, 0],
+        "encoder": 32, "encoder_ch": 0,
+        "roller_mode": "cc", "ks_notes": [],
+        "ks_channel": bank.get("encoder_ch", 0),   # parse re-derivuje z enc_ch
+        "ks_velocity": 100,
+        "nav_keys_cw": [NAV_DEFAULT_CW], "nav_keys_ccw": [NAV_DEFAULT_CCW],
+        "nav_invert": False,
+    }
+
+
+def _sparse_bank(bank):
+    defaults = _bank_defaults(bank)
+    out = {}
+    for k, v in bank.items():
+        if k in _SPARSE_KEEP or k not in defaults or defaults[k] != v:
+            out[k] = v
+    return out
+
+
 def serialize_state(banks, macro_keys):
     """JEDINÁ kanonická serializace presetů — používá ji save, CMD_R i hash.
-    Dict staví tento kód (fixní pořadí klíčů), kompaktní separators."""
-    return _json.dumps({"banks": banks, "macro_keys": macro_keys},
-                       separators=(",", ":"))
+    Sparse: pole rovná defaultům se vynechávají (spec §4); dict staví tento kód
+    (fixní pořadí klíčů = pořadí v bank dictu), kompaktní separators."""
+    state = {"banks": [_sparse_bank(b) for b in banks]}
+    if macro_keys:
+        state["macro_keys"] = macro_keys
+    return _json.dumps(state, separators=(",", ":"))
 
 
 def state_hash(state_str):
