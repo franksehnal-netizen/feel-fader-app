@@ -819,7 +819,7 @@ Expected: PASS.
 - [ ] **Step 3: Ověř C2** — otevři appku, připoj zařízení, stiskni tlačítko banky → v appce se přepne aktivní tab. (PC handler 0xC0.)
 - [ ] **Step 4: Ověř F1** — podrž tlačítko ~1 s bez nakonfigurovaného makra → po puštění se přepne banka (dřív: nic).
 - [ ] **Step 5: Ověř F2** — normální power-cycle (bez drženého tlačítka) → CIRCUITPY disk se NEobjeví; MIDI + serial port fungují; send configu z appky projde a přežije restart (`save_presets()`). DEV boot (držené tlačítko) → disk viditelný.
-- [ ] **Step 6: Ověř C4** — během auto-loadu (reconnect) vytáhni USB → appka ukáže toast „Couldn't sync…", header nezůstane zeleně.
+- [x] **Step 6: Ověř C4** — ověřeno 2026-07-04 variantou „port drží jiná aplikace" (rejectne tentýž await jako USB unplug): toast „Couldn't sync with device — showing local config" + header pulse (searching), ne zeleně. Detail v auditu, sekce Status.
 
 ---
 

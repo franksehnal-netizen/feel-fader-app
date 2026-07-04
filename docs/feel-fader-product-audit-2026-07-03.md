@@ -13,7 +13,9 @@
 S5 (debounced autosave + beforeunload) · I5 (drag ≠ dirty) · H5 (midi-text) · I7+V8+V9 (textové opravy) · V11 (subhead --t2) · A7 (44px ks-handle + capture tlačítka) · S7a (prázdná badge se nerenderuje) · C4 (toast při selhání auto-loadu) · I4 (key-capture: Esc/blur/klik mimo = zrušit, unsupported hint, `.capturing` styl) · S6 (Settings modal smazán, korektní DEV/PROD postup v Help & Guide).
 
 **Firmware — HW OVĚŘENO 2026-07-04, mergnuto do main:**
-C2 ✓ (ProgramChange při bank change — zachyceno MIDI listenerem, PC → snapshoty v korektním pořadí) · F1 ✓ (long-press bez makra = bank switch po release; s makrem banka nepřepíná) · F2 ✓ (PROD boot skrývá CIRCUITPY disk, jediný CDC port, serial/NVM/config funkční). Pytest 37/37. Config + HID flag + macro přežily deployment i power-cycle. Zbývá příležitostně: C4 živý test (vytáhnout USB během auto-loadu → toast).
+C2 ✓ (ProgramChange při bank change — zachyceno MIDI listenerem, PC → snapshoty v korektním pořadí) · F1 ✓ (long-press bez makra = bank switch po release; s makrem banka nepřepíná) · F2 ✓ (PROD boot skrývá CIRCUITPY disk, jediný CDC port, serial/NVM/config funkční). Pytest 37/37. Config + HID flag + macro přežily deployment i power-cycle.
+
+**C4 živý test ✓ 2026-07-04** — reálné zařízení, varianta „port drží jiná aplikace" (auditem jmenovaný scénář; ekvivalent USB unplugu — obě cesty rejectnou tentýž await): COM4 držel cizí proces, čistá Chrome instance s per-origin serial grantem, reload → auto-load. Trace: `port.open()` REJECTED (NetworkError, port busy) → fallback `requestPort` REJECTED (bez gesta) → catch → **toast „✕ Couldn't sync with device — showing local config"** + header dot „searching" (pulse) + auto-vstup na hlavní stránku s lokálním configem. Přesně dle fixu. Pozn.: banner text v tomto stavu ukazuje fallback „device disconnected" (`setBanner('searching','')` → `m || t('status.disconnected')`), ne prázdný text — kosmetické, chování OK.
 
 **Plán:** `docs/superpowers/plans/2026-07-03-wave1-audit-fixes.md`
 
