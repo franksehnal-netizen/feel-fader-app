@@ -977,6 +977,8 @@ button:focus-visible{outline-offset:3px;}
   background:var(--t1);
   border-radius:var(--r-pill);
 }
+.bank-tab-live{width:6px;height:6px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 0 2px rgba(52,199,89,.25);flex-shrink:0}
 .bank-block-tab-add{
   flex:0 0 auto;
   padding:7px 12px;
@@ -1461,7 +1463,8 @@ function renderBankTabs() {
   const el = document.getElementById('bank-tabs');
   const tabsHtml = cfg.banks.map((b,i) => {
     const iconHtml = b.icon ? `<span style="font-size:13px;line-height:1">${b.icon}</span>` : '';
-    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${iconHtml}<span>${b.name || 'Bank '+(i+1)}</span></button>`;
+    const liveDot = (i === liveBank && _ffConnected) ? '<span class="bank-tab-live" title="Active on device"></span>' : '';
+    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${liveDot}${iconHtml}<span>${b.name || 'Bank '+(i+1)}</span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
     ? `<button class="bank-block-tab-add" onclick="addBank()" title="Add bank">+</button>`
