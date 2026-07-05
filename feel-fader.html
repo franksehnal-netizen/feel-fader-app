@@ -562,6 +562,12 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 .toast.e{background:rgba(232,80,58,.08);border-color:rgba(232,80,58,.3);color:var(--red)}
 .toast.i{background:var(--bg-card);border-color:var(--border-s);color:var(--t2)}
 .tx{margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;opacity:.5;font-size:13px}
+.sync-banner{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:190;
+  display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:var(--r-sm);
+  border:1px solid rgba(232,160,58,.4);background:rgba(232,160,58,.1);
+  font-size:12px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.sync-btn{border:1px solid var(--border-s);background:var(--bg-card);border-radius:6px;
+  padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
 
 /* Touch: enlarge tap targets to >=44px without bloating desktop */
 @media(pointer:coarse){
@@ -1238,6 +1244,12 @@ html.dark .val-bar{background:var(--t2);}
 
 <input type="file" id="fi" accept=".json" style="display:none" onchange="onImport(event)"/>
 <div id="toasts"></div>
+<div id="sync-banner" class="sync-banner" hidden>
+  <span id="sync-banner-text"></span>
+  <button class="sync-btn" onclick="syncLoadFromDevice()">Load from device</button>
+  <button class="sync-btn" onclick="syncSendMine()">Send mine</button>
+  <button class="tx" onclick="hideSyncBanner()">✕</button>
+</div>
 
 <!-- WELCOME SCREEN -->
 <div id="welcome-screen">
@@ -2510,6 +2522,23 @@ function setBanner(type, m){
   }
 }
 
+function showSyncBanner(kind) {
+  const el = document.getElementById('sync-banner');
+  const tx = document.getElementById('sync-banner-text');
+  if (!el) return;
+  tx.textContent = kind === 'defaults'
+    ? 'Device reset to factory settings (stored config was unreadable).'
+    : 'Device config differs from this browser’s last sync.';
+  el.hidden = false;
+}
+function hideSyncBanner() { const el = document.getElementById('sync-banner'); if (el) el.hidden = true; }
+async function syncLoadFromDevice() {
+  hideSyncBanner();
+  try { await loadConfigFromDevice(); setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded')); }
+  catch(e) { toast('e', "Couldn't sync with device — showing local config"); }
+}
+async function syncSendMine() { hideSyncBanner(); doSend(); }
+
 // ═══════════════════════════════════════════════════════════
 // SYSEX
 // ═══════════════════════════════════════════════════════════
@@ -2799,6 +2828,9 @@ async function loadConfigFromDevice() {
   cfgSave();
   try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
   _serialGranted = true;
+  if (protocolVersion === 2 && DEVICE_INFO.config_hash) {
+    try { localStorage.setItem(LS_HASH_KEY, DEVICE_INFO.config_hash); } catch(_) {}
+  }
   render();
   updateStatus();
   if (!midiAccess) {   // serial OK, ale MIDI zamítnuté/nedostupné → live fadery nepojedou
@@ -2844,8 +2876,19 @@ async function onDeviceConnected() {
   if (granted) {
     // Returning user / in-app reconnect: load silently (skip if unsaved edits), no gesture needed.
     if (!dirty) {
-      try { await loadConfigFromDevice(); setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded')); }
-      catch(e) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
+      try {
+        await serialReadInfo();   // bootstrap: protocolVersion + config_hash/source
+        const stored = localStorage.getItem(LS_HASH_KEY);
+        if (protocolVersion === 2 && DEVICE_INFO.config_source === 'defaults') {
+          showSyncBanner('defaults'); setBanner('searching', '');
+        } else if (protocolVersion === 2 && stored && DEVICE_INFO.config_hash
+                   && stored !== DEVICE_INFO.config_hash) {
+          showSyncBanner('differs'); setBanner('searching', '');
+        } else {
+          await loadConfigFromDevice();
+          setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded'));
+        }
+      } catch(e) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
         toast('e', "Couldn't sync with device — showing local config");
         setBanner('searching', '');
       }
@@ -2864,10 +2907,12 @@ async function doSend() {
   const btn = document.getElementById('send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '…sending'; btn.classList.remove('sent'); }
   try {
-    await _serialEnsureOpen();
-    const writer = _serialPort.writable.getWriter();
-    await writer.write(new TextEncoder().encode('CMD_W:' + JSON.stringify(cfg) + '\n'));
-    writer.releaseLock();
+    const ackHash = await serialRequest('CMD_W', JSON.stringify(cfg), 5000);
+    // protocolVersion 1: ackHash === '' (legacy fire-and-forget, dnešní chování)
+    if (protocolVersion === 2 && ackHash) {
+      try { localStorage.setItem(LS_HASH_KEY, ackHash.trim()); } catch(_) {}
+      DEVICE_INFO.config_hash = ackHash.trim();
+    }
     cfgSave();
     dirty = false;
     reflectDirty();
@@ -2878,10 +2923,13 @@ async function doSend() {
     }
   } catch(e) {
     console.warn('[Send] failed:', e);
-    if (e.name !== 'AbortError' && _serialPort) {
+    const errReason = /^ERR:(.+)$/.exec(e.message || '');
+    if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) {
       try { await _serialPort.close(); } catch(_) {} _serialPort = null;
     }
-    toast('e', serialErrMsg(e, 'Send failed'));
+    if (errReason) toast('e', 'Device rejected config: ' + errReason[1] + ' — kept as unsaved.');
+    else if (e.message === 'timeout') toast('e', 'No confirmation from device — kept as unsaved. Retry send.');
+    else toast('e', serialErrMsg(e, 'Send failed'));
     if (btn) { btn.disabled = false; btn.textContent = t('btn.send'); btn.classList.remove('sent'); }
   }
 }
