@@ -244,6 +244,7 @@ html.theming .advanced-toggle-btn, html.theming .bank-block, html.theming header
 .uacc-tag{display:flex;align-items:center;gap:4px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r-pill);padding:3px 8px;font-family:'Mulish',sans-serif;font-size:11px;color:var(--t1)}
 .uacc-tag button{background:none;border:none;cursor:pointer;color:var(--t3);font-size:11px;padding:0 0 0 2px;line-height:1;transition:color .12s}
 .uacc-tag button:hover{color:var(--red)}
+.uacc-tag.ks-live{border-color:rgba(52,199,89,.5);background:rgba(52,199,89,.1)}
 .uacc-add-row{display:flex;align-items:center;gap:8px;margin-top:8px}
 .uacc-add-row input{width:80px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t1);outline:none;-moz-appearance:textfield;box-shadow:inset 0 1px 3px rgba(0,0,0,.13)}
 .uacc-add-row input::-webkit-inner-spin-button,.uacc-add-row input::-webkit-outer-spin-button{-webkit-appearance:none}
@@ -1428,6 +1429,7 @@ let liveBank   = 0;
 let liveValues = { f1:64, f2:64 };
 let encIndex   = 0;
 let encLiveVal = null; // null = not yet received from device
+let ksLiveNote = null; // poslední NoteOn z ks_channel (S7b)
 let dragging   = null;
 let loaded     = !!_savedCfg;
 let dirty      = false;
@@ -1685,7 +1687,7 @@ function ccEncoderBody(ctrl, bi) {
 function keyswitchBody(bi) {
   const b = cfg.banks[bi];
   const tags = (b.ks_notes || []).map((n,i) => `
-    <div class="uacc-tag" title="MIDI ${n}">
+    <div class="uacc-tag${n === ksLiveNote ? ' ks-live' : ''}" data-ksnote="${n}" title="MIDI ${n}">
       <span class="uacc-num">${n}</span>
       <span class="uacc-label">${noteName(n)}</span>
       <button onclick="removeKsNote(${bi},${i})" title="Remove">✕</button>
@@ -1776,7 +1778,9 @@ function encoderPanel(ctrl, bi) {
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
   const rmode    = cfg.banks[bi].roller_mode || 'cc';
-  const badge    = rmode === 'cc' ? initName : '';
+  const badge = rmode === 'cc' ? initName
+              : rmode === 'keyswitch' && ksLiveNote !== null ? noteName(ksLiveNote)
+              : '';   // nav: klávesy nemají stav → badge nikdy
 
   const modeTitle = rmode === 'keyswitch' ? 'Keyswitch' : rmode === 'track_nav' ? 'Navigation' : 'Articulation';
   return `
@@ -2494,6 +2498,18 @@ function onMidiMsg(event){
       if(idx !== -1){ encIndex = idx; renderEncChips(); }
     }
 
+  }
+  // S7b — live keyswitch pozice: NoteOn na ks_channel
+  if(type===0x90 && data[2] > 0 && (bank.roller_mode||'cc')==='keyswitch'){
+    const note = data[1];
+    if(ch === (bank.ks_channel ?? 0) && (bank.ks_notes||[]).includes(note)){
+      ksLiveNote = note;
+      document.querySelectorAll('.uacc-tag.ks-live').forEach(el => el.classList.remove('ks-live'));
+      const cell = document.querySelector(`.uacc-tag[data-ksnote="${note}"]`);
+      if (cell) cell.classList.add('ks-live');
+      const bdg = document.getElementById('enc-artic-badge');
+      if (bdg) { bdg.textContent = noteName(note); liveOn('enc-artic-badge'); }
+    }
   }
   // Bank switch via Program Change from hardware button
   if(type===0xC0){
