@@ -1884,21 +1884,24 @@ function onHidToggle(want){
 async function sendHidRequest(enabled){
   // HID set goes via Web Serial (reliable path; MIDI SysEx doesn't get through in some setups).
   try {
-    await _serialEnsureOpen();
-    const writer = _serialPort.writable.getWriter();
-    await writer.write(new TextEncoder().encode('CMD_HID:' + JSON.stringify({enabled}) + '\n'));
-    writer.releaseLock();
-    toast('i', enabled?'Enabling HID…':'Disabling HID…');
-    // device does not reboot (HID interface is always in the descriptor) → port stays open.
-    // Small delay so the firmware can process CMD_HID, then re-fetch info.
-    await new Promise(r => setTimeout(r, 200));
+    if (protocolVersion === 2) {
+      await serialRequest('CMD_HID', JSON.stringify({enabled}), 2000);   // reject при ERR/timeout
+      toast('i', enabled ? 'HID enabled' : 'HID disabled');
+    } else {
+      await serialRequest('CMD_HID', JSON.stringify({enabled}), 2000);  // legacy: resolve hned po zápisu
+      toast('i', enabled ? 'Enabling HID…' : 'Disabling HID…');
+      await new Promise(r => setTimeout(r, 200));                        // starý fw potřebuje čas
+    }
     try { await serialReadInfo(); } catch(e) {
       toast('i','HID toggled — refresh state via "Load from device"');
-      updateHidToggle();   // refresh failed → align checkbox+text to last confirmed state
+      updateHidToggle();
     }
   } catch(e) {
-    if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
-    toast('e', serialErrMsg(e, 'HID command failed'));
+    const errReason = /^ERR:(.+)$/.exec(e.message || '');
+    if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
+    if (errReason) toast('e', 'HID command failed: ' + errReason[1]);
+    else if (e.message === 'timeout') toast('e', 'No confirmation from device — HID state unknown, re-check below.');
+    else toast('e', serialErrMsg(e, 'HID command failed'));
     updateHidToggle();
   }
 }
