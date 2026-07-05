@@ -1892,7 +1892,7 @@ async function sendHidRequest(enabled){
   // HID set goes via Web Serial (reliable path; MIDI SysEx doesn't get through in some setups).
   try {
     if (protocolVersion === 2) {
-      await serialRequest('CMD_HID', JSON.stringify({enabled}), 2000);   // reject при ERR/timeout
+      await serialRequest('CMD_HID', JSON.stringify({enabled}), 2000);   // reject při ERR/timeout
       toast('i', enabled ? 'HID enabled' : 'HID disabled');
     } else {
       await serialRequest('CMD_HID', JSON.stringify({enabled}), 2000);  // legacy: resolve hned po zápisu
@@ -2823,7 +2823,7 @@ async function serialReadConfig() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function serialReadInfo() {
-  // Bootstrap: první dotaz jde vždy legacy rámcem (odpoví starý i nový firmware),
+  protocolVersion = 1;   // bootstrap: první dotaz vždy legacy rámcem — starý i nový firmware odpoví
   // ze schema_version+config_hash se určí protocolVersion pro všechno další.
   const line = await serialRequest('CMD_INFO', null, 5000);
   const info = JSON.parse(line);
