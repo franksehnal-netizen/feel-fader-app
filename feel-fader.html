@@ -2518,6 +2518,10 @@ let _pendingRead  = null;  // { resolve, reject, timer }
 let _pendingWrite = null;  // { resolve, reject, timer }
 let _chunkBuf     = null;  // { chunks: Array, received: number, total: number }
 let _serialPort   = null;  // Web Serial port (cached for session)
+let protocolVersion = 1;        // 1 = legacy, 2 = rid framing; nastaví bootstrap CMD_INFO
+let _ridCounter = 0;
+let _txnChain = Promise.resolve();   // serializace transakcí — jedna naráz
+const LS_HASH_KEY = 'ff-last-hash';  // poslední hash potvrzený zařízením (ACK/load)
 function _requestDeviceInfoSysex(){
   const out=getOut();
   if(out) try{ out.send([0xF0,MFR,DEV_ID,CMD_INFO,0xF7]); }catch(e){}
@@ -2703,68 +2707,80 @@ async function _serialEnsureOpen() {
   _serialPort = port;
 }
 
-async function serialReadConfig() {
-  await _serialEnsureOpen();
-  const port = _serialPort;
-  const writer = port.writable.getWriter();
-  await writer.write(new TextEncoder().encode('CMD_R\n'));
-  writer.releaseLock();
+// Wave 2 — jediné místo, které čte serial. Jedna transakce naráz; v2 odpovědi
+// se párují podle typu + rid, cizí/stale řádky se zahazují (to je ta ochrana,
+// drain je jen best-effort úklid nulové ceny).
+function serialRequest(cmd, payload, timeoutMs) {
+  const run = async () => {
+    await _serialEnsureOpen();
+    const port = _serialPort;
+    const v2 = protocolVersion === 2;
+    const rid = v2 ? String(++_ridCounter) : null;
+    const line = payload == null
+      ? (v2 ? `${cmd}:${rid}` : cmd)
+      : (v2 ? `${cmd}:${rid}:${payload}` : `${cmd}:${payload}`);
+    const writer = port.writable.getWriter();
+    await writer.write(new TextEncoder().encode(line + '\n'));
+    writer.releaseLock();
+    if (!v2 && (cmd === 'CMD_W' || cmd === 'CMD_HID')) return '';   // legacy: bez odpovědi
+    const expect = { CMD_R: 'CFG', CMD_INFO: 'INFO', CMD_W: 'ACK', CMD_HID: 'ACK' }[cmd];
+    return await _readReply(port, v2, expect, rid, timeoutMs);
+  };
+  const p = _txnChain.then(run, run);
+  _txnChain = p.catch(() => {});
+  return p;
+}
+
+function _readReply(port, v2, expect, rid, timeoutMs) {
   return new Promise((resolve, reject) => {
     const reader = port.readable.getReader();
     const dec = new TextDecoder();
     let buf = '';
-    const timer = setTimeout(() => {
-      reader.releaseLock();
-      reject(new Error('Timeout — no response from device'));
-    }, 5000);
+    const timer = setTimeout(() => { try { reader.releaseLock(); } catch(_){} reject(new Error('timeout')); }, timeoutMs);
+    const done = (fn, v) => { clearTimeout(timer); try { reader.releaseLock(); } catch(_){} fn(v); };
     (async () => {
       try {
         while (true) {
-          const { value, done } = await reader.read();
-          if (done) { clearTimeout(timer); reader.releaseLock(); reject(new Error('Port closed')); return; }
+          const { value, done: eof } = await reader.read();
+          if (eof) return done(reject, new Error('Port closed'));
           buf += dec.decode(value);
-          const nl = buf.indexOf('\n');
-          if (nl !== -1) { clearTimeout(timer); reader.releaseLock(); resolve(buf.slice(0, nl).trim()); return; }
+          let nl;
+          while ((nl = buf.indexOf('\n')) !== -1) {
+            const lineIn = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+            if (!lineIn) continue;
+            if (!v2) return done(resolve, lineIn);          // legacy: první řádek vyhrává
+            const m = lineIn.match(/^(CFG|INFO|ACK|ERR):([^:]*)(?::([\s\S]*))?$/);
+            if (!m) { console.debug('[serial] discard', lineIn.slice(0, 40)); continue; }
+            const [, typ, r, pl] = m;
+            if (r !== rid) { console.debug('[serial] stale rid', typ, r); continue; }
+            if (typ === 'ERR') return done(reject, new Error('ERR:' + (pl || 'unknown')));
+            if (typ === expect) return done(resolve, pl ?? '');
+            console.debug('[serial] unexpected type', typ);
+          }
         }
-      } catch(e) {
-        clearTimeout(timer);
-        try { reader.releaseLock(); } catch(_) {}
-        reject(e);
-      }
+      } catch (e) { done(reject, e); }
     })();
   });
+}
+
+async function serialReadConfig() {
+  return await serialRequest('CMD_R', null, 5000);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function serialReadInfo() {
-  await _serialEnsureOpen();
-  const port = _serialPort;
-  const writer = port.writable.getWriter();
-  await writer.write(new TextEncoder().encode('CMD_INFO\n'));
-  writer.releaseLock();
-  const line = await new Promise((resolve, reject) => {
-    const reader = port.readable.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    const timer = setTimeout(() => { reader.releaseLock(); reject(new Error('Timeout — no info')); }, 5000);
-    (async () => {
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) { clearTimeout(timer); reader.releaseLock(); reject(new Error('Port closed')); return; }
-          buf += dec.decode(value);
-          const nl = buf.indexOf('\n');
-          if (nl !== -1) { clearTimeout(timer); reader.releaseLock(); resolve(buf.slice(0, nl).trim()); return; }
-        }
-      } catch(e) { clearTimeout(timer); try { reader.releaseLock(); } catch(_) {} reject(e); }
-    })();
-  });
+  // Bootstrap: první dotaz jde vždy legacy rámcem (odpoví starý i nový firmware),
+  // ze schema_version+config_hash se určí protocolVersion pro všechno další.
+  const line = await serialRequest('CMD_INFO', null, 5000);
   const info = JSON.parse(line);
+  protocolVersion = (info.schema_version >= 2 && typeof info.config_hash === 'string') ? 2 : 1;
   if (info.firmware) DEVICE_INFO.firmware = info.firmware;
   if (info.serial)   DEVICE_INFO.serial   = info.serial;
   if (typeof info.hid_available === 'boolean') DEVICE_INFO.hid_available = info.hid_available;
   if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
+  DEVICE_INFO.config_hash   = info.config_hash   || null;
+  DEVICE_INFO.config_source = info.config_source || null;
   try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
   updateDeviceInfo(); updateHidToggle();
   render();   // re-render roller selector — track_nav gating depends on hid_enabled
