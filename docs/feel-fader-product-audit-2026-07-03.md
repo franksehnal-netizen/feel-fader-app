@@ -19,6 +19,16 @@ C2 ✓ (ProgramChange při bank change — zachyceno MIDI listenerem, PC → sna
 
 **Plán:** `docs/superpowers/plans/2026-07-03-wave1-audit-fixes.md`
 
+## Status: Vlna 2 implementována a HW ověřena 2026-07-07
+
+**Řeší:** C1 ✓ (meta persistence name/icon/tags/labels v NVM — živě ověřen round-trip „mezi počítači" vč. emoji) · C3 ✓ (serial `CMD_W` → `ACK:<rid>:<hash>`/`ERR:<rid>:<důvod>`, pravdivý dirty) · C5 ✓ (live-bank tečka na tabu, sleduje tlačítko zařízení) · C6 ✓ (HID přes serial ACK místo 200ms sleep) · F4 ✓ (NVM v2 s CRC, `config_hash`+`config_source` v INFO, „factory defaults" banner + Send mine recovery živě ověřeno) · S7b ✓ (keyswitch NoteOn zvýraznění).
+
+**Protokol v2:** rid framing + typované odpovědi (`CFG:`/`INFO:`/`ACK:`/`ERR:`), legacy mode per-line (starý app snapshot funguje beze změny — živě ověřeno proti github.io demu), bootstrap legacy INFO → `protocolVersion`, hash jako opaque token (počítá jen firmware, crc32/binascii na RP2040 potvrzeno). Sparse serializace (Task 0 spike: hustá 4506 B > 4080 B NVM; realistický heavy config s meta = 3268 B). Obě kompatibilitní matice živě: nová app × starý fw (degradace, F4 reconnect bez timeoutů) i starý app × nový fw. NVM v1→v2 migrace ověřena 2× (upgrade i po downgrade round-tripu).
+
+**Nálezy z HW testu (opraveno během Task 13):** sync banner CSS (solid bg, z-index nad sticky stage, `[hidden]` vs `display:flex`) · **`_requestDeviceInfoSysex` odstraněn** — SysEx write přes Chrome/Windows MIDI Services zasekává MIDI endpoint zařízení až do replug (nativní WinMM cesta problém nemá; vysvětluje historické „SysEx round-trip neprochází" z P1 i mrtvé live fadery). Prostředí: Web Serial grant neplatí přes DEV↔PROD přepnutí (jiné USB rozhraní) — uživatelů v PROD se netýká.
+
+Pytest 57/57 · finální whole-branch review (F1–F4 fixy) · **Spec:** `docs/superpowers/specs/2026-07-04-wave2-protocol-design.md` · **Plán:** `docs/superpowers/plans/2026-07-04-wave2-protocol-v2.md`
+
 ---
 
 ## 1. Executive summary

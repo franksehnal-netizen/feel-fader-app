@@ -7,7 +7,7 @@ sdílí SysEx/serial protokol a formát konfigurace. **Jakákoli změna na jedn�
 dotýká protokolu, formátu configu nebo `enc7`/`dec7`, se MUSÍ promítnout i na druhé straně.**
 
 Před úpravou kterékoli strany načti a zohledni druhou stranu:
-- **App** (`feel-fader.html`): `normalizeFwConfig`, `sysexReadConfig`, `sysexWriteConfig`, `handleSysEx`, PC handler (0xC0 → bank sync), `dec7`/`enc7`
+- **App** (`feel-fader.html`): `serialRequest`/`_readReply` (transaction manager, jediné místo čtoucí serial), `protocolVersion` (bootstrap z legacy CMD_INFO), `normalizeFwConfig` (vč. meta `m`), PC handler (0xC0 → bank sync), NoteOn handler (keyswitch live), `dec7`/`enc7`. Protokol v2 tabulka: `../feel-fader-firmware/CLAUDE.md`. POZOR: nikdy neposílat SysEx přes MIDI out (zasekává MIDI endpoint přes Windows MIDI Services — HW nález 2026-07-07).
 - **Firmware** (`code.py`): `apply_web_config`, `send_config_chunks`, serial `CMD_R`/`CMD_W`, `_parse_banks`, `dec7`/`enc7`
 
 Nikdy needituj jen jednu stranu „naslepo" — rozbiješ round-trip config sync.
