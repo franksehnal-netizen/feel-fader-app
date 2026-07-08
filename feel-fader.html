@@ -2442,7 +2442,9 @@ function connectInputs(){
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
-      _requestDeviceInfoSysex(); // request CMD_INFO via SysEx (MIDI)
+      // _requestDeviceInfoSysex() ODSTRANĚN (HW test 2026-07-07): SysEx write přes
+      // Chrome/Windows MIDI Services zasekává MIDI endpoint zařízení až do replug
+      // (nativní WinMM SysEx problém nemá). Info se stejně čte serialem (CMD_INFO).
       onDeviceConnected();  // decide: auto-enter (port granted) vs show Start (gesture needed)
     }
   } else {
