@@ -456,6 +456,11 @@ Keyswitch editor je nejsilnější nová plocha (dual slider + edge-edit + prese
 - **I8** — in-app potvrzení HID; **S8** — návrh „placeholder vs. live" vizuálního rozlišení; **S9** — tab overflow fade; **V12** — kontextová welcome copy.
 - **Onboarding pro power featury** — Help & Guide rozšířit o DEV/PROD (korektní button-hold postup, převzít ze smazaného modalu) a o macro/keyswitch mini-návody; zvážit kontextové „?" odkazy z panelů do příslušné Help sekce (discoverability Helpu, když uživatel tápe přímo u komponenty).
 - **V10 / legal** — reálné odkazy nebo redukce patičky.
+- **Frankovy poznámky z HW testu Vlny 2 (2026-07-07):**
+  - **T1** — sekce Banky vizuálně subtilnější (působí těžce).
+  - **T2** — aktivní bank tab spíš bílý, neaktivní šedé; dnešní aktivní = šedá s černým podtržením se nelíbí.
+  - **T3** — přepnutí banky: sekce se překreslí nejednotně, některé prvky probliknou rychleji → není seamless (souvisí s bank-card fade-in mechanikou; kandidát na sjednocení v rámci stavového modelu / jednotné render transition).
+  - **T4** — pohyb OBOU faderů zároveň se v appce vizuálně seká (výkon renderu při 2× ~125 Hz CC — kandidát: rAF batching místo přímého DOM zápisu per zpráva).
 **Rozsah:** ~1 týden, převážně app; žádná závislost na Vlně 2 kromě stavového modelu (těží z config_hash).
 **Riziko:** nízké technicky, střední designově (stavový model chce krátký design doc stejným procesem jako UX pass 2026-07-01).
 **Efekt:** poslední vrstva „Apple pocitu" — produkt nejen funguje synchronně, ale je vždy jasné, v jakém stavu je a co bude následovat.
