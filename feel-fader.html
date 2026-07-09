@@ -178,7 +178,12 @@ main{width:100%;}
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:translateY(0)}
 }
-.bank-card.bank-anim{animation:fadeSlideIn .22s ease-out;}   /* fade jen při změně banky, ne při každém renderu */
+@keyframes bankFade{
+  from{opacity:0}
+  to{opacity:1}
+}
+.bank-card.bank-anim,
+.bank-block-name.bank-anim{animation:bankFade .14s ease-out;}   /* T3: jednotný opacity fade hlavičky i karty, bez posunu */
 /* Smooth theme cross-fade — active only during a light/dark toggle (scoped so normal interactions stay snappy) */
 html.theming, html.theming body,
 html.theming .panel, html.theming .bank-card, html.theming .bank-section,
@@ -1502,7 +1507,7 @@ function renderPanels() {
 
   // Name row goes into bank-name-area (inside bank-block)
   document.getElementById('bank-name-area').innerHTML = `
-    <div class="bank-block-name">
+    <div class="bank-block-name${bankChanged ? ' bank-anim' : ''}">
       <div class="bank-block-name-top">
         <button class="icon-picker-trigger" onclick="openIconPicker(${bi}, 'icon')">
           ${b.icon
