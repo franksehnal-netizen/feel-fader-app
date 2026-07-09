@@ -201,8 +201,7 @@ main{width:100%;}
   from{opacity:0}
   to{opacity:1}
 }
-.bank-card.bank-anim,
-.bank-block-name.bank-anim{animation:bankFade .14s ease-out;}   /* T3: jednotný opacity fade hlavičky i karty, bez posunu */
+.bank-card.bank-anim{animation:bankFade .14s ease-out;}   /* T3: opacity fade celé karty vč. name-row */
 /* Smooth theme cross-fade — during a light/dark toggle force ONE uniform color
    transition on EVERY element (incl. pseudo-elements) so nothing races ahead on its
    own transition:all or snaps instantly. Scoped to the 500ms theming window, so normal
@@ -1032,7 +1031,7 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-name{
   display:flex;flex-direction:column;gap:4px;
-  padding:8px 14px;
+  padding:11px 14px 4px;
 }
 .bank-block-name-top{
   display:flex;align-items:center;gap:8px;
@@ -1136,11 +1135,6 @@ html.dark .val-bar{background:var(--t2);}
       </div>
       <div class="dirty-hint" id="dirty-hint" hidden><span class="dirty-dot"></span>Unsaved changes — send to device</div>
     </div>
-  </div>
-
-  <!-- BANK BLOCK: tabs + name in one card -->
-  <div class="bank-block">
-    <div id="bank-name-area"></div>
   </div>
 
   <!-- CONTROL PANELS (bank-card inside) -->
@@ -1558,9 +1552,9 @@ function renderPanels() {
   }));
   const tagSuggestions = suggestList.map(s=>`<option value="${s}">`).join('');
 
-  // Name row goes into bank-name-area (inside bank-block)
-  document.getElementById('bank-name-area').innerHTML = `
-    <div class="bank-block-name${bankChanged ? ' bank-anim' : ''}">
+  // Name row is now the first child inside .bank-card (fades with the card on bank change)
+  const bankNameRowHtml = `
+    <div class="bank-block-name">
       <div class="bank-block-name-top">
         <button class="icon-picker-trigger" onclick="openIconPicker(${bi}, 'icon')">
           ${b.icon
@@ -1586,6 +1580,7 @@ function renderPanels() {
   document.getElementById('panels-row').innerHTML = `
     <!-- Single bank card containing all sections -->
     <div class="bank-card${bankChanged ? ' bank-anim' : ''}">
+      ${bankNameRowHtml}
       <div class="bank-section" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
         ${faderSectionContent('fader1', b.fader1, bi)}
       </div>
