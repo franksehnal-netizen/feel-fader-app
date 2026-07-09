@@ -102,9 +102,10 @@ main{width:100%;}
 
 /* STAGE */
 .stage{
-  /* parkování: sticky (kompozitor, žádný jank) + scroll-driven ease dojezd níže (Frank 2026-07-03) */
+  /* parkování: sticky (kompozitor, žádný jank) + scroll-driven ease dojezd níže (Frank 2026-07-03)
+     re-tuned pro vyšší .top-sticky (header+bank-bar, H≈94px) — park musí sednout pod lištu, ne pod header (Frank 2026-07-09) */
   position:sticky;
-  top:-348px;
+  top:-456px;
   z-index:40;
   display:flex;
   flex-direction:column;
@@ -128,7 +129,7 @@ main{width:100%;}
 /* Scroll-driven dobrzdění parkování: stage zaparkuje o 60px výš a posledních ~180px scrollu
    se ease-out dosune do finální polohy. Vše na kompozitoru — plynulé, bez JS. */
 @supports (animation-timeline: scroll()) {
-  .stage{top:-408px;animation:stageSettle ease-out both;animation-timeline:scroll(root);animation-range:457px 640px;}
+  .stage{top:-516px;animation:stageSettle ease-out both;animation-timeline:scroll(root);animation-range:502px 685px;}
 }
 @keyframes stageSettle{from{transform:translateY(0)}to{transform:translateY(60px)}}
 .send-callout{
