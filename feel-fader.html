@@ -996,6 +996,12 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-tab span{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bank-tab-idx{font-family:'IBM Plex Mono',monospace;font-size:10px;opacity:.55;}
+.bank-tab-ic{font-size:13px;line-height:1;}
+.bank-block-tab .bank-tab-name{
+  display:inline-block;max-width:0;opacity:0;overflow:hidden;white-space:nowrap;
+  transition:max-width .2s ease,opacity .2s ease,margin-left .2s ease;margin-left:0;
+}
+.bank-block-tab.active .bank-tab-name{max-width:140px;opacity:1;margin-left:5px;text-overflow:ellipsis;}
 .bank-block-tabs.tabs-fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);}
 .bank-block-tab:hover{color:var(--t2);background:var(--bg-input);}
 .bank-block-tab.active{
@@ -1494,9 +1500,10 @@ function renderBankTabs() {
   cfgAutosave();
   const el = document.getElementById('bank-tabs');
   const tabsHtml = cfg.banks.map((b,i) => {
-    const iconHtml = b.icon ? `<span style="font-size:13px;line-height:1">${b.icon}</span>` : '';
+    const iconHtml = b.icon ? `<span class="bank-tab-ic">${b.icon}</span>` : '';
     const liveDot = (i === liveBank && _ffConnected) ? '<span class="bank-tab-live" title="Active on device"></span>' : '';
-    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${liveDot}${iconHtml}<span>${b.name || 'Bank '+(i+1)}</span></button>`;
+    const nm = (b.name || 'Bank '+(i+1)).replace(/"/g,'&quot;');
+    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${liveDot}${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
     ? `<button class="bank-block-tab-add" onclick="addBank()" title="Add bank">+</button>`
@@ -1506,6 +1513,20 @@ function renderBankTabs() {
   if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   _updateTabsFade(el);
   if (!el._fadeHooked) { el._fadeHooked = true; el.addEventListener('scroll', () => _updateTabsFade(el)); }
+}
+function setActiveTab(i){
+  const el=document.getElementById('bank-tabs'); if(!el)return;
+  el.querySelectorAll('.bank-block-tab').forEach((btn,idx)=>{
+    btn.classList.toggle('active', idx===i);
+    const dot=btn.querySelector('.bank-tab-live'); if(dot) dot.remove();
+    if(idx===liveBank && _ffConnected && !btn.querySelector('.bank-tab-live')){
+      const s=document.createElement('span'); s.className='bank-tab-live'; s.title='Active on device';
+      btn.insertBefore(s, btn.children[1]||null);
+    }
+  });
+  const act=el.querySelector('.bank-block-tab.active');
+  if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'nearest'});
+  _updateTabsFade(el);
 }
 function _updateTabsFade(el) {   // audit S9 — naznačit, že řada tabů přetéká
   el.classList.toggle('tabs-fade-r', el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
@@ -2050,7 +2071,7 @@ window.addEventListener('pointerdown', e => {   // klik mimo capture tlačítko 
 window.addEventListener('blur', () => cancelKeyCapture());
 
 // BANKS
-function selectBank(i) { activeBank = i; render(); }
+function selectBank(i){ activeBank=i; renderPanels(); renderUacc(); runValidation(); setActiveTab(i); if(jsonOpen)refreshJson(); }
 
 function onBankRename(bi, val) {
   cfg.banks[bi].name = val.trim() || ('Bank ' + (bi+1));
@@ -2569,7 +2590,7 @@ function onMidiMsg(event){
     if(pc < cfg.banks.length){
       liveBank   = pc;
       activeBank = pc;   // sync UI to hardware
-      renderBankTabs();
+      setActiveTab(activeBank);
           renderPanels();
       renderUacc();
     }
