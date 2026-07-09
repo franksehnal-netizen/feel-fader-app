@@ -184,12 +184,12 @@ main{width:100%;}
 }
 .bank-card.bank-anim,
 .bank-block-name.bank-anim{animation:bankFade .14s ease-out;}   /* T3: jednotný opacity fade hlavičky i karty, bez posunu */
-/* Smooth theme cross-fade — active only during a light/dark toggle (scoped so normal interactions stay snappy) */
-html.theming, html.theming body,
-html.theming .panel, html.theming .bank-card, html.theming .bank-section,
-html.theming input, html.theming .stepper, html.theming .step-btn,
-html.theming .advanced-toggle-btn, html.theming .bank-block, html.theming header{
-  transition:background-color .45s ease,color .45s ease,border-color .45s ease !important;
+/* Smooth theme cross-fade — during a light/dark toggle force ONE uniform color
+   transition on EVERY element (incl. pseudo-elements) so nothing races ahead on its
+   own transition:all or snaps instantly. Scoped to the 500ms theming window, so normal
+   interactions stay snappy. Overriding per-element transitions is the point of !important. */
+html.theming, html.theming *, html.theming *::before, html.theming *::after{
+  transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease,fill .45s ease,stroke .45s ease !important;
 }
 .bank-name-row{animation:fadeSlideIn .18s ease-out;}
 .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px;flex:1;min-width:160px;box-shadow:var(--shadow)}
