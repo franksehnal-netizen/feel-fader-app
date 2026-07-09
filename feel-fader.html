@@ -1027,7 +1027,7 @@ html.dark .bank-block{background:var(--bg-card);}
 html.dark .send-callout{background:rgba(15,15,17,.45);}
 html.dark .bank-card{background:var(--bg-card);}
 html.dark .bank-name-row{background:var(--bg-card);}
-html.dark .bank-block-tab{background:var(--bg-card);color:var(--t2);border-color:var(--border);}
+html.dark .bank-block-tab{color:var(--t2);border-color:var(--border);}  /* no background: base is transparent in both themes (shows .bank-block-tabs strip) — an explicit dark-only bg would alpha-fade off-rhythm vs siblings on theme toggle */
 html.dark .bank-block-tab.active{background:#3a3a3c;color:var(--t1);}
 html.dark .section-head{border-bottom-color:var(--border);}
 html.dark .bank-section-divider{background:var(--border);}
@@ -1044,7 +1044,8 @@ html.dark .welcome-title{color:var(--t1);}
 html.dark .welcome-sub{color:var(--t2);}
 html.dark .bank-block-tabs{background:var(--bg-card);}
 html.dark .bank-block-divider{background:var(--border);}
-html.dark .bank-block-name{background:var(--bg-card);}
+/* .bank-block-name: no background in either theme — it sits on .bank-block (var(--bg-card) both themes),
+   so a dark-only bg would alpha-fade transparent→opaque off-rhythm vs the rest of the card on theme toggle. */
 html.dark .advanced-toggle-btn{color:var(--t1);}
 html.dark .val-bar{background:var(--t2);}
 </style>
