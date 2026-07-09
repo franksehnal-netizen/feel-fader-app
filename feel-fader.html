@@ -61,7 +61,16 @@ body{background:var(--bg);color:var(--t1);font-family:'Mulish',sans-serif;font-s
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:var(--r-pill)}
 
 /* HEADER */
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);background:rgba(228,228,228,.93);backdrop-filter:blur(8px);position:sticky;top:0;z-index:50}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);background:rgba(228,228,228,.93);backdrop-filter:blur(8px)}
+.top-sticky{position:sticky;top:0;z-index:50;}
+.bank-bar{
+  background:rgba(228,228,228,.93);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);
+  padding:6px 12px;
+}
+html.dark .bank-bar{background:rgba(15,15,17,.92);}
+.bank-bar .bank-block-tabs{background:transparent;padding:0;}
 .h-left{display:flex;align-items:center;gap:12px}
 .h-title{font-size:13px;font-weight:700;letter-spacing:-.01em}
 .h-ver{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
@@ -1070,6 +1079,7 @@ html.dark .val-bar{background:var(--t2);}
 </head>
 <body>
 
+<div class="top-sticky">
 <header>
   <div class="h-left">
     <span class="h-title">Feel Fader</span>
@@ -1089,6 +1099,8 @@ html.dark .val-bar{background:var(--t2);}
 
   </div>
 </header>
+<div class="bank-bar" id="bank-bar"><div class="bank-block-tabs" id="bank-tabs"></div></div>
+</div>
 
 <main>
 <div class="center-col">
@@ -1122,8 +1134,6 @@ html.dark .val-bar{background:var(--t2);}
 
   <!-- BANK BLOCK: tabs + name in one card -->
   <div class="bank-block">
-    <div class="bank-block-tabs" id="bank-tabs"></div>
-    <div class="bank-block-divider"></div>
     <div id="bank-name-area"></div>
   </div>
 
