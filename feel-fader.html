@@ -109,7 +109,7 @@ main{width:100%;}
 .fader-tracks{position:absolute;top:0;left:0;right:0;bottom:0}
 .fader-track{position:absolute;cursor:grab;user-select:none}
 .fader-track:active{cursor:grabbing}
-.fader-thumb{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;transition:top .06s linear}
+.fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);pointer-events:none;transition:transform .06s linear;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .fader-thumb img{display:block;width:100%;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}
 
 
@@ -2381,7 +2381,9 @@ function pF(tid,thid,v){
     if(!tr)return;
     travel=tr.offsetHeight-(th.offsetHeight||24);
   }
-  th.style.top=Math.round((1-v/127)*travel)+'px';
+  // move via transform (own compositor layer) not top: iOS WebKit smears the img's
+  // drop-shadow into ghost trails when a filtered element is animated via top (non-composited)
+  th.style.transform='translate3d(-50%,'+Math.round((1-v/127)*travel)+'px,0)';
 }
 function drag(e,k){e.preventDefault();dragging=k;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',stopDrag);}
 function dragT(e,k){dragging=k;document.addEventListener('touchmove',onDragT,{passive:false});document.addEventListener('touchend',stopDrag);}
