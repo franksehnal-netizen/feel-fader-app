@@ -1425,6 +1425,9 @@ let cfg        = _savedCfg || JSON.parse(JSON.stringify(DEFAULT_CFG));
 let activeBank = 0;
 let liveBank   = 0;
 let liveValues = { f1:64, f2:64 };
+let _faderTravel   = 0;                 // T4: cachovaná dráha thumbu (px) = trackH - thumbH
+let _faderDirty    = { l:false, r:false };
+let _faderRafPending = false;
 let encIndex   = 0;
 let encLiveVal = null; // null = not yet received from device
 let ksLiveNote = null; // poslední NoteOn z ks_channel (S7b)
@@ -2347,6 +2350,7 @@ function layoutFaders(){
   stT('track-l',Math.round(FLX*W-tw/2),tT,tw,tH);
   stT('track-r',Math.round(FRX*W-tw/2),tT,tw,tH);
   stTh('thumb-l',tw,th);stTh('thumb-r',tw,th);
+  _faderTravel = tH - th;   // T4: dráha thumbu se mění jen s layoutem, ne per CC zpráva
   // hover zóny (roller + macro button) — px vůči obrázku; % by braly výšku celého device-wrap vč. send tlačítka
   stT('zone-roller',Math.round(0.37*W),Math.round(0.865*H),Math.round(0.26*W),Math.round(0.115*H));
   // macro = půlkruh přiléhající k pravé hraně těla (~0.955 W), obloukem ven; končí nad spodním zaoblením rohu
@@ -2356,10 +2360,27 @@ function layoutFaders(){
 function stT(id,l,t,w,h){const e=document.getElementById(id);e.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px`;}
 function stTh(id,w,h){const e=document.getElementById(id);e.style.width=w+'px';e.style.height=h+'px';}
 function positionThumbs(){pF('track-l','thumb-l',liveValues.f1);pF('track-r','thumb-r',liveValues.f2);}
+function scheduleFaderFrame(){
+  if(_faderRafPending)return;
+  _faderRafPending=true;
+  requestAnimationFrame(flushFaderFrame);
+}
+function flushFaderFrame(){
+  _faderRafPending=false;
+  if(_faderDirty.l){ _faderDirty.l=false; pF('track-l','thumb-l',liveValues.f1); setTxt('f1-val',liveValues.f1); liveOn('f1-val'); }
+  if(_faderDirty.r){ _faderDirty.r=false; pF('track-r','thumb-r',liveValues.f2); setTxt('f2-val',liveValues.f2); liveOn('f2-val'); }
+}
 function pF(tid,thid,v){
-  const tr=document.getElementById(tid),th=document.getElementById(thid);
-  if(!tr||!th)return;
-  th.style.top=Math.round((1-v/127)*(tr.offsetHeight-(th.offsetHeight||24)))+'px';
+  const th=document.getElementById(thid);
+  if(!th)return;
+  // T4: použij cachovanou dráhu; fallback na měření jen když ještě nebyl layout
+  let travel=_faderTravel;
+  if(travel<=0){
+    const tr=document.getElementById(tid);
+    if(!tr)return;
+    travel=tr.offsetHeight-(th.offsetHeight||24);
+  }
+  th.style.top=Math.round((1-v/127)*travel)+'px';
 }
 function drag(e,k){e.preventDefault();dragging=k;document.addEventListener('mousemove',onDrag);document.addEventListener('mouseup',stopDrag);}
 function dragT(e,k){dragging=k;document.addEventListener('touchmove',onDragT,{passive:false});document.addEventListener('touchend',stopDrag);}
@@ -2483,10 +2504,10 @@ function onMidiMsg(event){
   if(type===0xB0){
     const cc=data[1],val=data[2];
     if(cc===bank.fader1.cc && ch===bank.fader1.channel){
-      liveValues.f1=val;pF('track-l','thumb-l',val);setTxt('f1-val',val);liveOn('f1-val');setBar('f1-bar',val);
+      liveValues.f1=val;_faderDirty.l=true;scheduleFaderFrame();
     }
     if(cc===bank.fader2.cc && ch===bank.fader2.channel){
-      liveValues.f2=val;pF('track-r','thumb-r',val);setTxt('f2-val',val);liveOn('f2-val');setBar('f2-bar',val);
+      liveValues.f2=val;_faderDirty.r=true;scheduleFaderFrame();
     }
     if(cc===bank.encoder.cc && ch===bank.encoder.channel){
       encLiveVal = val;
