@@ -659,6 +659,11 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 .dark-toggle svg{transition:transform .3s}
 html.dark .dark-toggle svg{transform:rotate(180deg)}
 
+/* ── CONTROL MODE TOGGLE ── */
+.ctrl-mode-toggle{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border-s);border-radius:var(--r-sm);padding:4px 10px;cursor:pointer;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t2);transition:all .14s;}
+.ctrl-mode-toggle.on{background:var(--red);border-color:var(--red);color:#fff;}
+.ctrl-mode-toggle:hover{color:var(--t1);}
+
 /* ── WELCOME SCREEN ── */
 #welcome-screen{
   position:fixed;
@@ -1086,6 +1091,7 @@ html.dark .val-bar{background:var(--t2);}
         <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
       </svg>
     </button>
+    <button class="ctrl-mode-toggle" id="ctrl-mode-toggle" onclick="toggleControlMode()" hidden>Control mode: off</button>
 
   </div>
 </header>
@@ -1453,6 +1459,27 @@ let _welcomeStartTimer = null;  // fallback timer to reveal Start if device isn'
 let jsonOpen   = false;
 let midiAccess = null;
 let _ffConnected = false;   // true once Feel Fader input is live
+let controlMode = false;
+function hwPresent(){ return _ffConnected || !!_serialPort; }
+function refreshControlToggle(){
+  const btn=document.getElementById('ctrl-mode-toggle'); if(!btn)return;
+  btn.hidden = hwPresent();               // nabízí se jen bez HW
+  if(hwPresent() && controlMode) setControlMode(false);   // HW převzalo → auto-off
+  btn.classList.toggle('on', controlMode);
+  btn.textContent = 'Control mode: ' + (controlMode ? 'on' : 'off');
+}
+function setControlMode(on){
+  if(on && hwPresent()){ toast('i','Odpoj Feel Fader pro control mód.'); return; }
+  if(on && !ensureControlOutput()){ return; }   // C2: vybrat port; když se nepovede, nezapínat
+  controlMode = !!on;
+  document.body.classList.toggle('control-mode', controlMode);   // C4 vizuál
+  refreshControlToggle(); renderControlIndicator();              // C4
+}
+function toggleControlMode(){ setControlMode(!controlMode); }
+// TEMP C1 — real impl in C2/C4. Guarded so C2/C4's `function` declarations (which hoist)
+// safely override these once implemented; remove this block when C2 and C4 land.
+if(typeof ensureControlOutput!=='function'){ window.ensureControlOutput=()=>true; }
+if(typeof renderControlIndicator!=='function'){ window.renderControlIndicator=()=>{}; }
 
 // ═══════════════════════════════════════════════════════════
 // RENDER
@@ -2498,7 +2525,9 @@ function connectInputs(){
     // NOTE: do NOT call updateStatus() here — when loaded=false it overwrites the
     // 'connected' banner with 'status.disconnected', making it look like no device.
     if (!_ffConnected) {
+      if(controlMode) toast('i','Feel Fader připojen — přepínám na Display.');
       _ffConnected = true;
+      refreshControlToggle();
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
       // _requestDeviceInfoSysex() ODSTRANĚN (HW test 2026-07-07): SysEx write přes
@@ -2508,6 +2537,7 @@ function connectInputs(){
     }
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
+    refreshControlToggle();
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {
       showWelcome();
@@ -2821,6 +2851,7 @@ async function _serialEnsureOpen() {
   const port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2E8A }] });
   await port.open({ baudRate: 115200 });
   _serialPort = port;
+  refreshControlToggle();
 }
 
 // Wave 2 — jediné místo, které čte serial. Jedna transakce naráz; v2 odpovědi
@@ -3622,6 +3653,7 @@ window.addEventListener('load',()=>{
   }
   setTimeout(positionThumbs, 80);
   initMidi();
+  refreshControlToggle();
   showWelcome();
 });
 window.addEventListener('resize',()=>{layoutFaders();positionThumbs();});</script>
