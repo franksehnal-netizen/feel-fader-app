@@ -6,6 +6,8 @@
 
 Rozhodnutí z brainstormingu: **varianta A2** — fader pozice se přenesou v **serial CMD_INFO odpovědi** (JSON info), kterou appka čte při každém connectu. Ne přes MIDI (žádný timing/wedge risk). Scope: **jen fadery**.
 
+**Codex second opinion (2026-07-10): APPROVE WITH CHANGES** — A2 potvrzeno jako lepší než A1 (A1 by posílal reálné CC do DAWu jako side-effect + timing/permission). Jeho úpravy zapracovány níže: sdílený `applyInfoFaders` helper s defenzivní validací, pořadí vůči `render()`, `positionThumbs` best-effort + follow-up, `faders` do obou CMD_INFO cest.
+
 ## Cíl
 
 Po připojení appka rovnou zobrazí **reálné pozice obou faderů** (ne default 64), takže první přepnutí banky už neposkočí a stav sedí od začátku.
@@ -28,24 +30,27 @@ Firmware přidá do **CMD_INFO** odpovědi (JSON info, kterou appka čte přes s
   - Hodnoty: čerstvý read přes `read_fader_7bit_inverted_filtered(fader1_adc)` / `(fader2_adc)` (ř.238) — zaručeně aktuální; alternativně `fader1_obj.prev_out` / `fader2_obj.prev_out` (poslední odeslaná). Doporučeno **čerstvý read** (nezávislé na tom, zda hlavní smyčka už proběhla).
   - Kanál/CC se do info **nedává** — appka pozici mapuje na aktivní banku sama (hodnota 0–127 je pozice faderu, nezávislá na CC).
 - Nemění config, config_hash, ani schema_version (aditivní info pole).
+- **Codex ověřil init pořadí:** ADC init (ř.196) a fader objekty (ř.551) jsou před hlavní smyčkou; CMD_INFO se servíruje až ve smyčce → fresh read je platný. `faders` přidat do **obou** CMD_INFO cest (serial ~ř.603 i `send_info_sysex` ~ř.328) kvůli konzistenci. `config_hash` je nad config stavem (`ff_config.py:292`), ne nad `build_info_dict` → bez dopadu.
 
 ### App (`feel-fader-app` — `feel-fader.html`)
 
-- **`serialReadInfo()`** (~ř.2878) už parsuje `info` JSON a plní `DEVICE_INFO.*`. Přidat: pokud `Array.isArray(info.faders) && info.faders.length >= 2`:
-  - `liveValues.f1 = clamp0..127(info.faders[0])`, `liveValues.f2 = clamp0..127(info.faders[1])`.
-  - Napozicovat palce z `liveValues` (`positionThumbs()` — pF čte cache `_faderTravel`, fallback na měření když layout ještě neproběhl) a přepsat hodnoty (`setTxt('f1-val',…)`, `setTxt('f2-val',…)`).
-  - Odznačit placeholder stav (`liveOn('f1-val')`, `liveOn('f2-val')`) — S8: reálná data ze zařízení = plná sytost, ne default.
-- Když `info.faders` chybí (starý FW) → nic se nemění (dnešní chování, default 64).
+- **Sdílený helper `applyInfoFaders(info)`** (Codex review) — jedno místo, které se zavolá z `serialReadInfo()` (~ř.2878; pro konzistenci lze i z SysEx CMD_INFO parseru ~ř.2679, i když connect ho už nepoužívá):
+  - **Defenzivní validace:** aplikovat jen když `Array.isArray(info.faders) && info.faders.length >= 2`; každou hodnotu `Number(...)`, odmítnout když není `isFinite`; pak `clamp(round(v), 0, 127)`.
+  - `liveValues.f1 = v1`, `liveValues.f2 = v2` (uložit stav — to je to podstatné, persistuje).
+  - `liveOn('f1-val')`, `liveOn('f2-val')` — S8: reálná data = plná sytost, ne default placeholder.
+- **Pořadí vůči `render()` (Codex):** `serialReadInfo()` po aktualizaci info volá `render()`, který **překresluje value spany** (`f1-val`/`f2-val`). Proto: nastavit `liveValues` **před** `render()`, a `setTxt('f1-val',…)`/`setTxt('f2-val',…)` + `positionThumbs()`/`liveOn()` udělat **po** `render()` (jinak render přepíše texty). Konkrétní sekvenci ověřit vůči tomu, kde přesně `serialReadInfo` volá render.
+- **`positionThumbs()` = best-effort (Codex):** geometrie (`_faderTravel` z `layoutFaders`, ř.~2375) nemusí být při connectu hotová; `pF` má fallback měření (`_faderTravel<=0`), ale layout může být ještě 0. Řešení: `liveValues` je zdroj pravdy (persistuje) → napozicovat teď best-effort **a** naplánovat follow-up (`requestAnimationFrame(positionThumbs)` nebo se spolehnout na existující `onImgLoad()` + `setTimeout(positionThumbs, 80)`, ř.~3606).
+- **Nekoliduje s `onMidiMsg`/T4 (Codex):** je to jen počáteční stav; `onMidiMsg` píše do stejného `liveValues` a plánuje frame jen na reálné CC. Není třeba nastavovat `_faderDirty` (leda bys chtěl znovupoužít rAF text/liveOn cestu).
+- Když `info.faders` chybí (starý FW) → helper nic neudělá (dnešní chování, default 64).
 - Aplikuje se ve **všech** connect cestách, protože `serialReadInfo` se volá v každé z nich (bootstrap na ř.~2899, 2957).
-- Pozor na timing: pokud se `serialReadInfo` zavolá dřív, než je fader-tracks geometrie hotová, `liveValues` se přesto nastaví a palce se dopozicují při nejbližším `positionThumbs`/layoutu (hodnota persistuje). `positionThumbs` volané zde je best-effort.
 
 ## Ověření
 
 - **HW test (Frank, obě strany nasazené):**
   1. Fyzicky nastav fadery na nedefaultní pozice → připoj zařízení → on-screen fadery **hned sedí** na reálných pozicích (ne 64).
   2. Stiskni HW tlačítko (přepnutí banky) → fadery se **viditelně nepohnou** (už synchronizované). Levý ADC jitter ±1 je OK.
-- **Zpětná kompatibilita:** nová appka + starý firmware (bez `faders`) → fallback na 64, žádná chyba. (Ověřit: buď starým FW, nebo dočasně vypnout přidání pole.)
-- **App headless:** stub serial info s `faders:[100,20]` → `serialReadInfo` nastaví `liveValues` a napozicuje palce; bez `faders` → beze změny; žádné page errors.
+- **Zpětná kompatibilita (4 kombinace, Codex ověřil):** starý FW+starý app → beze změny; starý FW+nový app → `faders` chybí, fallback na 64; nový FW+starý app → app extra klíč ignoruje; nový FW+nový app → sync. (Ověřit: buď starým FW, nebo dočasně vypnout přidání pole.)
+- **App headless:** stub serial info s `faders:[100,20]` → `applyInfoFaders` nastaví `liveValues` a napozicuje palce; hodnoty `f1-val`/`f2-val` **po** `render()` ukazují nové hodnoty (ne přepsané renderem); nevalidní `faders` (NaN, kratší pole) → neaplikuje se; bez `faders` → beze změny; žádné page errors.
 - **Firmware:** `build_info_dict(..., faders=[100,20])` vrací dict s `"faders":[100,20]`; bez parametru pole chybí. Serial parse test (`tests/test_wave2_serial_parse.py` vzor).
 
 ## Mimo rozsah (v1)
