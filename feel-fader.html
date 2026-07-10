@@ -61,16 +61,17 @@ body{background:var(--bg);color:var(--t1);font-family:'Mulish',sans-serif;font-s
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:var(--r-pill)}
 
 /* HEADER */
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);background:rgba(228,228,228,.93);backdrop-filter:blur(8px)}
+header{display:flex;align-items:center;justify-content:space-between;padding:9px 28px;background:rgba(228,228,228,.93);backdrop-filter:blur(8px)}
 .top-sticky{position:sticky;top:0;z-index:50;}
 .bank-bar{
   background:rgba(228,228,228,.93);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   border-bottom:1px solid var(--border);
-  padding:6px 12px;
+  padding:3px 12px;
 }
 html.dark .bank-bar{background:rgba(15,15,17,.92);}
 .bank-bar .bank-block-tabs{background:transparent;padding:0;}
+html.dark .bank-bar .bank-block-tabs{background:transparent;}
 .h-left{display:flex;align-items:center;gap:12px}
 .h-title{font-size:13px;font-weight:700;letter-spacing:-.01em}
 .h-ver{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
@@ -972,7 +973,7 @@ button:focus-visible{outline-offset:3px;}
 .bank-block-tabs::-webkit-scrollbar{display:none;}
 .bank-block-tab{
   flex:0 0 auto;
-  padding:6px 13px;
+  padding:5px 13px;
   border-radius:var(--r-sm);
   border:none;
   background:transparent;
