@@ -2527,11 +2527,11 @@ function connectInputs(){
 function getOut(){
   if(!midiAccess) return null;
   let o = null;
-  // Prefer Feel Fader output, fall back to first available
+  // Only the Feel Fader output — never fall back to an arbitrary MIDI port
+  // (SysEx write to a non-Feel-Fader device is meaningless and unsafe).
   midiAccess.outputs.forEach(x => {
     if (isFeelFader(x.name)) o = x;
   });
-  if (!o) midiAccess.outputs.forEach(x => { if (!o) o = x; });
   return o;
 }
 
@@ -2636,24 +2636,8 @@ let protocolVersion = 1;        // 1 = legacy, 2 = rid framing; nastaví bootstr
 let _ridCounter = 0;
 let _txnChain = Promise.resolve();   // serializace transakcí — jedna naráz
 const LS_HASH_KEY = 'ff-last-hash';  // poslední hash potvrzený zařízením (ACK/load)
-function _requestDeviceInfoSysex(){
-  const out=getOut();
-  if(out) try{ out.send([0xF0,MFR,DEV_ID,CMD_INFO,0xF7]); }catch(e){}
-}
 function enc7(bytes){const o=[];for(const b of bytes){o.push((b>>7)&1);o.push(b&0x7F);}return o;}
 function dec7(data){const o=[];for(let i=0;i+1<data.length;i+=2)o.push((data[i]<<7)|data[i+1]);return o;}
-
-function sendSysEx(){
-  const out=getOut();if(!out){toast('e', t('toast.no_midi_out'));return;}
-  const bytes=Array.from(new TextEncoder().encode(JSON.stringify(cfg)));
-  try{
-    out.send([0xF0,MFR,DEV_ID,CMD_W,...enc7(bytes),0xF7]);
-    dirty=false;reflectDirty();toast('s',t('toast.config_sent'));
-  }catch(e){
-    toast('i',t('toast.sysex_fail'));
-    dlJson(cfg,'presets.json');dirty=false;reflectDirty();
-  }
-}
 
 function normalizeFwConfig(p) {
   if (!p.banks) return p;
@@ -2699,11 +2683,6 @@ function handleSysEx(data){
       setBanner('connected',t('midi.synced'));
       updateStatus();
       toast('s',t('toast.config_loaded'));
-      // Request device info (serial, mode) for theme preference
-      setTimeout(() => {
-        const out = getOut();
-        if (out) try { out.send([0xF0, MFR, DEV_ID, CMD_INFO, 0xF7]); } catch(e) {}
-      }, 200);
     }catch(e){
       toast('e', t('toast.config_error') + ': ' + e.message);
       setBanner('connected', '');
@@ -2754,38 +2733,6 @@ function handleSysEx(data){
     const pw = _pendingWrite; _pendingWrite = null;
     pw.reject(new Error('Device rejected config'));
   }
-}
-
-async function sysexReadConfig(){
-  const out=getOut();
-  if(!out) throw new Error('No MIDI output — connect Feel Fader first');
-  return new Promise((resolve,reject)=>{
-    _chunkBuf=null;
-    _pendingRead={
-      resolve,reject,
-      timer:setTimeout(()=>{
-        _pendingRead=null;_chunkBuf=null;
-        reject(new Error('Timeout — no response from device'));
-      },5000)
-    };
-    out.send([0xF0,MFR,DEV_ID,CMD_R,0xF7]);
-  });
-}
-
-async function sysexWriteConfig(cfg){
-  const out=getOut();
-  if(!out) throw new Error('No MIDI output — connect Feel Fader first');
-  return new Promise((resolve,reject)=>{
-    _pendingWrite={
-      resolve,reject,
-      timer:setTimeout(()=>{
-        _pendingWrite=null;
-        reject(new Error('Timeout — no ACK from device'));
-      },5000)
-    };
-    const bytes=Array.from(new TextEncoder().encode(JSON.stringify(cfg)));
-    out.send([0xF0,MFR,DEV_ID,CMD_W,...enc7(bytes),0xF7]);
-  });
 }
 
 // ─── Serial helpers (load from device) ───────────────────────────────────────
