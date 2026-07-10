@@ -125,7 +125,6 @@ main{width:100%;}
 /* Control mode: faders are a live controller, not a read-only mirror — subtle
    red accent glow on the thumbs (à la S8), same accent color as the header
    toggle's "on" state. Kept gentle per spec. */
-body.control-mode .fader-track{cursor:grab}
 body.control-mode .fader-thumb img{filter:drop-shadow(0 3px 6px rgba(0,0,0,.45)) drop-shadow(0 0 6px rgba(232,80,58,.5)) saturate(1.12)}
 
 
@@ -2584,6 +2583,7 @@ function scheduleControlSend(k){
 }
 function flushControlSend(){
   _ctrlRaf=false;
+  if(!controlMode) return;
   const out=getControlOutput(); if(!out) return;
   const b=cfg.banks[activeBank];
   if(_ctrlOutDirty.l){ _ctrlOutDirty.l=false; out.send([0xB0|(b.fader1.channel&0x0F), b.fader1.cc&0x7F, liveValues.f1&0x7F]); }
