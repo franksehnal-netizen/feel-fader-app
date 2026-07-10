@@ -2609,7 +2609,14 @@ function pickControlOutput(outs){
     _ctrlPortResolve = resolve;
     _ctrlPortOutputs = outs;
     const list=document.getElementById('ctrl-port-list');
-    list.innerHTML = outs.map((o,i)=>`<button class="ctrl-port-row" onclick="selectControlOutput(${i})">${o.name}</button>`).join('');
+    list.textContent = '';
+    outs.forEach((o,i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'ctrl-port-row';
+      btn.textContent = o.name;
+      btn.onclick = ()=>selectControlOutput(i);
+      list.appendChild(btn);
+    });
     document.getElementById('ctrl-port-picker').style.display = 'flex';
   });
 }
