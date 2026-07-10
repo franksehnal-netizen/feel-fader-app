@@ -1476,9 +1476,9 @@ function setControlMode(on){
   refreshControlToggle(); renderControlIndicator();              // C4
 }
 function toggleControlMode(){ setControlMode(!controlMode); }
-// TEMP C1 — real impl in C2/C4. Guarded so C2/C4's `function` declarations (which hoist)
-// safely override these once implemented; remove this block when C2 and C4 land.
-if(typeof ensureControlOutput!=='function'){ window.ensureControlOutput=()=>true; }
+// TEMP C1 — real impl in C4. Guarded so C4's `function` declaration (which hoists)
+// safely overrides this once implemented; remove this line when C4 lands.
+// (ensureControlOutput's TEMP stub was removed in C2 — real impl lives near isFeelFader.)
 if(typeof renderControlIndicator!=='function'){ window.renderControlIndicator=()=>{}; }
 
 // ═══════════════════════════════════════════════════════════
@@ -2499,6 +2499,43 @@ const DEVICE_NAME = 'Feel Fader';
 function isFeelFader(portName) {
   const n = portName.toLowerCase();
   return n.includes('feel fader') || n.includes('circuitpython audio');
+}
+
+// ── Control mode: output port selection (C2) ──────────────────────
+// Sends CC only, never SysEx (2026-07-07 endpoint-wedge incident) — this
+// module only picks/opens the port, sending happens in C3.
+const LS_CTRL_OUT = 'ff-ctrl-out';
+function controlOutputs(){   // MIDI výstupy mimo samotný Feel Fader
+  const outs=[]; if(midiAccess) midiAccess.outputs.forEach(o=>{ if(!isFeelFader(o.name)) outs.push(o); }); return outs;
+}
+function getControlOutput(){
+  const id=localStorage.getItem(LS_CTRL_OUT); if(!id||!midiAccess) return null;
+  const o=midiAccess.outputs.get(id); return (o && !isFeelFader(o.name)) ? o : null;
+}
+function ensureControlOutput(){
+  let o=getControlOutput(); if(o){ o.open().catch(()=>{}); return true; }
+  const outs=controlOutputs();
+  if(outs.length===0){ toast('e','Žádný MIDI výstup. Zapni virtuální port (loopMIDI/IAC) a zkus znovu.'); return false; }
+  return pickControlOutput(outs);
+}
+// v1 picker: 1 výstup → auto-select (žádný prompt). Víc výstupů → jednoduchý
+// synchronní window.prompt() se seznamem (setControlMode/C1 čeká bool návrat,
+// ne Promise — custom async modal by to muselo přestavět; prompt() drží kontrakt jednoduchý).
+function pickControlOutput(outs){
+  let chosen;
+  if(outs.length===1){
+    chosen=outs[0];
+  } else {
+    const list=outs.map((o,i)=>`${i+1}. ${o.name}`).join('\n');
+    const sel=window.prompt('Vyber MIDI výstup pro control mód:\n'+list, '1');
+    if(sel===null) return false;   // zrušeno
+    const idx=parseInt(sel,10)-1;
+    if(!(idx>=0 && idx<outs.length)){ toast('e','Neplatná volba.'); return false; }
+    chosen=outs[idx];
+  }
+  localStorage.setItem(LS_CTRL_OUT, chosen.id);
+  chosen.open().catch(()=>{});
+  return true;
 }
 
 function connectInputs(){
