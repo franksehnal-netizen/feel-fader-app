@@ -122,6 +122,12 @@ main{width:100%;}
 .fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);pointer-events:none;transition:transform .06s linear;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .fader-thumb img{display:block;width:100%;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}
 
+/* Control mode: faders are a live controller, not a read-only mirror — subtle
+   red accent glow on the thumbs (à la S8), same accent color as the header
+   toggle's "on" state. Kept gentle per spec. */
+body.control-mode .fader-track{cursor:grab}
+body.control-mode .fader-thumb img{filter:drop-shadow(0 3px 6px rgba(0,0,0,.45)) drop-shadow(0 0 6px rgba(232,80,58,.5)) saturate(1.12)}
+
 
 
 
@@ -664,6 +670,22 @@ html.dark .dark-toggle svg{transform:rotate(180deg)}
 .ctrl-mode-toggle.on{background:var(--red);border-color:var(--red);color:#fff;}
 .ctrl-mode-toggle:hover{color:var(--t1);}
 
+/* Persistent "CONTROL MODE → <port>" badge, hung off the sticky header so it
+   stays visible while scrolling. Absolutely positioned (no flow height) —
+   appearing/disappearing never shifts header/bank-bar/stage layout. */
+.control-indicator{
+  position:absolute;left:50%;top:100%;
+  transform:translate(-50%,8px);
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--red);color:#fff;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.03em;
+  padding:4px 12px;border-radius:var(--r-pill);
+  box-shadow:0 4px 14px rgba(232,80,58,.35);
+  white-space:nowrap;pointer-events:none;z-index:51;
+}
+.control-indicator[hidden]{display:none}
+.control-indicator .ci-dot{width:5px;height:5px;border-radius:50%;background:#fff;flex-shrink:0;animation:blink 1.4s ease-in-out infinite}
+
 /* ── WELCOME SCREEN ── */
 #welcome-screen{
   position:fixed;
@@ -1096,6 +1118,7 @@ html.dark .val-bar{background:var(--t2);}
   </div>
 </header>
 <div class="bank-bar" id="bank-bar"><div class="bank-block-tabs" id="bank-tabs"></div></div>
+<div class="control-indicator" id="control-indicator" hidden><span class="ci-dot"></span><span id="control-indicator-text"></span></div>
 </div>
 
 <main>
@@ -1476,10 +1499,20 @@ function setControlMode(on){
   refreshControlToggle(); renderControlIndicator();              // C4
 }
 function toggleControlMode(){ setControlMode(!controlMode); }
-// TEMP C1 — real impl in C4. Guarded so C4's `function` declaration (which hoists)
-// safely overrides this once implemented; remove this line when C4 lands.
-// (ensureControlOutput's TEMP stub was removed in C2 — real impl lives near isFeelFader.)
-if(typeof renderControlIndicator!=='function'){ window.renderControlIndicator=()=>{}; }
+// Control-mode indicator (C4) — persistent "CONTROL MODE → <port>" badge, hung
+// off the sticky header so it stays visible while scrolling. Pure visual;
+// no effect on CC sending (that's scheduleControlSend/mF, C3).
+function renderControlIndicator(){
+  const el = document.getElementById('control-indicator');
+  if(!el) return;
+  el.hidden = !controlMode;
+  if(controlMode){
+    const out = getControlOutput();
+    const name = (out && out.name) || '—';
+    const txt = document.getElementById('control-indicator-text');
+    if(txt) txt.textContent = 'CONTROL MODE → ' + name;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // RENDER
