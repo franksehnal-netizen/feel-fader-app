@@ -2390,6 +2390,16 @@ function layoutFaders(){
 function stT(id,l,t,w,h){const e=document.getElementById(id);e.style.cssText=`left:${l}px;top:${t}px;width:${w}px;height:${h}px`;}
 function stTh(id,w,h){const e=document.getElementById(id);e.style.width=w+'px';e.style.height=h+'px';}
 function positionThumbs(){pF('track-l','thumb-l',liveValues.f1);pF('track-r','thumb-r',liveValues.f2);}
+// Sync-on-connect (A1): apply fader positions reported by firmware in CMD_INFO (info.faders=[v1,v2], 0-127).
+// Sets liveValues only (state) — caller positions DOM after render(). Defensive: absent/invalid -> no-op, returns false.
+function applyInfoFaders(info){
+  if(!info || !Array.isArray(info.faders) || info.faders.length < 2) return false;
+  const a = Number(info.faders[0]), b = Number(info.faders[1]);
+  if(!isFinite(a) || !isFinite(b)) return false;
+  const clamp7 = v => Math.max(0, Math.min(127, Math.round(v)));
+  liveValues.f1 = clamp7(a); liveValues.f2 = clamp7(b);
+  return true;
+}
 function scheduleFaderFrame(){
   if(_faderRafPending)return;
   _faderRafPending=true;
@@ -2888,8 +2898,15 @@ async function serialReadInfo() {
   DEVICE_INFO.config_hash   = info.config_hash   || null;
   DEVICE_INFO.config_source = info.config_source || null;
   try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
+  const _faders = applyInfoFaders(info);   // set liveValues BEFORE render (render recreates value spans)
   updateDeviceInfo(); updateHidToggle();
   render();   // re-render roller selector — track_nav gating depends on hid_enabled
+  if (_faders) {
+    positionThumbs();                       // thumbs live in the (persistent) stage, not rebuilt by render
+    setTxt('f1-val', liveValues.f1); setTxt('f2-val', liveValues.f2);
+    liveOn('f1-val'); liveOn('f2-val');
+    requestAnimationFrame(positionThumbs);  // best-effort follow-up if geometry wasn't ready yet
+  }
   return info;
 }
 
