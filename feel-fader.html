@@ -869,6 +869,28 @@ html.dark #welcome-device-img{
 html.dark .lib-badge-sm{background:#555}
 .icon-picker-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
 
+/* ── CONTROL MODE: OUTPUT PORT PICKER (C2) ── */
+.ctrl-port-overlay{
+  position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  animation:fi .16s ease;
+}
+.ctrl-port-modal{
+  background:var(--bg-card);border:1px solid var(--border-s);
+  border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.25);
+  padding:20px;width:340px;max-height:82vh;overflow-y:auto;
+}
+.ctrl-port-title{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:16px}
+.ctrl-port-list{display:flex;flex-direction:column;gap:8px}
+.ctrl-port-row{
+  display:block;width:100%;text-align:left;
+  padding:10px 12px;border-radius:var(--r);border:1px solid var(--border);
+  background:var(--bg-input);color:var(--t1);cursor:pointer;transition:all .13s;
+  font-size:13px;font-family:inherit;
+}
+.ctrl-port-row:hover{border-color:var(--border-s);background:var(--bg)}
+.ctrl-port-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+
 
 /* ── BANK CARD ── */
 .bank-card{
@@ -1342,6 +1364,17 @@ html.dark .val-bar{background:var(--t2);}
   </div>
 </div>
 
+<!-- CONTROL MODE: OUTPUT PORT PICKER (C2) -->
+<div class="ctrl-port-overlay" id="ctrl-port-picker" style="display:none" onclick="if(event.target===this)closeControlPortPicker(false)">
+  <div class="ctrl-port-modal">
+    <div class="ctrl-port-title">Select MIDI output</div>
+    <div class="ctrl-port-list" id="ctrl-port-list"></div>
+    <div class="ctrl-port-foot">
+      <button class="btn btn-ghost" onclick="closeControlPortPicker(false)">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 // NEW CONFIG STRUCTURE — per-element MIDI channel
@@ -1486,18 +1519,27 @@ function hwPresent(){ return _ffConnected || !!_serialPort; }
 function refreshControlToggle(){
   const btn=document.getElementById('ctrl-mode-toggle'); if(!btn)return;
   btn.hidden = hwPresent();               // nabízí se jen bez HW
-  if(hwPresent() && controlMode) setControlMode(false);   // HW převzalo → auto-off
+  if(hwPresent() && controlMode) setControlMode(false);   // HW převzalo → auto-off (sync path, no await needed)
   btn.classList.toggle('on', controlMode);
   btn.textContent = 'Control mode: ' + (controlMode ? 'on' : 'off');
 }
-function setControlMode(on){
-  if(on && hwPresent()){ toast('i','Odpoj Feel Fader pro control mód.'); return; }
-  if(on && !ensureControlOutput()){ return; }   // C2: vybrat port; když se nepovede, nezapínat
-  controlMode = !!on;
-  document.body.classList.toggle('control-mode', controlMode);   // C4 vizuál
-  refreshControlToggle(); renderControlIndicator();              // C4
+// setControlMode: OFF path stays synchronous (no port needed, no await inside)
+// so refreshControlToggle's auto-off call above works without awaiting a promise.
+// ON path is async because picking a port may show a modal (pickControlOutput).
+async function setControlMode(on){
+  if(!on){
+    controlMode = false;
+    document.body.classList.toggle('control-mode', false);   // C4 vizuál
+    refreshControlToggle(); renderControlIndicator();          // C4
+    return;
+  }
+  if(hwPresent()){ toast('i','Odpoj Feel Fader pro control mód.'); return; }
+  if(!(await ensureControlOutput())) return;   // C2: vybrat port; když se nepovede, nezapínat
+  controlMode = true;
+  document.body.classList.toggle('control-mode', true);   // C4 vizuál
+  refreshControlToggle(); renderControlIndicator();        // C4
 }
-function toggleControlMode(){ setControlMode(!controlMode); }
+async function toggleControlMode(){ await setControlMode(!controlMode); }
 // Control-mode indicator (C4) — persistent "CONTROL MODE → <port>" badge, hung
 // off the sticky header so it stays visible while scrolling. Pure visual;
 // no effect on CC sending (that's scheduleControlSend/mF, C3).
@@ -2544,30 +2586,42 @@ function getControlOutput(){
   const id=localStorage.getItem(LS_CTRL_OUT); if(!id||!midiAccess) return null;
   const o=midiAccess.outputs.get(id); return (o && !isFeelFader(o.name)) ? o : null;
 }
-function ensureControlOutput(){
+async function ensureControlOutput(){
   let o=getControlOutput(); if(o){ o.open().catch(()=>{}); return true; }
   const outs=controlOutputs();
   if(outs.length===0){ toast('e','Žádný MIDI výstup. Zapni virtuální port (loopMIDI/IAC) a zkus znovu.'); return false; }
-  return pickControlOutput(outs);
+  return await pickControlOutput(outs);
 }
-// v1 picker: 1 výstup → auto-select (žádný prompt). Víc výstupů → jednoduchý
-// synchronní window.prompt() se seznamem (setControlMode/C1 čeká bool návrat,
-// ne Promise — custom async modal by to muselo přestavět; prompt() drží kontrakt jednoduchý).
+// Port picker: 1 výstup → auto-select (žádný modal, resolves immediately).
+// Víc výstupů → in-app modal (.ctrl-port-overlay, reuses .icon-picker-overlay
+// pattern) instead of the old window.prompt(). Async because a modal can't
+// block the caller the way window.prompt() did.
+let _ctrlPortResolve = null;
+let _ctrlPortOutputs = [];
 function pickControlOutput(outs){
-  let chosen;
   if(outs.length===1){
-    chosen=outs[0];
-  } else {
-    const list=outs.map((o,i)=>`${i+1}. ${o.name}`).join('\n');
-    const sel=window.prompt('Vyber MIDI výstup pro control mód:\n'+list, '1');
-    if(sel===null) return false;   // zrušeno
-    const idx=parseInt(sel,10)-1;
-    if(!(idx>=0 && idx<outs.length)){ toast('e','Neplatná volba.'); return false; }
-    chosen=outs[idx];
+    const chosen=outs[0];
+    localStorage.setItem(LS_CTRL_OUT, chosen.id);
+    chosen.open().catch(()=>{});
+    return Promise.resolve(true);
   }
+  return new Promise(resolve=>{
+    _ctrlPortResolve = resolve;
+    _ctrlPortOutputs = outs;
+    const list=document.getElementById('ctrl-port-list');
+    list.innerHTML = outs.map((o,i)=>`<button class="ctrl-port-row" onclick="selectControlOutput(${i})">${o.name}</button>`).join('');
+    document.getElementById('ctrl-port-picker').style.display = 'flex';
+  });
+}
+function selectControlOutput(i){
+  const chosen=_ctrlPortOutputs[i]; if(!chosen) return;
   localStorage.setItem(LS_CTRL_OUT, chosen.id);
   chosen.open().catch(()=>{});
-  return true;
+  closeControlPortPicker(true);
+}
+function closeControlPortPicker(result){
+  document.getElementById('ctrl-port-picker').style.display = 'none';
+  if(_ctrlPortResolve){ const r=_ctrlPortResolve; _ctrlPortResolve=null; _ctrlPortOutputs=[]; r(!!result); }
 }
 
 // ── Control mode: fader drag → CC out (C3) ────────────────────────
@@ -3691,6 +3745,9 @@ window.applyUaccTemplate = applyUaccTemplate;
 window.applyLibraryPreset= applyLibraryPreset;
 window.openIconPicker    = openIconPicker;
 window.closeIconPicker   = closeIconPicker;
+window.toggleControlMode = toggleControlMode;
+window.selectControlOutput = selectControlOutput;
+window.closeControlPortPicker = closeControlPortPicker;
 window.selectIcon        = selectIcon;
 window.clearIcon         = clearIcon;
 window.toggleJson        = toggleJson;
