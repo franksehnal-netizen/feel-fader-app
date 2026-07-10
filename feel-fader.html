@@ -2524,17 +2524,6 @@ function connectInputs(){
 }
 
 
-function getOut(){
-  if(!midiAccess) return null;
-  let o = null;
-  // Only the Feel Fader output — never fall back to an arbitrary MIDI port
-  // (SysEx write to a non-Feel-Fader device is meaningless and unsafe).
-  midiAccess.outputs.forEach(x => {
-    if (isFeelFader(x.name)) o = x;
-  });
-  return o;
-}
-
 function onMidiMsg(event){
   const data=event.data, st=data[0];
   if(st===0xF0){
@@ -2628,9 +2617,6 @@ async function syncSendMine() { hideSyncBanner(); doSend(); }
 // SYSEX
 // ═══════════════════════════════════════════════════════════
 const MFR=0x7D,DEV_ID=0x01,CMD_W=0x01,CMD_R=0x02,CMD_INFO=0x03,CMD_CHUNK=0x04,CMD_ACK=0x05,CMD_ERR=0x06,CMD_HID=0x07;
-let _pendingRead  = null;  // { resolve, reject, timer }
-let _pendingWrite = null;  // { resolve, reject, timer }
-let _chunkBuf     = null;  // { chunks: Array, received: number, total: number }
 let _serialPort   = null;  // Web Serial port (cached for session)
 let protocolVersion = 1;        // 1 = legacy, 2 = rid framing; nastaví bootstrap CMD_INFO
 let _ridCounter = 0;
@@ -2702,36 +2688,6 @@ function handleSysEx(data){
       // Apply device-specific theme preference
       applyDeviceDark(DEVICE_INFO.serial);
     }catch(e){}
-  }
-  if(cmd===CMD_CHUNK){
-    const idx        = payload[0];
-    const total      = payload[1];
-    const chunkBytes = payload.slice(2);
-    if(!_chunkBuf || _chunkBuf.total !== total){
-      _chunkBuf = { chunks: new Array(total).fill(null), received: 0, total };
-    }
-    if(_chunkBuf.chunks[idx] === null){
-      _chunkBuf.chunks[idx] = chunkBytes;
-      _chunkBuf.received++;
-    }
-    if(_chunkBuf.received === _chunkBuf.total && _pendingRead){
-      clearTimeout(_pendingRead.timer);
-      const all = [].concat(..._chunkBuf.chunks);
-      const jsonStr = new TextDecoder().decode(new Uint8Array(dec7(all)));
-      const pr = _pendingRead;
-      _pendingRead = null; _chunkBuf = null;
-      pr.resolve(jsonStr);
-    }
-  }
-  if(cmd===CMD_ACK && _pendingWrite){
-    clearTimeout(_pendingWrite.timer);
-    const pw = _pendingWrite; _pendingWrite = null;
-    pw.resolve();
-  }
-  if(cmd===CMD_ERR && _pendingWrite){
-    clearTimeout(_pendingWrite.timer);
-    const pw = _pendingWrite; _pendingWrite = null;
-    pw.reject(new Error('Device rejected config'));
   }
 }
 
@@ -3146,7 +3102,6 @@ var TRANSLATIONS = {
     'toast.reset': 'Reset to factory defaults',
     'toast.copied': 'Copied to clipboard',
     'toast.clear': 'Articulation list cleared',
-    'toast.sysex_fail': 'SysEx failed, downloading file...',
     'toast.tag_exists': 'Tag already exists',
     'toast.artic_exists': 'Articulation already exists in this bank',
     // Footer
