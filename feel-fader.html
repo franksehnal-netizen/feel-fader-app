@@ -1963,7 +1963,7 @@ async function sendHidRequest(enabled){
     }
   } catch(e) {
     const errReason = /^ERR:(.+)$/.exec(e.message || '');
-    if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; }
+    if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_){} _serialPort=null; refreshControlToggle(); }
     if (errReason) toast('e', 'HID command failed: ' + errReason[1]);
     else if (e.message === 'timeout') toast('e', 'No confirmation from device — HID state unknown, re-check below.');
     else toast('e', serialErrMsg(e, 'HID command failed'));
@@ -2831,6 +2831,7 @@ function serialErrMsg(e, what){   // COM port je exkluzivní — „busy" (druh�
 async function _serialEnsureOpen() {
   if (_serialPort && _serialPort.readable) return;
   _serialPort = null;
+  refreshControlToggle();
   // Auto-connect to previously granted Pico port (no picker)
   try {
     const ports = await navigator.serial.getPorts();
@@ -2841,9 +2842,9 @@ async function _serialEnsureOpen() {
       : ports;
     for (const p of sorted) {
       try {
-        if (p.readable) { _serialPort = p; return; }
+        if (p.readable) { _serialPort = p; refreshControlToggle(); return; }
         await p.open({ baudRate: 115200 });
-        _serialPort = p; return;
+        _serialPort = p; refreshControlToggle(); return;
       } catch(e) {}
     }
   } catch(e) {}
@@ -2983,7 +2984,7 @@ async function doStart() {
     toast('s', t('toast.config_loaded'));
     hideWelcome();                              // transition → main page
   } catch(e) {
-    if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_) {} _serialPort = null; }
+    if (e.name !== 'AbortError' && _serialPort) { try { await _serialPort.close(); } catch(_) {} _serialPort = null; refreshControlToggle(); }
     if (btn) { btn.disabled = false; btn.textContent = 'Start'; }
     if (msg) msg.textContent = (e && e.name !== 'AbortError' && /open|busy|in use|access/i.test(e.message || ''))
       ? "The serial port is busy — Feel Fader is probably open in another tab or app. Close it and press Start again."
@@ -3050,7 +3051,7 @@ async function doSend() {
     console.warn('[Send] failed:', e);
     const errReason = /^ERR:(.+)$/.exec(e.message || '');
     if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) {
-      try { await _serialPort.close(); } catch(_) {} _serialPort = null;
+      try { await _serialPort.close(); } catch(_) {} _serialPort = null; refreshControlToggle();
     }
     if (errReason) toast('e', 'Device rejected config: ' + errReason[1] + ' — kept as unsaved.');
     else if (e.message === 'timeout') toast('e', 'No confirmation from device — kept as unsaved. Retry send.');
