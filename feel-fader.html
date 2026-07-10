@@ -586,7 +586,7 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 .toast.e{background:rgba(232,80,58,.08);border-color:rgba(232,80,58,.3);color:var(--red)}
 .toast.i{background:var(--bg-card);border-color:var(--border-s);color:var(--t2)}
 .tx{margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;opacity:.5;font-size:13px}
-.sync-banner{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:250;   /* nad sticky stage (200) i toasty */
+.sync-banner{position:fixed;top:98px;left:50%;transform:translateX(-50%);z-index:250;   /* pod header+bank-bar (~88px), nad stage (z-40) i toasty */
   display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-sm);
   border:1px solid rgba(232,160,58,.5);background:var(--bg-card);
   width:max-content;max-width:min(92vw,560px);flex-wrap:wrap;justify-content:center;
@@ -960,15 +960,6 @@ button:focus-visible{outline-offset:3px;}
   50%{transform:translateY(-6px)}
 }
 /* ── BANK BLOCK ── */
-.bank-block{
-  background:var(--bg-card);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  box-shadow:var(--shadow-sm);
-  overflow:hidden;
-  width:100%;
-  box-sizing:border-box;
-}
 .bank-block-tabs{
   display:flex;
   align-items:center;
@@ -1024,11 +1015,6 @@ button:focus-visible{outline-offset:3px;}
   display:flex;align-items:center;
 }
 .bank-block-tab-add:hover{color:var(--t1);background:var(--bg-input);}
-.bank-block-divider{
-  height:1px;
-  background:var(--border);
-  margin:0 0 0;
-}
 .bank-block-name{
   display:flex;flex-direction:column;gap:4px;
   padding:11px 14px 4px;
@@ -1055,7 +1041,6 @@ button:focus:not(:focus-visible){background:transparent;}
 }
 
 /* ── NEW DARK MODE RULES ── */
-html.dark .bank-block{background:var(--bg-card);}
 html.dark .send-callout::before{background:rgba(15,15,17,.5);}
 html.dark .bank-card{background:var(--bg-card);}
 html.dark .bank-name-row{background:var(--bg-card);}
@@ -1075,8 +1060,7 @@ html.dark .welcome-inner{background:var(--bg);}
 html.dark .welcome-title{color:var(--t1);}
 html.dark .welcome-sub{color:var(--t2);}
 html.dark .bank-block-tabs{background:var(--bg-card);}
-html.dark .bank-block-divider{background:var(--border);}
-/* .bank-block-name: no background in either theme — it sits on .bank-block (var(--bg-card) both themes),
+/* .bank-block-name: no background in either theme — it sits on .bank-card (var(--bg-card) both themes),
    so a dark-only bg would alpha-fade transparent→opaque off-rhythm vs the rest of the card on theme toggle. */
 html.dark .advanced-toggle-btn{color:var(--t1);}
 html.dark .val-bar{background:var(--t2);}
