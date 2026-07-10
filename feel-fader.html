@@ -1479,9 +1479,9 @@ function renderBankTabs() {
   cfgAutosave();
   const el = document.getElementById('bank-tabs');
   const tabsHtml = cfg.banks.map((b,i) => {
-    const iconHtml = b.icon ? `<span class="bank-tab-ic">${b.icon}</span>` : '';
+    const iconHtml = b.icon ? `<span class="bank-tab-ic">${escHtml(b.icon)}</span>` : '';
     const liveDot = (i === liveBank && _ffConnected) ? '<span class="bank-tab-live" title="Active on device"></span>' : '';
-    const nm = (b.name || 'Bank '+(i+1)).replace(/"/g,'&quot;');
+    const nm = escHtml(b.name || 'Bank '+(i+1));
     return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i})"><span class="bank-tab-idx">${i+1}</span>${liveDot}${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
@@ -1522,7 +1522,7 @@ function renderPanels() {
   // Tags as pill badges
   const tagBadges = (b.tags||[]).map((tg,ti) => `
     <span class="bank-tag-badge">
-      ${tg}<button class="bank-tag-remove" onclick="removeTag(${bi},${ti})">×</button>
+      ${escHtml(tg)}<button class="bank-tag-remove" onclick="removeTag(${bi},${ti})">×</button>
     </span>`).join('');
 
   // Návrhy tagů = sjednocení všech tagů napříč bankami, mimo ty už na aktivní bance.
@@ -1535,7 +1535,7 @@ function renderPanels() {
     if (usedOnBank.has(k) || seen.has(k)) return;
     seen.add(k); suggestList.push(tg);
   }));
-  const tagSuggestions = suggestList.map(s=>`<option value="${s}">`).join('');
+  const tagSuggestions = suggestList.map(s=>`<option value="${escHtml(s)}">`).join('');
 
   // Name row is now the first child inside .bank-card (fades with the card on bank change)
   const bankNameRowHtml = `
@@ -1543,10 +1543,10 @@ function renderPanels() {
       <div class="bank-block-name-top">
         <button class="icon-picker-trigger" onclick="openIconPicker(${bi}, 'icon')">
           ${b.icon
-            ? `<span class="bank-icon-display">${b.icon}</span>`
+            ? `<span class="bank-icon-display">${escHtml(b.icon)}</span>`
             : `<span class="bank-icon-empty"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>`}
         </button>
-        <input class="bank-name-input" value="${b.name || 'Bank '+(bi+1)}"
+        <input class="bank-name-input" value="${escHtml(b.name || 'Bank '+(bi+1))}"
           onchange="onBankRename(${bi}, this.value)"
           placeholder="Bank name..." />
         ${cfg.banks.length > 1 ? `<button class="btn-remove-bank" onclick="removeBank(${bi})" title="Remove bank">✕</button>` : ''}
@@ -1628,7 +1628,7 @@ function faderSectionContent(key, ctrl, bi) {
         </div>
 
       </div>
-      <div id="err-b${bi}-${key}" style="font-size:11px;color:var(--red);margin-top:4px;display:${err?'block':'none'}">${err}</div>
+      <div id="err-b${bi}-${key}" style="font-size:11px;color:var(--red);margin-top:4px;display:${err?'block':'none'}">${escHtml(err)}</div>
     </div>`;
 }
 
@@ -1673,7 +1673,7 @@ function ccEncoderBody(ctrl, bi) {
             </div>
           </div>
         </div>
-        <div id="err-b${bi}-encoder" style="font-size:11px;color:var(--red);margin-top:6px;display:${encErr?'block':'none'}">${encErr}</div>
+        <div id="err-b${bi}-encoder" style="font-size:11px;color:var(--red);margin-top:6px;display:${encErr?'block':'none'}">${escHtml(encErr)}</div>
       </div>
 
       <!-- Divider -->
@@ -1682,7 +1682,7 @@ function ccEncoderBody(ctrl, bi) {
       <!-- Right: articulation list -->
       <div class="enc-right">
         <div class="uacc-grid" id="uacc-grid">${uaccTags}</div>
-        ${uaccErr ? `<div style="font-size:11px;color:var(--red);margin-top:6px">${uaccErr}</div>` : ''}
+        ${uaccErr ? `<div style="font-size:11px;color:var(--red);margin-top:6px">${escHtml(uaccErr)}</div>` : ''}
         <div class="uacc-add-row" style="margin-top:10px">
           <input type="number" id="uacc-input" min="0" max="127" placeholder="CC 0–127"
             onkeydown="if(event.key==='Enter')addUacc()"/>
@@ -2356,7 +2356,7 @@ function runValidation() {
   reflectDirty();
   const errs=validate(), bar=document.getElementById('vbar'), btn=document.getElementById('send-btn');
   if(errs.length===0){bar.className='vbar';btn.disabled=false;}
-  else{bar.className='vbar err';bar.innerHTML='⚠ '+errs[0].msg+(errs.length>1?` (+${errs.length-1} more)`:'');btn.disabled=true;}
+  else{bar.className='vbar err';bar.innerHTML='⚠ '+escHtml(errs[0].msg)+(errs.length>1?` (+${errs.length-1} more)`:'');btn.disabled=true;}
   cfg.banks.forEach((b,bi) => {
     ['fader1','fader2','encoder'].forEach(key => {
       const el = document.getElementById(`err-b${bi}-${key}`);
@@ -2624,6 +2624,7 @@ let _txnChain = Promise.resolve();   // serializace transakcí — jedna naráz
 const LS_HASH_KEY = 'ff-last-hash';  // poslední hash potvrzený zařízením (ACK/load)
 function enc7(bytes){const o=[];for(const b of bytes){o.push((b>>7)&1);o.push(b&0x7F);}return o;}
 function dec7(data){const o=[];for(let i=0;i+1<data.length;i+=2)o.push((data[i]<<7)|data[i+1]);return o;}
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function normalizeFwConfig(p) {
   if (!p.banks) return p;
