@@ -39,9 +39,10 @@ Fadery na obrazovce jsou **výhradně** zrcadlo HW (serial INFO + live MIDI-in).
 
 ### A. Fadery display-only
 
-- Z `track-l`/`track-r` odstranit `onmousedown` a `ontouchstart`.
-- Odstranit mrtvý drag aparát: `drag`, `dragT`, `onDrag`, `onDragT`, `stopDrag`, `mF`, proměnná `dragging`. (`mF` má na main jediné volání z `onDrag`/`onDragT` — po odstranění je mrtvý.)
-- Odstranit drag-afordanci: kurzor typu `grab`/`ns-resize`/`pointer` na `.fader-track` (ať to nevypadá tahatelně); track má action-neutrální kurzor (default).
+- Z `track-l`/`track-r` (ř.1106/1109) odstranit `onmousedown` a `ontouchstart`.
+- Odstranit mrtvý drag aparát: `drag`, `dragT`, `onDrag`, `onDragT`, `stopDrag`, `mF`, proměnná `dragging` (ř.1448). (`mF` má na main jediné volání z `onDrag`/`onDragT` — po odstranění je mrtvý; ověřeno Codexem.)
+- Odstranit globální exporty `window.drag` (ř.3489) a `window.dragT` (ř.3490).
+- Odstranit drag-afordanci kurzoru: z `.fader-track` (ř.120) smazat `cursor:grab`; smazat celé pravidlo `.fader-track:active{cursor:grabbing}` (ř.121). `position:absolute` i `user-select:none` nechat.
 - **Nechat:** hover-link (`hoverFaderLink` na mouseenter/leave = zelený glow fader→config panel; jen zvýraznění, ne manipulace); keyswitch range handles (`ksDragStart` = editace configu, ne fader); welcome dekorativní animace faderů (efekt před připojením, ne uživatel, ne MIDI).
 
 ### B. Help onboarding bez Control módu
@@ -56,10 +57,13 @@ Mechanika: cherry-pick Help commitů z `help-onboarding` na novou větev, pak od
 
 ## Ověření (headless, puppeteer-core, system Chrome, pipe:true)
 
-- `grep` v `feel-fader.html`: `mF(`, `function mF`, `dragT`, `onDrag`, `let dragging`, `controlMode`, `scheduleControlSend`, `help-control` → **0**.
-- `track-l`/`track-r` nemají `onmousedown`/`ontouchstart`.
-- Simulace: `mousedown`+`mousemove` nad `#track-l` → `#thumb-l` `transform` se **nezmění**.
-- HW cesta žije: `applyInfoFaders([100,20]); positionThumbs()` (nebo simulace MIDI CC) → thumby se posunou na odpovídající pozice.
+- `grep` v `feel-fader.html`: `mF(`, `function mF`, `dragT`, `onDrag`, `let dragging`, `window.drag`, `window.dragT`, `controlMode`, `scheduleControlSend`, `help-control` → **0**.
+- `track-l`/`track-r` nemají `onmousedown`/`ontouchstart`; `.fader-track` nemá `cursor:grab`.
+- V headless: `typeof window.drag === 'undefined'` a `typeof window.dragT === 'undefined'`.
+- Simulace **myší**: `mousedown`+`mousemove` nad `#track-l` → `#thumb-l` `transform` se **nezmění**.
+- Simulace **dotyku**: `touchstart`+`touchmove` nad `#track-l` → thumb se **nezmění** (touch je samostatný vstup).
+- Invariant „display only": po pokusu o drag je `cfg` **beze změny** (snapshot `JSON.stringify(cfg)` před/po = shodný).
+- HW cesta žije: `applyInfoFaders([100,20]); positionThumbs()` (nebo simulace MIDI CC → `_faderDirty`/`flushFaderFrame`) → thumby se posunou na odpovídající pozice.
 - Help: existují `#help-roller`, `#help-macro`, `#help-keyswitch`, `#help-dev`; `#help-control` **neexistuje**; `.help-hint` u Roller+Macro; `openHelpAt('help-macro')` rozbalí Help + scroll. Žádné page errors.
 
 **Manuální (Frank, nula instalací / nula HW):** otevřít app → zkusit táhnout fadery myší → nehnou se. (HW-following už ověřeno dřív při sync-on-connect: „Pozice faderu v appce odpovídá faderům na zařízení.")
@@ -69,6 +73,10 @@ Mechanika: cherry-pick Help commitů z `help-onboarding` na novou větev, pak od
 - Firmware (žádná změna protokolu).
 - Welcome animace (zůstává).
 - V10/legal patička (samostatné).
+
+## Codex second opinion (2026-07-11)
+
+Verdikt **SOUND-WITH-GAPS** (low-risk). Potvrdil: `mF` má jediné volající `onDrag`/`onDragT` (bezpečné smazat); po odstranění nic nevisí; příchozí cesty na dragu nezávisí (fadery dál kopírují HW); drag opravdu nemění `cfg` (jen `liveValues`/DOM). Zapracované mezery: (1) smazat i `window.drag`/`window.dragT`, (2) ověřit `typeof window.drag==='undefined'`, (3) simulovat i dotyk, (4) invariant `cfg` beze změny po pokusu o drag, (5) konkrétní cleanup `.fader-track` kurzoru (ř.120/121). Evidence: `docs/superpowers/review/2026-07-11-faders-evidence.md`.
 
 ## Merge / endgame
 
