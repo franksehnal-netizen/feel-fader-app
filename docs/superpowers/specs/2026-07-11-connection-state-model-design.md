@@ -29,7 +29,7 @@ Jeden kanonický stav připojení odvozený ze surových signálů + jedna rende
 ## Model
 
 ### Surové signály (stav modulu)
-- `_midiState`: `'granted' | 'denied' | 'unsupported'` — **nový** modulový var, nastavovaný v `initMidi` (unsupported když chybí `requestMIDIAccess`; denied v catch; granted při úspěchu).
+- `_midiState`: `'pending' | 'granted' | 'denied' | 'unsupported'` — **nový** modulový var, **init `'pending'`** (před resolvem grantu → mapuje na DISCONNECTED, ne na blocked). Nastavovaný v `initMidi`: `'unsupported'` když chybí `requestMIDIAccess`; `'denied'` v catch; `'granted'` při úspěchu. `liveAllowed()` vyžaduje přesně `'granted'`.
 - `_ffConnected` (existuje) — Feel Fader MIDI vstup otevřen (živé hodnoty IN).
 - `_serialPort` (existuje) — Web Serial port otevřen (config R/W + CMD_INFO).
 - `loaded` (existuje) — config v UI. **Nepoužívá se** pro odvození headline (jen pro rozhodnutí neničit UI při odpojení).
@@ -62,11 +62,31 @@ Zavolá `connState()` a nastaví všechny surface:
 - **Živé hodnoty (dim):** centralizovat do helperu `liveAllowed()` = `_midiState==='granted' && _ffConnected`; `render*` používá `liveAllowed()` místo přímého `_ffConnected` pro třídu `.live-placeholder` (fader val spany, enc badge). `renderConnState` navíc přepne body třídu / zobrazí inline pozn.
 - **Inline poznámka:** nový skrytý element u fader stage (`<div id="live-note" hidden>`), text „Live positions unavailable — MIDI not connected". Zobrazí se jen v `CONNECTED_BLIND`.
 
-### Náhrada volání (retire `setBanner` + `updateStatus`)
-- `updateStatus()` (odvození z `loaded`) → **smazat**; oba callery (`connectInputs` not-found větev, `handleSysEx`) → `renderConnState()`.
-- `setBanner(...)` pro stav připojení (`initMidi` start/denied/unsupported, `connectInputs` found/not-found) → nastavit surový signál + `renderConnState()`.
-- `setBanner('connected', t('midi.synced'))` a spol. (transientní „synced"/„config loaded" potvrzení, ~5 míst) → `toast()` (už se vedle většiny volá) — dot/text drží `renderConnState`.
-- `showSyncBanner`/`hideSyncBanner` (differs/defaults) → **beze změny**; místo doprovodného `setBanner('searching','')` volat `renderConnState()`.
+### Náhrada volání (retire `setBanner` + `updateStatus`) — přesná mapa
+Ověřeno proti evidence (všech 18 míst); po migraci **smazat def `updateStatus()` (3002) i `setBanner()` (2573)**:
+
+| Ř. | Dnes | Náhrada |
+|---|---|---|
+| 2444 | `setBanner('error','')` (unsupported) | `_midiState='unsupported'; renderConnState()` |
+| 2445 | `setBanner('searching','')` (init start) | `renderConnState()` (→ DISCONNECTED, `_midiState='pending'`) |
+| 2461 | `setBanner('error', midi.denied)` (catch) | `_midiState='denied'; renderConnState()` |
+| 2491 | `setBanner('connected', names)` (FF nalezen) | `_midiState='granted'; renderConnState()` (`_ffConnected` už nastaven níže) |
+| 2512 | `setBanner('searching', not_feel_fader)` | `renderConnState()` (DISCONNECTED — viz F3) |
+| 2514 | `setBanner('searching', none)` | `renderConnState()` |
+| 2516 | `updateStatus()` | `renderConnState()` |
+| 2605 | `setBanner('connected', synced)` (+toast) | drop banner, ponechat toast, `renderConnState()` |
+| 2664/2665 | `setBanner('connected', synced)` + `updateStatus()` (+toast 2666) | drop obě, ponechat toast, `renderConnState()` |
+| 2669 | `setBanner('connected','')` (v catch, prázdný text) | drop (spurious), `renderConnState()` |
+| 2827 | `updateStatus()` (po serial load) | `renderConnState()` — **viz F2** |
+| 2849 | `setBanner('connected', synced)` (+toast 2850) | drop banner, ponechat toast, `renderConnState()` |
+| 2875 | `showSyncBanner('defaults'); setBanner('searching','')` | ponechat showSyncBanner; banner→`renderConnState()` |
+| 2878 | `showSyncBanner('differs'); setBanner('searching','')` | totéž |
+| 2881 | `setBanner('connected', synced)` (+toast) | drop banner, ponechat toast, `renderConnState()` |
+| 2885 | `setBanner('searching','')` | `renderConnState()` |
+
+- `showSyncBanner`/`hideSyncBanner` (differs/defaults) → jinak **beze změny**.
+- **F2:** na ř.2828 už je one-shot toast „Loaded over USB serial, but MIDI is blocked — live fader display won't update…" = přesně stav `CONNECTED_BLIND`. Nový perzistentní stav (amber dot + `#live-note`) ho nahrazuje → **tento toast (2828) odstranit** (jinak duplicita zprávy).
+- **F3 (minor):** DISCONNECTED má dnes dvě varianty textu (`midi.none` vs `midi.not_feel_fader`). Sjednotit na „No device" (rozlišení ne-FF MIDI je málo hodnotné); pokud Frank chce nuanci, `renderConnState()` může vzít volitelný detail — default sjednoceno.
 
 ### Nové/upravené prvky
 - CSS: `.h-status-dot.warn` (amber bg, jemný puls volitelně); `.live-note` (drobná, `--t3`, u stage).
@@ -80,6 +100,10 @@ Nasimulovat kombinace signálů a zkontrolovat `connState()` + surface:
 - MIDI blocked: `_midiState='denied'`, `_ffConnected=false`, `_serialPort=null` → `MIDI_BLOCKED`; dot `.err`, akční hláška.
 - unsupported: `_midiState='unsupported'`, nic linked → `MIDI_BLOCKED` (text „Chrome/Edge only").
 - Žádný page error; grep: `updateStatus` a stavové `setBanner(` volání = 0 (kromě retire shim, pokud zvolen).
+
+## Self-review (2026-07-11, bez Codexu)
+
+Verdikt SOUND-WITH-GAPS; mezery F1/F2/F3 zapracované výše. Ověřeno proti `docs/superpowers/review/2026-07-11-connstate-evidence.md`: `connState()` odvození exhaustivní (transient plug = CONNECTED_LIVE hned; ne-FF MIDI = DISCONNECTED); všech 18 `setBanner`/`updateStatus` míst má náhradu; „synced" flashe mají vedle sebe existující `toast` (nic se neztrácí); `_serialPort` spolehlivý (na failu vždy `close()`+`=null` — ř.1946/2851); oba `.live-placeholder` sinky přepnutelné na `liveAllowed()`.
 
 ## Mimo rozsah
 - Viditelný connection panel (byla varianta 2 — nebráno).
