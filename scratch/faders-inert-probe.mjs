@@ -34,13 +34,13 @@ out('track-r no drag attrs', !attrs.r, attrs.r||'clean');
 const mouse = await p.evaluate(() => {
   const th=document.getElementById('thumb-l');
   const before=th.style.transform;
-  const cfgBefore=JSON.stringify(window.cfg);
+  const cfgBefore=JSON.stringify(cfg);
   const tr=document.getElementById('track-l'), rect=tr.getBoundingClientRect();
   const fire=(type,y)=>tr.dispatchEvent(new MouseEvent(type,{bubbles:true,clientY:y,clientX:rect.left+5}));
   fire('mousedown',rect.top+5); fire('mousemove',rect.top+rect.height*0.5);
   document.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientY:rect.top+rect.height*0.5}));
   document.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));
-  return { moved: th.style.transform!==before, cfgChanged: JSON.stringify(window.cfg)!==cfgBefore };
+  return { moved: th.style.transform!==before, cfgChanged: JSON.stringify(cfg)!==cfgBefore };
 });
 out('mouse drag does NOT move thumb', !mouse.moved);
 out('cfg unchanged after mouse drag', !mouse.cfgChanged);
