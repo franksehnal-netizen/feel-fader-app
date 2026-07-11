@@ -1827,6 +1827,7 @@ function encoderPanel(ctrl, bi) {
     <div class="section-head" data-fader="roller">
       <div class="panel-dot"></div>
       <span class="panel-name">${modeTitle}</span>
+      <button class="help-hint" title="Roller modes — help" onclick="openHelpAt('help-roller')">?</button>
       ${badge ? `<span class="section-live-val${_ffConnected ? '' : ' live-placeholder'}" id="enc-artic-badge">${badge}</span>` : ''}
     </div>
       <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
@@ -1879,6 +1880,7 @@ function macroSectionContent() {   // globální long-press makro — sekce vidi
     <div class="section-head" data-fader="macro">
       <div class="panel-dot"></div>
       <span class="panel-name">Macro</span>
+      <button class="help-hint" title="Button macro — help" onclick="openHelpAt('help-macro')">?</button>
     </div>
     <div class="section-fields">
       <div class="uacc-note" style="margin:0 0 8px">Long-press the device button (≥0.5 s) to send this key combo — e.g. play/stop or a DAW shortcut. Applies to all banks; a short press still switches banks.</div>
