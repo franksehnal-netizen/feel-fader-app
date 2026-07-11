@@ -1080,7 +1080,7 @@ html.dark .val-bar{background:var(--t2);}
     <span class="h-title">Feel Fader</span>
     <div class="h-status" id="h-status">
       <div class="h-status-dot" id="h-status-dot"></div>
-      <span class="h-status-text" id="h-status-text">t('status.disconnected')</span>
+      <span class="h-status-text" id="h-status-text"></span>
     </div>
   </div>
   <div class="h-right">
@@ -1478,10 +1478,10 @@ function render() {
   renderPanels();
   renderUacc();
   runValidation();
-  // NOTE: updateStatus() intentionally NOT called here.
-  // It depends on `loaded`, so calling it on every render() would flash
-  // "device disconnected" on any UI interaction before CMD_W arrives.
-  // updateStatus() is called only from: connectInputs() and handleSysEx().
+  // NOTE: renderConnState() intentionally NOT called here.
+  // It depends on `loaded`/`_ffConnected`/`_midiState`, so calling it on every
+  // render() would be redundant; it's called explicitly at each site where
+  // those signals change (connectInputs(), handleSysEx(), etc.).
   updateDeviceInfo();
   if (jsonOpen) refreshJson();
 }
@@ -1615,7 +1615,7 @@ function faderSectionContent(key, ctrl, bi) {
     <div class="section-head" data-fader="${key}">
       <div class="panel-dot"></div>
       <span class="panel-name">${displayLabel}</span>
-      <span class="section-live-val${_ffConnected ? '' : ' live-placeholder'}" id="${valId}-val">${lv}</span>
+      <span class="section-live-val${liveAllowed() ? '' : ' live-placeholder'}" id="${valId}-val">${lv}</span>
     </div>
     <div class="section-fields">
       <div class="section-field-row">
@@ -1832,7 +1832,7 @@ function encoderPanel(ctrl, bi) {
       <div class="panel-dot"></div>
       <span class="panel-name">${modeTitle}</span>
       <button class="help-hint" title="Roller modes — help" onclick="openHelpAt('help-roller')">?</button>
-      ${badge ? `<span class="section-live-val${_ffConnected ? '' : ' live-placeholder'}" id="enc-artic-badge">${badge}</span>` : ''}
+      ${badge ? `<span class="section-live-val${liveAllowed() ? '' : ' live-placeholder'}" id="enc-artic-badge">${badge}</span>` : ''}
     </div>
       <div class="roller-mode-row" style="display:flex;gap:6px;margin:8px 0">
         ${['cc','keyswitch','track_nav'].map(m => {
@@ -2442,15 +2442,11 @@ function pF(tid,thid,v){
 // WEB MIDI
 // ═══════════════════════════════════════════════════════════
 function initMidi(){
-  // Start with pulse — searching for device
-  const dot = document.getElementById('h-status-dot');
-  const txt = document.getElementById('h-status-text');
-  if (dot) dot.className = 'h-status-dot pulse';
-  if (txt) txt.textContent = t('status.disconnected');
-  if(!navigator.requestMIDIAccess){setBanner('error','');return;}
-  setBanner('searching','');
+  if(!navigator.requestMIDIAccess){ _midiState='unsupported'; renderConnState(); return; }
+  renderConnState();
   navigator.requestMIDIAccess({sysex:true}).then(acc=>{
     midiAccess=acc;
+    _midiState='granted';
     let _reconnectTimer=null;
     midiAccess.onstatechange=(e)=>{
       const p = e?.port;
@@ -2464,7 +2460,7 @@ function initMidi(){
       }
     };
     connectInputs();
-  },()=>setBanner('error',t('midi.denied')));
+  },()=>{ _midiState='denied'; renderConnState(); });
 }
 // Feel Fader device name as set in boot.py via supervisor.set_usb_identification
 const DEVICE_NAME = 'Feel Fader';
@@ -2494,9 +2490,7 @@ function connectInputs(){
     if (dot) { dot.style.background = 'var(--green)'; dot.style.animation = 'none'; }
     const statusTxt = document.querySelector('.welcome-status span');
     if (statusTxt) statusTxt.textContent = t('welcome.found');
-    setBanner('connected',names.join(', '));
-    // NOTE: do NOT call updateStatus() here — when loaded=false it overwrites the
-    // 'connected' banner with 'status.disconnected', making it look like no device.
+    renderConnState();
     if (!_ffConnected) {
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
@@ -2512,14 +2506,7 @@ function connectInputs(){
     if (!loaded) {
       showWelcome();
     }
-    let anyMidi = false;
-    midiAccess.inputs.forEach(() => { anyMidi = true; });
-    if (anyMidi) {
-      setBanner('searching', t('midi.not_feel_fader'));
-    } else {
-      setBanner('searching', t('midi.none'));
-    }
-    updateStatus();
+    renderConnState();
   }
 }
 
@@ -2576,26 +2563,6 @@ function onMidiMsg(event){
   }
 }
 
-function setBanner(type, m){
-  const dot  = document.getElementById('h-status-dot');
-  const txt  = document.getElementById('h-status-text');
-  if (!dot) return;
-  if (type === 'connected') {
-    dot.className = 'h-status-dot on';
-    txt.classList.remove('hidden');
-    txt.textContent = t('status.connected');
-    setTimeout(() => { txt.classList.add('hidden'); }, 3000);
-  } else if (type === 'searching') {
-    dot.className = 'h-status-dot pulse';
-    txt.classList.remove('hidden');
-    txt.textContent = m || t('status.disconnected');
-  } else if (type === 'error') {
-    dot.className = 'h-status-dot err';
-    txt.classList.remove('hidden');
-    txt.textContent = m || t('midi.unavailable');   // denied ≠ unsupported (debugging 2026-07-03)
-  }
-}
-
 function showSyncBanner(kind) {
   const el = document.getElementById('sync-banner');
   const tx = document.getElementById('sync-banner-text');
@@ -2608,7 +2575,7 @@ function showSyncBanner(kind) {
 function hideSyncBanner() { const el = document.getElementById('sync-banner'); if (el) el.hidden = true; }
 async function syncLoadFromDevice() {
   hideSyncBanner();
-  try { await loadConfigFromDevice(); setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded')); }
+  try { await loadConfigFromDevice(); renderConnState(); toast('s', t('toast.config_loaded')); }
   catch(e) { toast('e', "Couldn't sync with device — showing local config"); }
 }
 async function syncSendMine() { hideSyncBanner(); doSend(); }
@@ -2667,12 +2634,11 @@ function handleSysEx(data){
       p=normalizeFwConfig(p);
       cfg=p;loaded=true;dirty=false;activeBank=0;
       render();
-      setBanner('connected',t('midi.synced'));
-      updateStatus();
+      renderConnState();
       toast('s',t('toast.config_loaded'));
     }catch(e){
       toast('e', t('toast.config_error') + ': ' + e.message);
-      setBanner('connected', '');
+      renderConnState();
     }
   }
   if(cmd===CMD_INFO){
@@ -2830,10 +2796,7 @@ async function loadConfigFromDevice() {
     try { localStorage.setItem(LS_HASH_KEY, DEVICE_INFO.config_hash); } catch(_) {}
   }
   render();
-  updateStatus();
-  if (!midiAccess) {   // serial OK, ale MIDI zamítnuté/nedostupné → live fadery nepojedou
-    toast('i', "Loaded over USB serial, but MIDI is blocked — live fader display won't update. Allow MIDI in the browser's site settings and reload.");
-  }
+  renderConnState();
 }
 
 function showStartBtn() {
@@ -2852,7 +2815,7 @@ async function doStart() {
   if (msg) msg.textContent = '';
   try {
     await loadConfigFromDevice();
-    setBanner('connected', t('midi.synced'));
+    renderConnState();
     toast('s', t('toast.config_loaded'));
     hideWelcome();                              // transition → main page
   } catch(e) {
@@ -2878,17 +2841,17 @@ async function onDeviceConnected() {
         await serialReadInfo();   // bootstrap: protocolVersion + config_hash/source
         const stored = localStorage.getItem(LS_HASH_KEY);
         if (protocolVersion === 2 && DEVICE_INFO.config_source === 'defaults') {
-          showSyncBanner('defaults'); setBanner('searching', '');
+          showSyncBanner('defaults'); renderConnState();
         } else if (protocolVersion === 2 && stored && DEVICE_INFO.config_hash
                    && stored !== DEVICE_INFO.config_hash) {
-          showSyncBanner('differs'); setBanner('searching', '');
+          showSyncBanner('differs'); renderConnState();
         } else {
           await loadConfigFromDevice();
-          setBanner('connected', t('midi.synced')); toast('s', t('toast.config_loaded'));
+          renderConnState(); toast('s', t('toast.config_loaded'));
         }
       } catch(e) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
         toast('e', "Couldn't sync with device — showing local config");
-        setBanner('searching', '');
+        renderConnState();
       }
     }
     if (onWelcome) hideWelcome();               // auto-transition into main page
@@ -3037,22 +3000,9 @@ function renderConnState(){
     dot.className = 'h-status-dot';
     txt.classList.remove('hidden'); txt.textContent = t('status.no_device');
   }
-  if (note) note.hidden = (s !== 'CONNECTED_BLIND');
-}
-function updateStatus(){
-  const dot  = document.getElementById('h-status-dot');
-  const text = document.getElementById('h-status-text');
-  if (!dot) return;
-  if (loaded) {
-    dot.className  = 'h-status-dot on';
-    text.textContent = t('status.connected');
-    document.body.classList.add('loaded');
-    setTimeout(() => { text.classList.add('hidden'); }, 3000);
-  } else {
-    dot.className  = 'h-status-dot';
-    text.classList.remove('hidden');
-    text.textContent = t('status.disconnected');
-    document.body.classList.remove('loaded');
+  if (note) {
+    note.hidden = (s !== 'CONNECTED_BLIND');
+    if (s === 'CONNECTED_BLIND') note.textContent = t('live.note_unavailable');
   }
 }
 function setTxt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
@@ -3082,7 +3032,6 @@ var TRANSLATIONS = {
     'midi.unavailable': 'Web MIDI not available — use Chrome or Edge.',
     // Status
     'status.connected': 'device connected',
-    'status.disconnected': 'device disconnected',
     'status.no_device': 'no device',
     'status.no_live_view': 'connected · no live view',
     'live.note_unavailable': 'Live positions unavailable — MIDI not connected.',
