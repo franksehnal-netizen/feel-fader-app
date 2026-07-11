@@ -20,7 +20,7 @@ P('live: background is green-tinted (not base --bg-input)', /52,\s*199,\s*89/.te
 
 // NOT-LIVE state: MIDI not granted → f1-val should carry .live-placeholder and use base (dim) styling
 const notLive = await p.evaluate(()=>{
-  _midiState='prompt'; _ffConnected=false; render(); renderConnState();
+  _midiState='denied'; _ffConnected=false; render(); renderConnState();
   const el = document.getElementById('f1-val');
   const cs = getComputedStyle(el);
   return { hasPlaceholder: el.classList.contains('live-placeholder'), bg: cs.backgroundColor, opacity: cs.opacity, className: el.className };

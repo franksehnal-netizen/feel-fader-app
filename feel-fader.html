@@ -2487,7 +2487,6 @@ function connectInputs(){
     if (dot) { dot.style.background = 'var(--green)'; dot.style.animation = 'none'; }
     const statusTxt = document.querySelector('.welcome-status span');
     if (statusTxt) statusTxt.textContent = t('welcome.found');
-    renderConnState();
     if (!_ffConnected) {
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
@@ -2497,6 +2496,7 @@ function connectInputs(){
       // (nativní WinMM SysEx problém nemá). Info se stejně čte serialem (CMD_INFO).
       onDeviceConnected();  // decide: auto-enter (port granted) vs show Start (gesture needed)
     }
+    renderConnState();
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
     // Don't tear down UI if config is already loaded — device may reconnect shortly
