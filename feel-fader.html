@@ -634,9 +634,6 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 }
 .h-status-dot.err{background:var(--red)}
 .h-status-dot.warn{background:#e6a23c}
-.h-status-dot.pulse{
-  animation:status-pulse 1.6s ease-in-out infinite;
-}
 @keyframes status-pulse{
   0%,100%{opacity:.4;transform:scale(1)}
   50%{opacity:1;transform:scale(1.25)}
@@ -887,7 +884,7 @@ html.dark .lib-badge-sm{background:#555}
   transition:color .3s, background .3s, border-color .3s;
   flex-shrink:0;
 }
-.loaded .section-live-val{
+.section-live-val:not(.live-placeholder){
   color:var(--t1);
   background:rgba(52,199,89,.1);
   border-color:rgba(52,199,89,.3);
@@ -1061,7 +1058,7 @@ html.dark .uacc-tag{background:var(--bg-input);border-color:var(--border);color:
 html.dark .bank-name-input{color:var(--t1);}
 html.dark .bank-tag-badge{background:var(--bg-input);border-color:var(--border);color:var(--t2);}
 html.dark .section-live-val{color:var(--t3);}
-html.dark.loaded .section-live-val{color:var(--t2);}
+html.dark .section-live-val:not(.live-placeholder){color:var(--t2);}
 html.dark .welcome-inner{background:var(--bg);}
 html.dark .welcome-title{color:var(--t1);}
 html.dark .welcome-sub{color:var(--t2);}
