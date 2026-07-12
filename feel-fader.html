@@ -3163,9 +3163,22 @@ function applyDeviceDark(serial) {
 function showWelcome() {
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden');
-  if (onbShouldRun() && document.getElementById('onb-beats')) onbStartWelcome();
-  // Fallback: if the device isn't auto-detected (e.g. MIDI port quirk), surface Start
-  // anyway after a short wait so the user can grant the serial port manually.
+  // Reset to the normal welcome state first — beats may have hidden these in an
+  // earlier first-run this session, and a later reconnect must show normal copy.
+  const statusRow = document.getElementById('welcome-status-row');
+  const title = document.querySelector('#welcome-text-block .welcome-title');
+  const sub = document.querySelector('#welcome-text-block .welcome-sub');
+  const beats = document.getElementById('onb-beats');
+  if (statusRow) statusRow.style.display = '';
+  if (title) title.style.display = '';
+  if (sub) sub.style.display = '';
+  if (beats) beats.style.display = 'none';
+  clearTimeout(_onbBeatTimer);
+  if (onbShouldRun() && beats) {
+    onbStartWelcome();   // onboarding owns CTA timing — do NOT arm the fallback here
+    return;
+  }
+  // Normal path: surface Start if the device isn't auto-detected (MIDI quirk).
   clearTimeout(_welcomeStartTimer);
   _welcomeStartTimer = setTimeout(() => {
     const w = document.getElementById('welcome-screen');
@@ -3298,9 +3311,15 @@ function onbBeatGo(i) {
 function onbBeatNext() { onbBeatGo(_onbBeat + 1); }
 function onbSkipIntro() { clearTimeout(_onbBeatTimer); onbBeatGo(2); }
 function onbBeatShowCTA() {
-  // Reveal the normal connect affordance; Start appears if a device is present (showStartBtn),
-  // the skip link is always available regardless.
+  // Reveal the normal connect affordance; Start appears if a device is present,
+  // the skip link is always available. Re-arm the fallback so MIDI-detection
+  // failure still surfaces Start shortly after the beats finish.
   if (_ffConnected || _serialPort) showStartBtn();
+  clearTimeout(_welcomeStartTimer);
+  _welcomeStartTimer = setTimeout(() => {
+    const w = document.getElementById('welcome-screen');
+    if (w && !w.classList.contains('hidden')) showStartBtn();
+  }, 3500);
 }
 
 // ════════════════════════════════════════════════════════════════
