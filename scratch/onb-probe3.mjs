@@ -45,7 +45,6 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       onbFinish(); localStorage.removeItem('ff-onboarded');
       _ffConnected = true; _serialPort = {}; _midiState = 'granted';
       _onbConfigStarted = false; _onbDone = false;
-      document.getElementById('onb-intro-card')?.remove();
       onbMaybeStartConfig();
       const card = document.getElementById('onb-intro-card');
       return { hwCopy: card ? card.textContent.includes('connected') : false,

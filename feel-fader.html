@@ -3346,26 +3346,20 @@ function onbMaybeStartConfig() {
   onbStartConfig();
 }
 function onbStartConfig() {
-  let card = document.getElementById('onb-intro-card');
-  if (!card) {
-    // Self-heal: the static card can be gone (e.g. a prior full re-render pass) —
-    // rebuild it so the guided config step always has a home for its copy.
-    card = document.createElement('div');
-    card.id = 'onb-intro-card';
-    card.innerHTML = `<span id="onb-intro-text"></span><button class="onb-intro-x" onclick="onbFinish()" data-i18n="onb.intro.dismiss">Got it</button>`;
-    const host = document.querySelector('.center-col');
-    if (host) host.insertBefore(card, host.firstChild);
-  }
+  const card = document.getElementById('onb-intro-card');
   const txt = document.getElementById('onb-intro-text');
   const live = liveAllowed();
   if (txt) txt.textContent = t(live ? 'onb.intro.hw' : 'onb.intro.nohw');
   if (card) card.style.display = 'flex';
   document.querySelectorAll('[data-onb]').forEach(el => {
     el.classList.add('onb-pulse');
+    if (el._onbBound) return;          // bind the clear-listener at most once per element — safe across replay
+    el._onbBound = true;
     el.addEventListener('click', () => {
       el.classList.remove('onb-pulse');
+      if (_onbDone) return;
       if (!document.querySelector('.onb-pulse') && document.getElementById('onb-intro-card')?.style.display === 'none') onbFinish();
-    }, { once: true });
+    });
   });
   if (!live && typeof onbDemoStart === 'function') onbDemoStart();
 }
