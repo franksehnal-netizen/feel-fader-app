@@ -2990,14 +2990,6 @@ function toggleHelp(){
   btn && btn.classList.toggle('is-open', !open);
   btn && btn.blur && btn.blur();
 }
-function openHelpAt(id){
-  const body = document.getElementById('help-body');
-  if (body && body.style.display === 'none') toggleHelp();   // expand only when collapsed
-  requestAnimationFrame(() => {                              // layout is settled after expand
-    const el = document.getElementById(id);
-    if (el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
-  });
-}
 function hoverFaderLink(key, on){
   document.querySelectorAll(`[data-fader="${key}"]`).forEach(el => el.classList.toggle('fader-linked', on));
 }
