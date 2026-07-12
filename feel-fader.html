@@ -3063,6 +3063,28 @@ var TRANSLATIONS = {
     'validate.uacc_empty': 'Bank "{b}": articulation list must not be empty',
     'validate.ch_range': 'Bank "{b}" {k}: channel must be 0–15',
     'validate.cc_conflict': 'Bank "{b}": {k1} and {k2} share CC {cc}/ch {ch} — assign unique CCs',
+    // Restored 2026-07-12 — these are referenced via data-i18n (applied by applyLang),
+    // not via t() in JS, so the f30cdb3 "unused keys" cleanup wrongly removed them,
+    // leaving raw keys visible across welcome / footer / advanced settings / device info / icon picker.
+    'welcome.connect': 'Connect Feel Fader',
+    'welcome.sub': 'Plug in via USB-C — configuration loads automatically.',
+    'welcome.waiting': 'Waiting for device',
+    'welcome.skip': 'Continue without device',
+    'btn.export': '↓ Export preset',
+    'btn.import': '↑ Import preset',
+    'btn.reset': 'Reset',
+    'btn.copy': 'Copy to clipboard',
+    'advanced.export_desc': 'Save current configuration as a JSON file.',
+    'advanced.import_desc': 'Load a previously saved preset.',
+    'advanced.reset_desc': 'Reset all settings to factory defaults.',
+    'device.product': 'Product',
+    'icon.no_icon': 'No icon',
+    'icon.close': 'Close',
+    'footer.support': 'support@acoustic-empire.cz',
+    'footer.privacy': 'Privacy Policy',
+    'footer.terms': 'Terms of Use',
+    'footer.compat': 'Works with Chrome & Edge · Web MIDI API required',
+    'footer.made': 'Made in Czech Republic',
   }
 };
 
