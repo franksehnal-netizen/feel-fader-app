@@ -1003,7 +1003,10 @@ button:focus-visible{outline-offset:3px;}
 .bank-block-tab.active .bank-tab-name{max-width:140px;opacity:1;margin-left:5px;text-overflow:ellipsis;}
 .bank-block-tabs.tabs-fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent);}
 .bank-block-tab:hover{color:var(--t2);background:var(--bg-input);}
-.bank-block-tab.active{
+/* Parent-scoped for specificity (0,3,0) so the active chip beats the global
+   button:focus:not(:focus-visible) reset (0,2,1), which otherwise clears the
+   background to transparent once the tab is focused by a mouse click. */
+.bank-block-tabs .bank-block-tab.active{
   color:var(--t1);
   font-weight:600;
   background:var(--bg-input);
