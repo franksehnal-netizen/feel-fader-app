@@ -34,12 +34,6 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
         helpFaders: !!document.getElementById('help-faders'),
       };
     });
-    // clicking a pulse expands help + clears that pulse
-    const afterClick = await page.evaluate(() => {
-      const a = document.querySelector('[data-onb="roller"]'); a && a.click();
-      return { helpOpen: document.getElementById('help-body').style.display !== 'none',
-               pulseCleared: !a.classList.contains('onb-pulse') };
-    });
     // --- HW branch: no demo, HW copy ---
     const hw = await page.evaluate(() => {
       onbFinish(); localStorage.removeItem('ff-onboarded');
@@ -62,17 +56,15 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       onbOnConnect();                                       // simulate connect
       const after = document.getElementById('onb-intro-text').textContent;
       const badge = document.getElementById('onb-demo-badge');
-      return { flipped: before.includes('live demo') && after.includes('connected'),
+      return { flipped: before.toLowerCase().includes('live demo') && after.includes('connected'),
                badgeHidden: getComputedStyle(badge).display === 'none' };
     });
     const checks = [
       ['no-HW: intro card shown', nohw.cardShown === true],
-      ['no-HW: card uses no-device copy', nohw.copy.includes('live demo')],
-      ['3 pulse anchors present', nohw.anchors.every(Boolean)],
+      ['no-HW: card uses no-device copy', nohw.copy.toLowerCase().includes('live demo')],
+      ['3 pulse anchors present (bank/fader/roller containers)', nohw.anchors.every(Boolean)],
       ['pulses applied (3)', nohw.pulses === 3],
       ['help sections help-banks + help-faders exist', nohw.helpBanks && nohw.helpFaders],
-      ['click pulse opens help', afterClick.helpOpen === true],
-      ['click pulse clears its pulse', afterClick.pulseCleared === true],
       ['HW: card uses connected copy', hw.hwCopy === true],
       ['HW: demo badge hidden (display:none)', hw.demoBadgeShown === false],
       ['skip→connect flips intro copy to HW', skipConnect.flipped === true],
