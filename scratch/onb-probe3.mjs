@@ -48,7 +48,7 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       onbMaybeStartConfig();
       const card = document.getElementById('onb-intro-card');
       return { hwCopy: card ? card.textContent.includes('connected') : false,
-               demoBadge: !!document.getElementById('onb-demo-badge') };
+               demoBadgeShown: (function(){ const b = document.getElementById('onb-demo-badge'); return !!b && getComputedStyle(b).display !== 'none'; })() };
     });
     const checks = [
       ['no-HW: intro card shown', nohw.cardShown === true],
@@ -59,7 +59,7 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       ['click pulse opens help', afterClick.helpOpen === true],
       ['click pulse clears its pulse', afterClick.pulseCleared === true],
       ['HW: card uses connected copy', hw.hwCopy === true],
-      ['HW: no demo badge', hw.demoBadge === false],
+      ['HW: demo badge hidden (display:none)', hw.demoBadgeShown === false],
       ['no pageerror / console.error', pageErrors.length === 0],
     ];
     let ok = true; console.log('\nChecks:');
