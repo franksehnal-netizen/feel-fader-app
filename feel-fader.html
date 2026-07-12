@@ -724,6 +724,14 @@ html.dark .dark-toggle svg{transform:rotate(180deg)}
   cursor:pointer;font-family:'Mulish',sans-serif;padding:8px 16px;
   -webkit-tap-highlight-color:transparent;
 }
+.onb-beat-title{font-size:22px;font-weight:700;color:var(--t1);letter-spacing:-.02em;line-height:1.2;transition:opacity .3s ease;}
+.onb-beat-sub{font-size:13px;color:var(--t2);line-height:1.5;margin-top:6px;min-height:38px;transition:opacity .3s ease;}
+.onb-dots{display:flex;gap:6px;justify-content:center;margin:14px 0 10px;cursor:pointer;}
+.onb-dots span{width:6px;height:6px;border-radius:var(--r-pill);background:var(--border-s);transition:background .2s ease;}
+.onb-dots span.on{background:var(--red);}
+.onb-skip{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;font-family:'Mulish',sans-serif;padding:4px;}
+.onb-skip:hover{color:var(--t2);}
+.onb-beats-fade{opacity:0;}
 html.dark #welcome-device-img{
   box-shadow:0 24px 64px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
 }
@@ -1294,9 +1302,15 @@ html.dark .val-bar{background:var(--t2);}
 
     <!-- Text block — fades out on connect -->
     <div id="welcome-text-block">
-      <div class="welcome-status">
+      <div class="welcome-status" id="welcome-status-row">
         <div class="welcome-status-dot"></div>
         <span style="font-size:11px;color:var(--t2);letter-spacing:.04em;text-transform:uppercase" data-i18n="welcome.waiting">Waiting for device</span>
+      </div>
+      <div id="onb-beats" style="display:none">
+        <div class="onb-beat-title" data-i18n="onb.beat1.title">Meet Feel Fader</div>
+        <div class="onb-beat-sub" data-i18n="onb.beat1.sub"></div>
+        <div class="onb-dots"><span class="on"></span><span></span><span></span></div>
+        <button class="onb-skip" onclick="onbSkipIntro()" data-i18n="onb.skip_intro">Skip intro</button>
       </div>
       <div class="welcome-title" data-i18n="welcome.connect">Connect Feel Fader</div>
       <div class="welcome-sub" data-i18n="welcome.sub">Plug in via USB-C — configuration loads automatically.</div>
@@ -3149,6 +3163,7 @@ function applyDeviceDark(serial) {
 function showWelcome() {
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden');
+  if (onbShouldRun() && document.getElementById('onb-beats')) onbStartWelcome();
   // Fallback: if the device isn't auto-detected (e.g. MIDI port quirk), surface Start
   // anyway after a short wait so the user can grant the serial port manually.
   clearTimeout(_welcomeStartTimer);
@@ -3241,6 +3256,51 @@ function onbFinish() {
   if (typeof onbDemoStop === 'function') onbDemoStop();
   const card = document.getElementById('onb-intro-card');
   if (card) card.style.display = 'none';
+}
+
+let _onbBeat = 0, _onbBeatTimer = null;
+const _ONB_BEATS = [
+  { t: 'onb.beat1.title', s: 'onb.beat1.sub' },
+  { t: 'onb.beat2.title', s: 'onb.beat2.sub' },
+  { t: 'onb.beat3.title', s: 'onb.beat3.sub' },
+];
+function onbStartWelcome() {
+  const beats = document.getElementById('onb-beats');
+  const statusRow = document.getElementById('welcome-status-row');
+  const title = document.querySelector('#welcome-text-block .welcome-title');
+  const sub = document.querySelector('#welcome-text-block .welcome-sub');
+  if (!beats) return;
+  if (statusRow) statusRow.style.display = 'none';
+  if (title) title.style.display = 'none';
+  if (sub) sub.style.display = 'none';
+  beats.style.display = 'block';
+  const dots = beats.querySelector('.onb-dots');
+  if (dots) dots.onclick = onbBeatNext;
+  onbBeatGo(0);
+}
+function onbBeatGo(i) {
+  _onbBeat = Math.max(0, Math.min(2, i));
+  const beats = document.getElementById('onb-beats');
+  const tEl = beats.querySelector('.onb-beat-title');
+  const sEl = beats.querySelector('.onb-beat-sub');
+  const dots = beats.querySelectorAll('.onb-dots span');
+  tEl.classList.add('onb-beats-fade'); sEl.classList.add('onb-beats-fade');
+  setTimeout(() => {
+    tEl.textContent = t(_ONB_BEATS[_onbBeat].t);
+    sEl.textContent = t(_ONB_BEATS[_onbBeat].s);
+    tEl.classList.remove('onb-beats-fade'); sEl.classList.remove('onb-beats-fade');
+  }, 180);
+  dots.forEach((d, k) => d.classList.toggle('on', k === _onbBeat));
+  clearTimeout(_onbBeatTimer);
+  if (_onbBeat < 2) _onbBeatTimer = setTimeout(onbBeatNext, 4000);
+  else onbBeatShowCTA();
+}
+function onbBeatNext() { onbBeatGo(_onbBeat + 1); }
+function onbSkipIntro() { clearTimeout(_onbBeatTimer); onbBeatGo(2); }
+function onbBeatShowCTA() {
+  // Reveal the normal connect affordance; Start appears if a device is present (showStartBtn),
+  // the skip link is always available regardless.
+  if (_ffConnected || _serialPort) showStartBtn();
 }
 
 // ════════════════════════════════════════════════════════════════
