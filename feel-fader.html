@@ -1052,8 +1052,6 @@ button:focus:not(:focus-visible){background:transparent;}
   text-align:left;
 }
 
-.help-hint{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--border-s);background:none;color:var(--t3);font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .13s;font-family:'Mulish',sans-serif;line-height:1;}
-.help-hint:hover{color:var(--t1);border-color:var(--t2);}
 
 #onb-intro-card{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--green-bg);border:1px solid var(--green-border);color:var(--t1);border-radius:var(--r);padding:10px 14px;margin:0 0 12px;font-size:12px;line-height:1.5;}
 #onb-intro-text{flex:1;}
@@ -3107,9 +3105,6 @@ var TRANSLATIONS = {
     'onb.intro.dismiss': 'Got it',
     'onb.demo_badge': 'Demo — no device',
     'onb.replay': '▶ Show intro again',
-    'onb.hint.bank': 'Banks are presets — each has its own fader and roller mapping.',
-    'onb.hint.fader': 'Assign a MIDI CC and channel. The on-screen fader mirrors the hardware (display only).',
-    'onb.hint.roller': 'The roller has three modes: articulation, keyswitch, and navigation.',
     // Restored 2026-07-12 — these are referenced via data-i18n (applied by applyLang),
     // not via t() in JS, so the f30cdb3 "unused keys" cleanup wrongly removed them,
     // leaving raw keys visible across welcome / footer / advanced settings / device info / icon picker.
