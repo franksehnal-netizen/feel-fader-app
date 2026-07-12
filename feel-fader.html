@@ -2525,7 +2525,7 @@ function connectInputs(){
     const statusTxt = document.querySelector('.welcome-status span');
     if (statusTxt) statusTxt.textContent = t('welcome.found');
     if (!_ffConnected) {
-      if (_onbDemoTimer) onbDemoStop();
+      onbOnConnect();
       _ffConnected = true;
       // Pre-open output port to avoid onstatechange → connectInputs() loop on first CC send.
       midiAccess.outputs.forEach(out => { if(isFeelFader(out.name)) out.open().catch(()=>{}); });
@@ -3392,7 +3392,7 @@ function onbDemoTick() {
   const list = (bank && bank.uacc_values) || [];
   if (list.length) {
     const v = list[_onbDemoPhase % list.length];
-    setTxt('enc-artic-badge', uaccName(v)); liveOn('enc-artic-badge');
+    setTxt('enc-artic-badge', uaccName(v));
   }
 }
 function onbDemoStop() {
@@ -3401,6 +3401,18 @@ function onbDemoStop() {
   if (badge) badge.style.display = 'none';
   pF('track-l', 'thumb-l', 64);
   pF('track-r', 'thumb-r', 64);
+}
+function onbOnConnect() {
+  // A device connected mid-Phase-2: stop any demo, hide its badge, and flip the
+  // intro card from no-HW to HW copy (honesty of state). No-op if onboarding isn't open.
+  const card = document.getElementById('onb-intro-card');
+  if (card && card.style.display !== 'none' && !_onbDone) {
+    onbDemoStop();
+    const txt = document.getElementById('onb-intro-text');
+    if (txt) txt.textContent = t('onb.intro.hw');
+  } else if (_onbDemoTimer) {
+    onbDemoStop();
+  }
 }
 function onbReplay() {
   _onbDone = false; _onbConfigStarted = true;   // bypass the once-per-session/flag guards

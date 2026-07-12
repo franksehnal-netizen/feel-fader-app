@@ -50,6 +50,21 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       return { hwCopy: card ? card.textContent.includes('connected') : false,
                demoBadgeShown: (function(){ const b = document.getElementById('onb-demo-badge'); return !!b && getComputedStyle(b).display !== 'none'; })() };
     });
+    // --- skip→connect: no-HW onboarding open, then a device connects mid-Phase-2 ---
+    const skipConnect = await page.evaluate(() => {
+      // no-HW onboarding open, then a device connects
+      onbFinish(); localStorage.removeItem('ff-onboarded');
+      _ffConnected = false; _serialPort = null; _midiState = 'pending';
+      _onbConfigStarted = false; _onbDone = false;
+      skipWelcome(); render(); onbMaybeStartConfig();      // no-HW copy + demo
+      const before = document.getElementById('onb-intro-text').textContent;
+      _ffConnected = true; _serialPort = {}; _midiState = 'granted';
+      onbOnConnect();                                       // simulate connect
+      const after = document.getElementById('onb-intro-text').textContent;
+      const badge = document.getElementById('onb-demo-badge');
+      return { flipped: before.includes('live demo') && after.includes('connected'),
+               badgeHidden: getComputedStyle(badge).display === 'none' };
+    });
     const checks = [
       ['no-HW: intro card shown', nohw.cardShown === true],
       ['no-HW: card uses no-device copy', nohw.copy.includes('live demo')],
@@ -60,6 +75,8 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       ['click pulse clears its pulse', afterClick.pulseCleared === true],
       ['HW: card uses connected copy', hw.hwCopy === true],
       ['HW: demo badge hidden (display:none)', hw.demoBadgeShown === false],
+      ['skip→connect flips intro copy to HW', skipConnect.flipped === true],
+      ['skip→connect hides demo badge', skipConnect.badgeHidden === true],
       ['no pageerror / console.error', pageErrors.length === 0],
     ];
     let ok = true; console.log('\nChecks:');

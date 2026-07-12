@@ -29,7 +29,6 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
     await new Promise(r => setTimeout(r, 3600));
     const at36 = await page.evaluate(() => ({
       startHidden: !document.getElementById('welcome-start').classList.contains('show'),
-      onBeat0or1: !document.querySelector('#onb-beats .onb-dots span:last-child')?.classList.contains('on'),
     }));
     // advance to CTA
     await page.evaluate(() => { onbSkipIntro(); });
