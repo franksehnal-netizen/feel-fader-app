@@ -511,28 +511,28 @@ Create `scratch/onb-probe4.mjs`:
       localStorage.removeItem('ff-onboarded');
       _ffConnected = false; _serialPort = null; _midiState = 'pending';
       _onbConfigStarted = false; _onbDone = false;
-      // count any MIDI sends
-      window.__sends = 0;
       const badge0 = !!document.getElementById('onb-demo-badge');
       skipWelcome(); render(); onbMaybeStartConfig();
       const badgeShown = () => { const b = document.getElementById('onb-demo-badge'); return b && getComputedStyle(b).display !== 'none'; };
       const before = document.getElementById('thumb-l')?.style.top;
       await new Promise(r => setTimeout(r, 900));
       const after = document.getElementById('thumb-l')?.style.top;
+      // INVARIANT: the demo tick must never reach a MIDI output — assert its source
+      // contains no send() call (display-only). This inspects the real function body,
+      // so it fails loudly if a future edit wires MIDI into the decorative animation.
+      const noSend = !/\bsend\s*\(/.test(onbDemoTick.toString());
       onbDemoStop();
       const badgeAfterStop = badgeShown();
-      return { badge0, badgeShownDuring: true, moved: before !== after, badgeAfterStop, sends: window.__sends };
+      return { badge0, moved: before !== after, badgeAfterStop, noSend };
     });
     const checks = [
       ['no demo badge before start', run.badge0 === false],
       ['no-HW demo moves a fader thumb', run.moved === true],
       ['onbDemoStop hides badge', run.badgeAfterStop === false],
-      ['INVARIANT: zero MIDI sends during demo', run.sends === 0],
+      ['INVARIANT: onbDemoTick source contains no send() call', run.noSend === true],
       ['no pageerror / console.error', pageErrors.length === 0],
     ];
 ```
-
-> Note on the invariant check: the app has no MIDI output in the display-only build, so `window.__sends` stays 0 by construction. The probe asserts the demo introduces none. If a future edit adds a sender, wire it to bump `window.__sends` in a debug shim; for now the assertion guards that `onbDemoTick` uses only `pF` (DOM), never `send`.
 
 - [ ] **Step 2: Run the probe, verify it fails**
 
