@@ -3213,10 +3213,12 @@ function showWelcome() {
   const statusRow = document.getElementById('welcome-status-row');
   const title = document.querySelector('#welcome-text-block .welcome-title');
   const sub = document.querySelector('#welcome-text-block .welcome-sub');
+  const skip = document.querySelector('#welcome-text-block .welcome-skip');
   const beats = document.getElementById('onb-beats');
   if (statusRow) statusRow.style.display = '';
   if (title) title.style.display = '';
   if (sub) sub.style.display = '';
+  if (skip) skip.style.display = '';
   if (beats) beats.style.display = 'none';
   clearTimeout(_onbBeatTimer);
   if (onbShouldRun() && beats) {
@@ -3332,6 +3334,10 @@ function onbStartWelcome() {
   if (statusRow) statusRow.style.display = 'none';
   if (title) title.style.display = 'none';
   if (sub) sub.style.display = 'none';
+  // #1: during the beats show only "Skip intro" — hide the welcome "Continue without device"
+  // link; it reappears with the CTA at the final beat (onbBeatShowCTA).
+  const skip = document.querySelector('#welcome-text-block .welcome-skip');
+  if (skip) skip.style.display = 'none';
   beats.style.display = 'block';
   const dots = beats.querySelector('.onb-dots');
   if (dots) dots.onclick = onbBeatNext;
@@ -3358,8 +3364,10 @@ function onbBeatNext() { onbBeatGo(_onbBeat + 1); }
 function onbSkipIntro() { clearTimeout(_onbBeatTimer); onbBeatGo(2); }
 function onbBeatShowCTA() {
   // Reveal the normal connect affordance; Start appears if a device is present,
-  // the skip link is always available. Re-arm the fallback so MIDI-detection
-  // failure still surfaces Start shortly after the beats finish.
+  // the skip link ("Continue without device") reappears here as the "explore" path.
+  // Re-arm the fallback so MIDI-detection failure still surfaces Start shortly after.
+  const skip = document.querySelector('#welcome-text-block .welcome-skip');
+  if (skip) skip.style.display = '';
   if (_ffConnected || _serialPort) showStartBtn();
   clearTimeout(_welcomeStartTimer);
   _welcomeStartTimer = setTimeout(() => {
@@ -3383,11 +3391,9 @@ function onbStartConfig() {
     el.classList.add('onb-pulse');
     if (el._onbBound) return;          // bind the clear-listener at most once per element — safe across replay
     el._onbBound = true;
-    el.addEventListener('click', () => {
-      el.classList.remove('onb-pulse');
-      if (_onbDone) return;
-      if (!document.querySelector('.onb-pulse') && document.getElementById('onb-intro-card')?.style.display === 'none') onbFinish();
-    });
+    // Clicking a hint stops its pulse and (via the button's own onclick) opens Help.
+    // Onboarding completes only via the intro card's "Got it" button (onbFinish).
+    el.addEventListener('click', () => { el.classList.remove('onb-pulse'); });
   });
   if (!live && typeof onbDemoStart === 'function') onbDemoStart();
 }
