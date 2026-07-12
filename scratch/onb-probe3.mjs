@@ -28,8 +28,6 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       return {
         cardShown: !!card && getComputedStyle(card).display !== 'none',
         copy: card ? card.textContent : '',
-        pulses: document.querySelectorAll('.onb-pulse').length,
-        anchors: ['bank','fader','roller'].map(k => !!document.querySelector(`[data-onb="${k}"]`)),
         helpBanks: !!document.getElementById('help-banks'),
         helpFaders: !!document.getElementById('help-faders'),
       };
@@ -62,8 +60,6 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
     const checks = [
       ['no-HW: intro card shown', nohw.cardShown === true],
       ['no-HW: card uses no-device copy', nohw.copy.toLowerCase().includes('live demo')],
-      ['3 pulse anchors present (bank/fader/roller containers)', nohw.anchors.every(Boolean)],
-      ['pulses applied (3)', nohw.pulses === 3],
       ['help sections help-banks + help-faders exist', nohw.helpBanks && nohw.helpFaders],
       ['HW: card uses connected copy', hw.hwCopy === true],
       ['HW: demo badge hidden (display:none)', hw.demoBadgeShown === false],

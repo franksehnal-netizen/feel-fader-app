@@ -1059,16 +1059,6 @@ button:focus:not(:focus-visible){background:transparent;}
 #onb-intro-text{flex:1;}
 .onb-intro-x{background:none;border:1px solid var(--border-s);color:var(--t2);border-radius:var(--r-sm);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Mulish',sans-serif;flex-shrink:0;}
 .onb-intro-x:hover{color:var(--t1);border-color:var(--t2);}
-/* Onboarding attention pulse — a soft red ring that breathes just INSIDE a real
-   control container (bank tabs / fader section / roller section). Inset box-shadow
-   so it is never clipped by the card's overflow, never affects layout, and never
-   blocks the control's own clicks. */
-.onb-pulse{animation:onb-pulse-glow 1.8s ease-in-out infinite;border-radius:var(--r-sm);}
-@keyframes onb-pulse-glow{
-  0%,100%{box-shadow:inset 0 0 0 1.5px rgba(232,80,58,.15);}
-  50%{box-shadow:inset 0 0 0 2px rgba(232,80,58,.85),inset 0 0 12px rgba(232,80,58,.22);}
-}
-@media (prefers-reduced-motion: reduce){.onb-pulse{animation:none;box-shadow:inset 0 0 0 2px var(--red);}}
 #onb-demo-badge{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;background:var(--bg-card);border:1px solid var(--border-s);color:var(--t2);border-radius:var(--r-pill);padding:3px 10px;font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;}
 .onb-replay-btn{background:none;border:1px solid var(--border-s);color:var(--t2);border-radius:var(--r-sm);padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Mulish',sans-serif;margin:0 0 12px;}
 .onb-replay-btn:hover{color:var(--t1);border-color:var(--t2);}
@@ -1121,7 +1111,7 @@ html.dark .val-bar{background:var(--t2);}
 
   </div>
 </header>
-<div class="bank-bar" id="bank-bar"><div class="bank-block-tabs" id="bank-tabs" data-onb="bank"></div></div>
+<div class="bank-bar" id="bank-bar"><div class="bank-block-tabs" id="bank-tabs"></div></div>
 </div>
 
 <main>
@@ -1618,7 +1608,7 @@ function renderPanels() {
     <!-- Single bank card containing all sections -->
     <div class="bank-card${bankChanged ? ' bank-anim' : ''}">
       ${bankNameRowHtml}
-      <div class="bank-section" data-fader="fader1" data-onb="fader" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
+      <div class="bank-section" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
         ${faderSectionContent('fader1', b.fader1, bi)}
       </div>
       <div class="bank-section-divider"></div>
@@ -1626,7 +1616,7 @@ function renderPanels() {
         ${faderSectionContent('fader2', b.fader2, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section bank-section-encoder" data-fader="roller" data-onb="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
+      <div class="bank-section bank-section-encoder" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
         ${encoderSectionContent(b.encoder, bi)}
       </div>
       ${DEVICE_INFO.hid_enabled ? `
@@ -3120,8 +3110,8 @@ var TRANSLATIONS = {
     'onb.beat3.title': 'Connect or explore',
     'onb.beat3.sub': 'Connect your Feel Fader to set it up — or explore the demo without one.',
     'onb.skip_intro': 'Skip intro',
-    'onb.intro.hw': 'You are connected. The highlighted areas are your banks, faders and articulation roller — move a hardware fader to see it mirror here. Full details in Help & Guide below.',
-    'onb.intro.nohw': 'Live demo — no device connected. The highlighted areas are your banks, faders and articulation roller. Connect a Feel Fader to configure it, or open Help & Guide below.',
+    'onb.intro.hw': 'You are connected. Configure your Feel Fader below — its two faders, the articulation roller and banks of presets. Move a hardware fader to see it mirror here. Details in Help & Guide below.',
+    'onb.intro.nohw': 'Live demo — no device connected. Explore how a Feel Fader is configured — its two faders, the articulation roller and banks of presets. Connect one to set it up, or open Help & Guide below.',
     'onb.intro.dismiss': 'Got it',
     'onb.demo_badge': 'Demo — no device',
     'onb.replay': '▶ Show intro again',
@@ -3324,7 +3314,6 @@ function onbShouldRun() { return !localStorage.getItem('ff-onboarded'); }
 function onbFinish() {
   try { localStorage.setItem('ff-onboarded', '1'); } catch (_) {}
   _onbDone = true;
-  document.querySelectorAll('.onb-pulse').forEach(el => el.classList.remove('onb-pulse'));
   if (typeof onbDemoStop === 'function') onbDemoStop();
   const card = document.getElementById('onb-intro-card');
   if (card) card.style.display = 'none';
@@ -3398,10 +3387,6 @@ function onbStartConfig() {
   const live = liveAllowed();
   if (txt) txt.textContent = t(live ? 'onb.intro.hw' : 'onb.intro.nohw');
   if (card) card.style.display = 'flex';
-  // Pulse the real control containers (bank tabs / fader / roller) as attention
-  // pointers. They stay lit until the intro card's "Got it" (onbFinish clears them);
-  // clicking a control does its normal action. box-shadow pulse never blocks clicks.
-  document.querySelectorAll('[data-onb]').forEach(el => el.classList.add('onb-pulse'));
   if (!live && typeof onbDemoStart === 'function') onbDemoStart();
 }
 
