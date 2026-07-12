@@ -3063,6 +3063,22 @@ var TRANSLATIONS = {
     'validate.uacc_empty': 'Bank "{b}": articulation list must not be empty',
     'validate.ch_range': 'Bank "{b}" {k}: channel must be 0–15',
     'validate.cc_conflict': 'Bank "{b}": {k1} and {k2} share CC {cc}/ch {ch} — assign unique CCs',
+    // Onboarding
+    'onb.beat1.title': 'Meet Feel Fader',
+    'onb.beat1.sub': 'Two motorless faders and a roller for articulations — built for orchestral MIDI.',
+    'onb.beat2.title': 'Configure & mirror',
+    'onb.beat2.sub': 'This app sets up your device and mirrors it live. It is a configurator and display — not a controller.',
+    'onb.beat3.title': 'Connect or explore',
+    'onb.beat3.sub': 'Connect your Feel Fader to set it up — or explore the demo without one.',
+    'onb.skip_intro': 'Skip intro',
+    'onb.intro.hw': 'You are connected. Tap the pulsing points to learn each control, or move a hardware fader to see it mirror here.',
+    'onb.intro.nohw': 'No device connected — this is a live demo. Tap the pulsing points to explore, then connect a Feel Fader to configure it.',
+    'onb.intro.dismiss': 'Got it',
+    'onb.demo_badge': 'Demo — no device',
+    'onb.replay': '▶ Show intro again',
+    'onb.hint.bank': 'Banks are presets — each has its own fader and roller mapping.',
+    'onb.hint.fader': 'Assign a MIDI CC and channel. The on-screen fader mirrors the hardware (display only).',
+    'onb.hint.roller': 'The roller has three modes: articulation, keyswitch, and navigation.',
   }
 };
 
@@ -3212,6 +3228,19 @@ function skipWelcome() {
   // Bypass animation — instant hide
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.add('hidden');
+}
+
+// ── Onboarding (guided first-run) ──────────────────────────────
+let _onbConfigStarted = false;
+let _onbDone = false;
+function onbShouldRun() { return !localStorage.getItem('ff-onboarded'); }
+function onbFinish() {
+  try { localStorage.setItem('ff-onboarded', '1'); } catch (_) {}
+  _onbDone = true;
+  document.querySelectorAll('.onb-pulse').forEach(el => el.classList.remove('onb-pulse'));
+  if (typeof onbDemoStop === 'function') onbDemoStop();
+  const card = document.getElementById('onb-intro-card');
+  if (card) card.style.display = 'none';
 }
 
 // ════════════════════════════════════════════════════════════════
