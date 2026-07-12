@@ -2833,11 +2833,18 @@ async function loadConfigFromDevice() {
   renderConnState();
 }
 
+function updateWelcomeSkip() {
+  // "Continue without device" is meaningless once a device is present — hide it then;
+  // keep it only when no device is detected (real no-device / MIDI-detection quirk).
+  const skip = document.querySelector('#welcome-text-block .welcome-skip');
+  if (skip) skip.style.display = (_ffConnected || _serialPort) ? 'none' : '';
+}
 function showStartBtn() {
   const btn = document.getElementById('welcome-start');
   if (btn) { btn.classList.add('show'); btn.disabled = false; btn.textContent = 'Start'; }
   const sub = document.querySelector('#welcome-screen .welcome-sub');   // audit V12 — copy odpovídá reálnému kroku
   if (sub) sub.textContent = 'Press Start and pick your Feel Fader to connect.';
+  updateWelcomeSkip();
 }
 
 // Welcome "Start" — the one user gesture that grants the serial port, loads the
@@ -3213,12 +3220,11 @@ function showWelcome() {
   const statusRow = document.getElementById('welcome-status-row');
   const title = document.querySelector('#welcome-text-block .welcome-title');
   const sub = document.querySelector('#welcome-text-block .welcome-sub');
-  const skip = document.querySelector('#welcome-text-block .welcome-skip');
   const beats = document.getElementById('onb-beats');
   if (statusRow) statusRow.style.display = '';
   if (title) title.style.display = '';
   if (sub) sub.style.display = '';
-  if (skip) skip.style.display = '';
+  updateWelcomeSkip();   // hide "Continue without device" if a device is already present
   if (beats) beats.style.display = 'none';
   clearTimeout(_onbBeatTimer);
   if (onbShouldRun() && beats) {
@@ -3363,11 +3369,11 @@ function onbBeatGo(i) {
 function onbBeatNext() { onbBeatGo(_onbBeat + 1); }
 function onbSkipIntro() { clearTimeout(_onbBeatTimer); onbBeatGo(2); }
 function onbBeatShowCTA() {
-  // Reveal the normal connect affordance; Start appears if a device is present,
-  // the skip link ("Continue without device") reappears here as the "explore" path.
-  // Re-arm the fallback so MIDI-detection failure still surfaces Start shortly after.
-  const skip = document.querySelector('#welcome-text-block .welcome-skip');
-  if (skip) skip.style.display = '';
+  // Reveal the normal connect affordance. If no device is present the skip link
+  // ("Continue without device") reappears as the "explore" path; if a device IS
+  // present it stays hidden (updateWelcomeSkip). Re-arm the fallback so MIDI-detection
+  // failure still surfaces Start shortly after.
+  updateWelcomeSkip();
   if (_ffConnected || _serialPort) showStartBtn();
   clearTimeout(_welcomeStartTimer);
   _welcomeStartTimer = setTimeout(() => {
