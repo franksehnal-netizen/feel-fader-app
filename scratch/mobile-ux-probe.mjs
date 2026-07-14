@@ -163,6 +163,7 @@ async function runProfile(browser, url, profile) {
     return {
       stageHeight: stage.height,
       visibleText,
+      continueBottomGap: window.innerHeight - document.querySelector('.welcome-skip').getBoundingClientRect().bottom,
       redundantStatusAbsent: !document.getElementById('welcome-status-row'),
       redundantSubtitleAbsent: !document.querySelector('#welcome-screen .welcome-sub'),
     };
@@ -173,6 +174,9 @@ async function runProfile(browser, url, profile) {
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
       && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Connect Feel Fader', 'Connect & load', 'Continue without device']),
     compactWelcome.visibleText.join(' / '));
+  addCheck(checks, 'Continue without device hugs the browser safe edge',
+    compactWelcome.continueBottomGap >= 7 && compactWelcome.continueBottomGap <= 9,
+    `${compactWelcome.continueBottomGap.toFixed(2)} px`);
 
   const feedbackState = await page.evaluate(async () => {
     const originalLoad = window.loadConfigFromDevice;
@@ -315,6 +319,7 @@ async function runProfile(browser, url, profile) {
     showWelcome();
     const controller = document.getElementById('device-wrap');
     const rect = document.getElementById('device-img').getBoundingClientRect();
+    const ctaRect = document.getElementById('welcome-start').getBoundingClientRect();
     window.__sharedControllerRef = controller;
     connectTransitionWelcome();
     return {
@@ -324,6 +329,7 @@ async function runProfile(browser, url, profile) {
       parentId: controller.parentElement?.id || '',
       top: rect.top,
       width: rect.width,
+      cta: { top: ctaRect.top, width: ctaRect.width, height: ctaRect.height },
     };
   });
   await settle(page, 800);
@@ -342,12 +348,14 @@ async function runProfile(browser, url, profile) {
   await settle(page, 350);
   const transitionEnd = await page.evaluate(() => {
     const rect = document.getElementById('device-img').getBoundingClientRect();
+    const sendRect = document.getElementById('send-btn').getBoundingClientRect();
     return {
       sameNode: window.__sharedControllerRef === document.getElementById('device-wrap'),
       parentId: document.getElementById('device-wrap').parentElement?.id || '',
       welcomeHidden: document.getElementById('welcome-screen').classList.contains('hidden'),
       top: rect.top,
       width: rect.width,
+      send: { top: sendRect.top, width: sendRect.width, height: sendRect.height },
     };
   });
   transitionEnd.topGap = Math.abs(transitionEnd.top - transitionStart.top);
@@ -363,6 +371,11 @@ async function runProfile(browser, url, profile) {
     transitionEnd.sameNode && transitionEnd.parentId === 'device-home' && transitionEnd.welcomeHidden
       && transitionEnd.topGap <= 1 && transitionWidthGap <= 1,
     `same ${transitionEnd.sameNode} / top ${transitionEnd.topGap.toFixed(2)} px / width ${transitionWidthGap.toFixed(2)} px`);
+  addCheck(checks, 'Send to device replaces Connect & load on the same pixels',
+    Math.abs(transitionEnd.send.top - transitionStart.cta.top) <= 1
+      && Math.abs(transitionEnd.send.width - transitionStart.cta.width) <= 1
+      && Math.abs(transitionEnd.send.height - transitionStart.cta.height) <= 1,
+    `top ${Math.abs(transitionEnd.send.top - transitionStart.cta.top).toFixed(2)} px / width ${Math.abs(transitionEnd.send.width - transitionStart.cta.width).toFixed(2)} px / height ${Math.abs(transitionEnd.send.height - transitionStart.cta.height).toFixed(2)} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();

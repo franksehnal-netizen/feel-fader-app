@@ -226,7 +226,7 @@ main{width:100%;}
   display:flex;
   align-items:center;
   justify-content:center;
-  margin:32px auto 0;
+  margin:var(--send-entry-gap,32px) auto 0;
   width:fit-content;
   position:relative;
   z-index:10;
@@ -878,6 +878,7 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
      correction cannot overlap or reflow its copy. */
   .stage{position:static;top:auto;animation:none;margin-top:0;transform:translate3d(0,var(--stage-entry-offset,0px),0);}
   .send-callout{justify-content:center}
+  .send-btn{width:166px}
   .send-callout.is-mobile-docked{
     position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:90;
     margin:0;padding:6px;transform:translateX(-50%);gap:7px;border:1px solid var(--glass-border);
@@ -891,6 +892,12 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
   .send-callout.is-mobile-docked .change-popover{top:auto;bottom:calc(100% + 10px)}
   body.mobile-send-docked .live-hud{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
   .panel{min-width:100%;max-width:100%}.info-grid{grid-template-columns:1fr}
+  #welcome-text-block.welcome-has-skip{padding-bottom:30px}
+  #welcome-text-block .welcome-skip{
+    position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:3;
+    width:max-content;transform:translateX(-50%);
+  }
+  .welcome-start{min-height:44px}
 }
 
 /* ── CONNECTION STATUS IN HEADER ── */
@@ -4130,7 +4137,9 @@ function updateWelcomeSkip() {
   // "Continue without device" is meaningless once a device is present — hide it then;
   // keep it only when no device is detected (real no-device / MIDI-detection quirk).
   const skip = document.querySelector('#welcome-text-block .welcome-skip');
-  if (skip) skip.style.display = (_ffConnected || _serialPort) ? 'none' : '';
+  const visible = !(_ffConnected || _serialPort);
+  if (skip) skip.style.display = visible ? '' : 'none';
+  document.getElementById('welcome-text-block')?.classList.toggle('welcome-has-skip',visible);
 }
 function showStartBtn() {
   const btn = document.getElementById('welcome-start');
@@ -4639,7 +4648,9 @@ function mountControllerInApp() {
 }
 function showWelcome() {
   resetAppScrollTop();
-  document.querySelector('.stage')?.style.setProperty('--stage-entry-offset', '0px');
+  const stage = document.querySelector('.stage');
+  stage?.style.setProperty('--stage-entry-offset', '0px');
+  stage?.style.removeProperty('--send-entry-gap');
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden','connecting');
   const textBlock = document.getElementById('welcome-text-block');
@@ -4719,6 +4730,13 @@ function connectTransitionWelcome() {
 
   // 2. Align the empty app home to the shared controller's current pixels.
   const devWrap = sharedController();
+  const stage = document.querySelector('.stage');
+  const controllerImg = document.getElementById('device-img');
+  const welcomeCta = document.getElementById('welcome-start');
+  if (stage && controllerImg && welcomeCta && window.matchMedia?.('(max-width:600px)').matches) {
+    const gap = Math.max(0,welcomeCta.getBoundingClientRect().top - controllerImg.getBoundingClientRect().bottom);
+    stage.style.setProperty('--send-entry-gap',gap + 'px');
+  } else stage?.style.removeProperty('--send-entry-gap');
   alignAppControllerToWelcome();
 
   // 3. Settle to the device snapshot already applied by serialReadInfo(). This uses
