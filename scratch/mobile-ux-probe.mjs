@@ -124,8 +124,6 @@ async function runProfile(browser, url, profile) {
     await settle(page, 250);
     introNavPositions.push(await page.evaluate(() => ({
       dotsTop: document.querySelector('.onb-dots').getBoundingClientRect().top,
-      skipTop: document.querySelector('.onb-skip').getBoundingClientRect().top,
-      skipBottom: document.querySelector('.onb-skip').getBoundingClientRect().bottom,
       ctaTop: document.getElementById('welcome-start').getBoundingClientRect().top,
       subHeight: document.querySelector('.onb-beat-sub').getBoundingClientRect().height,
     })));
@@ -135,21 +133,61 @@ async function runProfile(browser, url, profile) {
   }
   const dotsShift = Math.max(...introNavPositions.map(item => item.dotsTop))
     - Math.min(...introNavPositions.map(item => item.dotsTop));
-  const skipShift = Math.max(...introNavPositions.map(item => item.skipTop))
-    - Math.min(...introNavPositions.map(item => item.skipTop));
-  const introClearance = Math.min(...introNavPositions.map(item => item.ctaTop - item.skipBottom));
+  const introCtaShift = Math.max(...introNavPositions.map(item => item.ctaTop))
+    - Math.min(...introNavPositions.map(item => item.ctaTop));
   addCheck(checks, 'Intro dots stay fixed across all three slides', dotsShift <= 1, `${dotsShift.toFixed(2)} px`);
-  addCheck(checks, 'Skip intro stays fixed across all three slides', skipShift <= 1, `${skipShift.toFixed(2)} px`);
-  addCheck(checks, 'Skip intro stays clear of the primary CTA', introClearance >= 4, `${introClearance.toFixed(2)} px`);
-  await page.click('.onb-skip');
-  await settle(page, 250);
-  const welcomeAfter = await page.evaluate(() => {
-    const cta = document.getElementById('welcome-start').getBoundingClientRect();
-    return { ctaTop: cta.top };
+  addCheck(checks, 'Primary CTA stays fixed across all three slides', introCtaShift <= 1, `${introCtaShift.toFixed(2)} px`);
+  addCheck(checks, 'Redundant Skip intro action is absent',
+    await page.$('.onb-skip') === null, 'absent');
+  addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 142) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
+
+  const feedbackState = await page.evaluate(async () => {
+    const originalLoad = window.loadConfigFromDevice;
+    const continueButton = document.querySelector('#welcome-text-block .welcome-skip');
+    const continueTop = () => continueButton.getBoundingClientRect().top;
+    const runFailure = async (name, message) => {
+      window.loadConfigFromDevice = async () => {
+        const error = new Error(message);
+        error.name = name;
+        throw error;
+      };
+      await doStart();
+      return {
+        continueTop: continueTop(),
+        message: document.getElementById('welcome-start-msg').textContent,
+        button: document.getElementById('welcome-start').textContent,
+      };
+    };
+    const before = continueTop();
+    const cancelled = await runFailure('NotFoundError', 'No port selected by the user.');
+    showStartBtn();
+    const failed = await runFailure('NetworkError', 'Could not read from the device.');
+    window.loadConfigFromDevice = originalLoad;
+    const continueRect = continueButton.getBoundingClientRect();
+    return {
+      before,
+      cancelled,
+      failed,
+      continueVisible: getComputedStyle(continueButton).display !== 'none' && continueRect.bottom <= window.innerHeight,
+      continueBottom: continueRect.bottom,
+      viewportHeight: window.innerHeight,
+    };
   });
-  const ctaShift = Math.abs(welcomeAfter.ctaTop - welcomeBefore.ctaTop);
-  addCheck(checks, 'Skip intro keeps the primary CTA fixed', ctaShift <= 1, `${ctaShift.toFixed(2)} px`);
-  addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 164) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
+  addCheck(checks, 'Cancelling the port picker stays silent',
+    feedbackState.cancelled.message === '' && feedbackState.cancelled.button === 'Connect & load',
+    `${feedbackState.cancelled.button} / ${feedbackState.cancelled.message || 'no message'}`);
+  addCheck(checks, 'A real connection failure uses compact feedback',
+    feedbackState.failed.message === 'Connection failed' && feedbackState.failed.button === 'Try again',
+    `${feedbackState.failed.button} / ${feedbackState.failed.message}`);
+  const feedbackShift = Math.max(
+    Math.abs(feedbackState.cancelled.continueTop - feedbackState.before),
+    Math.abs(feedbackState.failed.continueTop - feedbackState.before),
+  );
+  addCheck(checks, 'Connection feedback keeps Continue without device fixed', feedbackShift <= 1, `${feedbackShift.toFixed(2)} px`);
+  addCheck(checks, 'Continue without device remains visible after an error', feedbackState.continueVisible,
+    `${feedbackState.continueBottom.toFixed(1)} / ${feedbackState.viewportHeight} px`);
+  await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome-error.png`) });
+  await page.evaluate(() => showStartBtn());
 
   await page.evaluate(() => {
     _ffConnected = false;
