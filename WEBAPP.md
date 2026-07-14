@@ -23,13 +23,21 @@ Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funk
 | `--t2` | Sekundární text | `#6e6e73` | `#aeaeb2` |
 | `--t3` | Terciární / hint | `#aeaeb2` | `#8e8e93` |
 | `--red` / `--red2` | Chyba / danger + hover | `#e8503a` / `#d03f2a` | stejné |
+| `--focus` | Viditelný keyboard focus ring | `#4f7cff` | `#7d9cff` |
+| `--control-glass-bg` / `--control-glass-border` | Sdílená frosty výplň a hairline pro kompaktní controls | světlý glass gradient / `.56` | tmavý glass gradient / `.10` |
+| `--control-glass-shadow` / `--control-glass-shadow-hover` | Sdílená elevace kompaktních controls | jemná dvouvrstvá | tmavší dvouvrstvá |
 | `--green` | Success **fill/tečka** (na neutrálu) | `#34c759` | stejné |
 | `--green-text` | Success **text** (na barvě) | `#1e8237` | `#5dd47a` |
 | `--green-bg` / `--green-border` | Success plocha / okraj | `rgba(52,199,89,.10)` / `.32` | stejné |
 | `--amber` | Warning | `#e6a23c` | stejné |
+| `--piano-white` / `--piano-black` | Klávesy keyswitch klaviatury | `#fbfbfd` / `#303036` | `#d8d8dc` / `#202024` |
 | `--shadow` / `--shadow-sm` | Elevace | dvouvrstvá | tmavší varianta |
 
 > 🪤 **Past — `--green` vs `--green-text`:** `--green` (#34c759) je jasná zelená pro **fill/tečku** na neutrálním pozadí. Pro **text** (hlavně na `--green-bg`) použij VŽDY `--green-text`, které je ztmavené (light) / zesvětlené (dark) kvůli kontrastu. `--green` jako barva textu = nečitelné na světlém, špatný kontrast — nedělat.
+
+### Sdílené control primitivy
+
+Kompaktní interaktivní prvky skládají tři znovupoužitelné třídy: `.ui-control` sjednocuje hover/active/disabled chování, `.ui-pill` tvar a `.ui-glass` theme-aware frosty povrch. `.ui-primary` a `.ui-danger` jsou barevné varianty. Tento kontrakt používají quick actions, onboarding, change history, bank actions, icon picker a kontextová nápověda. Stepper values, keyswitch bounds, roller segment, HID toggle, aktivní bank fill a sequence chipy používají stejné `--control-glass-*` tokeny i tam, kde kvůli vlastní struktuře nepoužívají utility třídy. Globální `:focus-visible` používá výhradně `--focus`; starý mouse-focus reset backgroundu byl odstraněn.
 
 ### Radii
 
@@ -103,7 +111,7 @@ Načtení stránky
   → initWelcomeFaderOverlay() — zobrazí animované fadery na welcome screenu
   → render() — vykreslí UI
   → initMidi() — požádá o Web MIDI přístup
-  → showWelcome() — zobrazí welcome overlay (+ fallback timer pro Start, viz §3.1)
+  → showWelcome() — zobrazí welcome overlay s okamžitě dostupným Connect & load, viz §3.1
 ```
 
 ### Klíčové globální proměnné
@@ -112,6 +120,7 @@ Načtení stránky
 |---|---|---|
 | `cfg` | Object | Aktivní konfigurace. Zdrojová pravda pro render. Ukládá se do localStorage po každé změně. |
 | `liveValues` | `{f1, f2}` | Aktuální MIDI hodnoty faderů (0–127). Výchozí `{f1:64, f2:64}`. Aktualizuje se při příchozích MIDI CC zprávách. |
+| `liveSeen` | `{f1, f2}` | Příznaky, že hodnota byla skutečně přijata z hardware; sticky Live bar bez nich zobrazí `—`. |
 | `activeBank` | Number | Index aktuálně zobrazeného banku (0-based). |
 | `liveBank` | Number | Index banku aktivního na fyzickém zařízení. |
 | `encIndex` | Number | Aktuální pozice enkodéru (index v poli `uacc_values`). |
@@ -133,19 +142,25 @@ Načtení stránky
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
 - Text: „Waiting for device" → „Connect Feel Fader" → skip tlačítko
 
-**„Start" tlačítko (`#welcome-start`):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Logika v `onDeviceConnected()` + fallback timer v `showWelcome()`:
-- **Zařízení detekováno + port už schválený** (vracející se uživatel) → žádný Start, `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup).
-- **Zařízení detekováno + port neschválený** (první připojení) → zobrazí se **Start**. Klik (`doStart()`) = grant + load + transition.
-- **MIDI detekce neproběhne** (port quirk) → po ~3,5 s (`_welcomeStartTimer`) se Start ukáže i tak; klik obejde MIDI přes serial picker.
+**„Connect & load" tlačítko (`#welcome-start`):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
+- **Zařízení detekováno + port už schválený** (vracející se uživatel) → `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup); viditelná akce tomu nebrání.
+- **Zařízení detekováno + port neschválený** (první připojení) → klik na **Connect & load** (`doStart()`) = grant + load + transition.
+- **MIDI detekce neproběhne** (port quirk) → stejné tlačítko obejde MIDI přes serial picker bez čekání na timeout.
 - **Skip → pak připojíš zařízení** → `onDeviceConnected()` znovu vyjede welcome se Startem.
 - Při zrušení pickeru / chybě / timeoutu → zůstane na welcome + hláška (`#welcome-start-msg`), Start zůstává.
 
 **Connect transition** (spouští se přes `hideWelcome()` → `connectTransitionWelcome()`):
-1. Fadery zamrznou na aktuální pozici, pak se plynule přesunou na v=64 (střed)
-2. Float animace se zastaví (`animationPlayState: paused`)
-3. Green box-shadow glow na device imagu — pomalý náběh (peak na 38 % = ~530 ms), rychlý decay
-4. Text „Waiting for device" vyjede nahoru a zmizí
-5. Welcome screen se rozplyne; `.hidden` se přidá po 1 350 ms
+1. Podkladová appka se vždy synchronně vrátí na `scrollTop=0` (`history.scrollRestoration='manual'`), takže welcome nikdy neodhalí starou pozici u spodku stránky.
+2. App controller se přes `--stage-entry-offset` pixelově zarovná na aktuální viewport pozici welcome controlleru; oba používají stejnou responzivní šířku.
+3. Fadery zamrznou na aktuální pozici, pak plynule dojedou na hodnoty z `CMD_INFO.faders` snapshotu zařízení.
+4. Float animace se zastaví (`animationPlayState: paused`).
+5. Připojení potvrdí velmi jemný frosty-green hairline obrys, lokální halo a jeden krátký glass shimmer přes zařízení; používá stejný highlight odstín jako propojené sekce a prvky v appce a rychle čistě odezní.
+6. Text „Waiting for device" vyjede nahoru a zmizí.
+7. Welcome screen se rozplyne; před i po přidání `.hidden` se znovu vynutí horní scroll pozice.
+
+**Welcome intro:** Tři stručné slidy se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. **Skip intro** slidy ihned ukončí a vrátí standardní connect copy.
+
+**První krok v appce:** Po prvním vstupu se nad controllerem zobrazí kompaktní neutrální liquid-glass karta. Nevysvětluje znovu celý produkt; vede přímo k akci **Choose a setup**, která kartu plynule zavře, doscrolluje k Library setup pickeru, zaměří jej a otevře nabídku. Sekundární **Not now** kartu pouze zavře. Text rozlišuje připojené zařízení (`Ready to configure`) a demo bez zařízení (`Explore Feel Fader`) a vysvětluje také symbol banku aktivního na hardware. Replay zůstává v Help & Guide. Komponenta používá `role="region"`, podporuje dark mode, mobil a `prefers-reduced-motion`.
 
 **Klíčové funkce:** `initWelcomeFaderOverlay()` (L3144), `connectTransitionWelcome()` (L3154), `hideWelcome()` (L3207), `skipWelcome()` (L3211)
 
@@ -160,7 +175,11 @@ Načtení stránky
 - Zelený bod + „Connected [název portu]" → Feel Fader nalezen
 - Červený bod → chyba nebo odpojení
 
-**Dark mode toggle:** Přepíná třídu `.dark` na `<html>`. Stav se ukládá do `localStorage` (klíč `ff-dark`).
+**Dark mode toggle:** Kompaktní kruhové liquid-glass tlačítko se plynule mění mezi ikonou slunce a měsíce. Přepnutí používá View Transitions API jako jednotný 360ms crossfade celého vykresleného UI, takže gradientní glass sekce, text i okraje mění motiv současně; fallback přepne motiv okamžitě a `prefers-reduced-motion` animaci vypíná. Stav se ukládá do `localStorage` (klíč `ff-dark`).
+
+**Floating Live HUD:** U pravého horního okraje je kompaktní liquid-glass box s aktuálními hodnotami levého faderu, pravého faderu a rolleru. Tři úzké řádky `L / R / ROL` používají tabulární monospace a mikro-metry; HUD nemá vlastní stavovou tečku ani text `LIVE/OFFLINE`. Zobrazuje se pouze při skutečně dostupných live datech a při blind, blocked nebo disconnected stavu plynule zmizí, takže výchozí či stará data nikdy nevydává za live stav. Pod 980 px se změní na malou horizontální kapsli u spodního okraje, respektuje `safe-area-inset-bottom` a při zaparkovaném mobilním Send calloutu se posune nad něj. Duplicitní číselné badges byly z hlaviček jednotlivých panelů odstraněny a header zůstává jednořádkový.
+
+**Liquid glass systém:** Header používá nejsilnější skleněnou vrstvu, aktivní bank card střední blur a pomocné panely lehčí průsvitnost. Dialogy, toasty a stavové bannery mají vlastní výraznější glass vrstvu. Ambientní radial gradients na `body` dávají průsvitnosti vizuální hloubku; vstupy a steppery zůstávají záměrně neprůhledné kvůli čitelnosti. Na mobilu se blur snižuje a pro prohlížeče bez `backdrop-filter` existuje neprůhledný fallback.
 
 **Klíčové funkce:** `renderConnState()` (L2976, dřív `updateStatus`), `toggleDark()` (L3090), `initDark()` (L3104)
 
@@ -182,47 +201,59 @@ Načtení stránky
 
 ### 3.4 Načítání configu (Start) + Send
 
-**Načítání ze zařízení už nemá tlačítko na hlavní stránce** — nahradil ho **„Start" na welcome screenu** (viz §3.1). Load proběhne přes sdílené `loadConfigFromDevice()` (otevře port → `serialReadInfo` → `CMD_R` → `cfg` → `render()`), volané buď ze Startu (první gesto), nebo automaticky při reconnectu.
+**Načítání ze zařízení už nemá tlačítko na hlavní stránce** — nahradilo ho **„Connect & load" na welcome screenu** (viz §3.1). Load proběhne přes sdílené `loadConfigFromDevice()` (otevře port → `serialReadInfo` → `CMD_R` → `cfg` → `render()`), volané buď z této akce (první gesto), nebo automaticky při reconnectu.
 
 | Akce | Co dělá |
 |---|---|
-| **Start** (welcome) | `doStart()` → grant serial portu + `loadConfigFromDevice()` → transition na hlavní stránku s reálnými hodnotami |
+| **Connect & load** (welcome) | `doStart()` → grant serial portu + `loadConfigFromDevice()` → transition na hlavní stránku s reálnými hodnotami |
 | **send to device** | `doSend()` → zapíše `cfg` do zařízení přes Web Serial (`CMD_W`) |
 
-**Klíčové funkce:** `loadConfigFromDevice()`, `doStart()`, `onDeviceConnected()`, `showStartBtn()`, `doSend()`
+**Stav synchronizace u hlavní akce:** Aplikace má jediné tlačítko **Send to device**, umístěné přímo pod vizualizací controlleru. Má pevnou šířku, takže změny textu neposouvají okolní feedback. Barva, stín a opacity tlačítka mezi červeným pracovním a zeleným potvrzeným stavem plynule přecházejí. Automatické načtení při startu komunikuje pouze stav **Device connected** v horní liště, aby se informace neduplikovala. **✓ Device loaded** se vedle stále dostupného **Send to device** ukáže jen po explicitní ruční volbě **Use device version**. Po úspěšném odeslání zůstane tlačítko neaktivní v zeleném stavu **✓ Sent**, dokud uživatel znovu nezmění konfiguraci. Potvrzení se místo globálního toastu plynule ukáže přímo vedle tlačítka jako **✓ Configuration sent to device**; všechny textové stavy na tomto místě používají stejné jemné zasunutí, rozostření a vzájemný crossfade. Chybové toasty zůstávají globální. Jakmile je `dirty=true`, stejné místo vedle tlačítka ukazuje počet sémantických změn a hlavní akce se vrátí na **Send to device**. Klik na počet změn otevře kompaktní přehled změněných banků/ovladačů, historii posledních deseti checkpointů přes **Undo (n)** a přímé **Restore last sent**. Historie pokrývá mapování, setupy, banky, artikulace i reset; po načtení nebo potvrzeném odeslání se nastaví nový synchronizovaný snapshot. Pokud validace najde chybu, text ukáže počet problémů a stejné tlačítko se dočasně změní na **Show error**.
+
+**Pravidla inline notifikací:** Dočasná potvrzení (`Device loaded`, `Configuration sent`) sdílejí jednotnou dobu 2,2 s. Stavové zprávy (`unsaved changes`, validační problém) zůstávají viditelné do vyřešení stavu. Všechny varianty používají stejné plynulé objevení a zmizení, 180ms crossfade při změně obsahu a stejný motion pattern na desktopu i v mobilním docku; při `prefers-reduced-motion` se animace vypnou.
+
+**Mobil:** Po odscrollování původní pozice se toto stejné jediné tlačítko — pouze pokud existují neodeslané změny — přepne do kompaktního fixed liquid-glass calloutu nad safe area. Po návratu nahoru nebo odeslání se vrátí do stage; druhá akce se nevytváří.
+
+**Navigace validace:** Chybový banner i **Show error** pod controllerem přepnou na první problematický bank, otevřou odpovídající akordeonovou sekci, plynule doscrollují ke konkrétnímu CC/channel/articulation poli a zaměří jej. Po opravě se další chyba stane novým cílem.
+
+**Klíčové funkce:** `loadConfigFromDevice()`, `doStart()`, `onDeviceConnected()`, `showStartBtn()`, `doSend()`, `reflectDirty()`, `configChangeItems()`, `undoLastConfigChange()`, `restoreSyncedConfig()`, `updateMobileSendDock()`, `focusValidationError()`
 
 ---
 
 ### 3.5 Bank Tabs
 
-**Co dělá:** Horizontálně scrollovatelná řada záložek (max. 10 banků). Aktivní banka je zvýrazněná. Tlačítko „+" přidá nový bank.
+**Co dělá:** Horizontálně scrollovatelná řada záložek (max. 8 banků). Bank editovaný v appce označuje plochý frosty pill bez vnějšího i vnitřního shadow efektu; používá pouze tónovanou průsvitnou výplň a jemný glass border. Fyzicky aktivní bank zařízení označuje výhradně symbol controlleru, bez spodní linky nebo dalšího fillu. Editovaný a fyzicky aktivní stav jsou tak vizuálně oddělené a nemohou se číst jako dvě současné selekce. Význam symbolu vysvětluje první in-app krok, `title="Active on device"`, `aria-label` tabu a kontextová nápověda u Library setup. Jeho ikonu, slot a název současně ukazuje desktopový Live HUD. Tlačítko „+“ přidá nový bank. Každá záložka zobrazuje jméno banku i mimo aktivní stav; bank bez ikony má čitelný fallback `B1`, `B2`… a aktivní záložka používá `aria-current`.
 
 **Interakce:**
 - Klik na záložku → `selectBank(i)` — přepne `activeBank` a překreslí panely
 - Tlačítko „+" → `addBank()` — přidá bank s defaultní konfigurací
-- Počet banků lze měnit také přes Settings modal (⚙)
+- Drag & drop záložky → změní pořadí banků v `cfg.banks`; stejné pořadí se po **Send to device** používá při přepínání na hardware.
+- Šipky u názvu banku → přístupná alternativa změny pořadí pro klávesnici a dotyk.
 
-**Klíčové funkce:** `renderBankTabs()` (L1487), `selectBank()` (L2065), `addBank()` (L2151), `removeBank()` (L2173). ⚠ `stepBanks()` **odstraněno.**
+**Klíčové funkce:** `renderBankTabs()`, `selectBank()`, `addBank()`, `reorderBank()`, `moveBank()`, `removeBank()`. ⚠ `stepBanks()` **odstraněno.**
 
 ---
 
 ### 3.6 Bank Name Card
 
-**Co dělá:** Řádek pod záložkami — jméno banku, ikona a tagy (labelky pro vyhledávání/přehlednost).
+**Co dělá:** Řádek pod záložkami — jméno banku a ikona.
 
 **Komponenty:**
 - **Icon picker:** Emoji nebo barevný badge (výběr z předdefinovaných kategorií — nástroje, styly, barvy). Otevírá overlay `#icon-picker`.
 - **Name input:** Inline editovatelné jméno banku.
-- **Tags:** Volné textové štítky (stiskni Enter pro přidání). Slouží pro orientaci, neodesílají se do zařízení.
-- **Smazat bank (✕):** Viditelné jen pokud je více než 1 bank.
+- **Library setup:** Searchable liquid-glass picker namísto browserového `datalist`. Seskupuje **Recently used**, vestavěné **Libraries** a **My setups**, filtruje během psaní a podporuje Arrow Up/Down, Home/End, Enter a Escape. Volba nejprve otevře přístupný preview dialog s cílovým bankem, konkrétními CC, režimem rolleru, počtem artikulací a ikonou. **Apply setup** aplikuje všechny uložené části; **Articulations only** zachová mappings, roller i ikonu. Vestavěný setup je výslovně označen jako starting point, který je nutné ověřit proti konkrétnímu patchi/verzi knihovny. Poslední tři potvrzené volby ukládá lokálně v `ff-recent-quick-setups-v1`.
+- **My setups:** Tlačítko **Save setup** uloží aktuální bank jako vlastní Library setup do `localStorage` (`ff-custom-library-presets-v1`). Uživatel samostatně volí, zda setup obsahuje fader mappings a kanály, roller/navigation, artikulace/keyswitches a ikonu. Vlastní setupy se zobrazí ve skupině **My setups**; dialog podporuje editaci/přejmenování, potvrzené přepsání, potvrzené smazání a JSON import/export. Katalog zůstává ve web appce — firmware dostává pouze výslednou konfiguraci banku.
+- **Duplikovat:** Vloží hlubokou kopii celého banku hned za originál, vybere ji a nabídne její unikátní jméno k okamžité editaci. Respektuje limit 8 banků.
+- **Posun vlevo/vpravo:** Přesune celý bank včetně všech mappingů a zachová otevřenou sekci; `activeBank` sleduje přesunutý obsah. `liveBank` zůstává fyzickým slotem zařízení, dokud se lokální pořadí neodešle.
+- **Smazat bank (✕):** Viditelné jen pokud je více než 1 bank; vyžaduje potvrzení a po smazání nabízí dočasné Undo.
 
-**Klíčové funkce:** `onBankRename()` (L2067), `addTag()` (L2085), `removeTag()` (L2095), `openIconPicker()` (L3262), `closeIconPicker()` (L3298)
+**Klíčové funkce:** `onBankRename()`, `openIconPicker()`, `closeIconPicker()`
 
 ---
 
 ### 3.7 Fader Sekce (Fader 1 / Fader 2)
 
-**Co dělá:** Každý bank má dvě fader sekce — Expression (Fader 1) a Dynamics (Fader 2). Konfigurují CC číslo a MIDI kanál pro každý fader.
+**Co dělá:** Každý bank má dvě fader sekce. Jejich název se edituje přímo v hlavičce stejným transparentním underline inputem jako jméno banku; samostatné pole **Display name** v obsahu není. Výchozí jména jsou `Expression` pro levý a `Dynamics` pro pravý fader, maximum je 32 znaků a prázdné jméno se při opuštění pole vrátí na default. Kliknutí kamkoli do hlavičky mimo input názvu sekci rozbalí nebo zavře; input zůstává samostatnou editační zónou a souhrn s chevronem dál funguje jako přístupné tlačítko. Vlastní jméno vede hlavičku sekce a validační texty; kompaktní Live HUD používá fyzické značky `L` a `R`. Pod MIDI CC zůstává hudební význam (`CC74` Brightness atd.) a raw CC je viditelné a editovatelné. Fader i roller sekce jsou kompaktní akordeon: zavřená hlavička ukazuje MIDI kanál, CC nebo zvolený keyswitch/navigation režim; otevřená je vždy nejvýš jedna sekce banku. Summary typografie odděluje hudební význam v `Mulish 600` od technických hodnot `Ch / CC / nota / klávesa` v `IBM Plex Mono 500`; samotný prázdný macro stav se zobrazuje jako **Not assigned**, ne jako nejasná pomlčka.
 
 **Pole:**
 | Pole | Rozsah | Popis |
@@ -231,7 +262,7 @@ Načtení stránky
 | MIDI CC | 0–127 | Control Change číslo |
 | Label | text | Vlastní popis (zobrazuje se v UI, neodesílá se) |
 
-**Live value bar:** Malý progress bar + číslo ukazuje aktuální hodnotu přijatou ze zařízení.
+**Live hodnoty:** Duplicitní lokální čísla nejsou v sekcích. Floating Live HUD odvozuje krátkou značku z vlastního jména faderu (`Bow Pressure` → `BOWP`); roller používá `ART/KS/NAV` a zobrazuje název artikulace nebo notu namísto samotného raw čísla.
 
 **Klíčové funkce:** `faderSectionContent()` (L1604), `stepCtrl()` (L1986), `onCtrl()` (L1996). ⚠ `onFaderLabel()` **odstraněno.**
 
@@ -241,38 +272,45 @@ Načtení stránky
 
 **Co dělá:** Otočný enkodér na fyzickém zařízení prochází seznam artikulací (UACC hodnoty). Sekce konfiguruje CC číslo, MIDI kanál a seznam dostupných artikulací.
 
+**Volba režimu:** Articulation, Keyswitch a Navigation tvoří jeden pill-shaped segmented control. Posuvný segment označuje aktivní režim a ve všech třech pozicích používá stejný klidný frosty-gray glass stav. Track se při změně režimu nepřekresluje, takže indikátor dokončí souvislou 460ms compositor animaci s jemně tlumeným dojezdem; mění se pouze synchronně cross-fadovaný obsah pod ním. Aktivní prvek používá `aria-pressed`, roving `tabindex` a podporuje šipky, Home a End. `prefers-reduced-motion` animace vypne.
+
+**Keyswitch keyboard:** Rozsah se vybírá na kompaktní horizontálně posuvné klaviatuře MIDI 0–127. Kliknutí zvolí jednu notu, tažení přes klávesy vytvoří souvislý rozsah a zvýraznění používá jemnou barvu faderů se silnějšími krajními klávesami. Tlačítka po stranách posouvají klaviaturu po blocích; preset i přesná změna hranice automaticky zobrazí aktuální rozsah. Klaviatura podporuje focus, Arrow Left/Right, Home, End a aktivaci klávesy přes Enter/Space. Pole FROM/TO zůstávají jako frosty pill controls pro přesné doladění a přístupnost. Všechny změny probíhají bez překreslení panelu.
+
+Základní keyswitch workflow ukazuje pouze MIDI channel, range preset, klaviaturu a FROM/TO. Velocity, note naming convention, jednotlivé noty a jejich pořadí jsou v nativním rozbalovacím bloku **Advanced keyswitch settings**, jehož otevřený stav se zachová při překreslení. Keyswitch i articulation sekvence jsou označené **ROLLER ORDER** a používají společné composer-first frosty chipy: hudební název nebo UACC název je primární a MIDI/CC číslo sekundární. Live nota dostane jemný zelený obrys. Pořadí lze měnit drag & dropem, přes **Alt + šipky** na zaměřeném chipu nebo přístupnými tlačítky **Move earlier/later**; pořadí chipů odpovídá pořadí krokování rolleru.
+
+**Stepper controls:** Stejný frosty pill systém používají všechny číselné steppery v aplikaci (MIDI channel, CC, velocity a keyswitch FROM/TO): kompaktní neutrální −/+ segmenty bez mezer, užší skleněná kapsle hodnoty, skryté dělicí čáry a společné hover/focus chování. Také aktivní volba keyswitch convention používá frosty gray místo červené.
+
 **UACC (Universal Articulation Control Code):**
 Standard pro pojmenování CC hodnot používaný u Spitfire Audio, East West, Orchestral Tools atd. CC 32 je standardní UACC kanál.
 
 Každá artikulace je CC hodnota (0–127) s volitelným pojmenováním (interní slovník `UACC_NAMES`).
 
 **Správa seznamu artikulací:**
-- Přidat jednotlivé hodnoty nebo aplikovat přednastavené šablony (Strings, Woodwinds, Brass, atd.)
-- Enkodér na zařízení přechází na další/předchozí hodnotu v seznamu
+- Přidat jednotlivé hodnoty nebo aplikovat **Articulation templates**. Knihovní seznam aplikuje pouze artikulace a nepřepisuje mapování celého banku.
+- Hodnoty mají drag & drop, **Alt + šipky** i přístupná tlačítka **Move earlier/later**; zobrazené pořadí je přímo pořadím krokování rolleru.
+- Enkodér na zařízení přechází na další/předchozí hodnotu v seznamu.
 
-**Klíčové funkce:** `encoderSectionContent()` (L1897), `addUacc()` (L2180), `removeUacc()` (L2191), `addUaccFromPreset()` (L2197), `renderUacc()` (L1916), `uaccName()` (L1361)
+**Klíčové funkce:** `encoderSectionContent()`, `addUacc()`, `moveUacc()`, `removeUacc()`, `applyArticulationList()`, `renderUacc()`, `uaccName()`
 
 ---
 
-### 3.9 Advanced Settings (Modal)
+### 3.9 Device & Settings
 
-Dostupné přes ikonu ⚙ v headeru. Obsahuje:
-- **Počet banků** — nastaví počet (1–10), přidá nebo odebere banky
-- **Factory reset** — obnoví `DEFAULT_CFG`, vymaže localStorage
+Rozbalovací sekce obsahuje informace o zařízení, liquid-glass switch Keyboard (HID), sbalený **MIDI diagnostics** a kompaktní blok **Backup & reset**. Zapnutí HID používá vlastní přístupný glass dialog namísto nativního `confirm()`; Navigation a trvale viditelný Button Macro nabízejí stejnou akci **Enable Keyboard…** přímo v kontextu. Diagnostika ukazuje connection state, nalezený MIDI input, fyzicky aktivní bank, výsledné L/R/roller mapování, poslední MIDI event, firmware, HID a config hash; **Copy diagnostics** vytvoří textový support snapshot. **Device backup** má pouze tři akce pro celou konfiguraci zařízení: Export, Import a Reset; původní viditelný JSON inspector byl odstraněn. Reset vyžaduje potvrzení, obnoví `DEFAULT_CFG` jako lokální konfiguraci a nastaví `dirty=true`; zařízení se změní až po **Send to device**. Živé pozice faderů se resetem lokální konfigurace nemění.
 
 **Klíčové funkce:** ⚠ `openModal()` / `closeModal()` / `onBankCount()` **odstraněny** — device/advanced settings teď přes `toggleDeviceSettings()` (L2934).
 
 ---
 
-### 3.10 JSON Inspector
+### 3.10 JSON backup formáty
 
-Rozbalovací sekce pod hlavním obsahem. Zobrazuje aktuální `cfg` jako formátovaný JSON — užitečné pro debug. Tlačítko Copy zkopíruje JSON do schránky.
+Web appka rozlišuje dva nezávislé typy záloh:
 
-Aktivní import/export:
-- **Export:** Stáhne `feel-fader-config.json`
-- **Import:** Načte `.json` soubor, přepíše `cfg`, překreslí UI
+- **Device backup / Export:** stáhne `feel-fader-device-backup.json` s kompletním `cfg` všech banků a nastavení.
+- **My setups / Export:** stáhne `feel-fader-custom-presets.json` pouze s uživatelským katalogem Library setupů (starší název souboru zůstává kvůli kompatibilitě).
+- Import kompletní konfigurace nastaví `dirty=true`; změny se do zařízení odešlou až přes **Send to device**.
 
-**Klíčová funkce:** `refreshJson()` (L2965), `onImport()` (L2902)
+**Klíčové funkce:** `exportP()`, `importP()`, `onImport()`, `exportCustomPresets()`, `importCustomPresets()`.
 
 ---
 
@@ -286,7 +324,6 @@ Aktivní import/export:
     {
       name: "Bank 1",          // string — zobrazované jméno
       icon: "🎻",              // string — emoji nebo barevný badge kód, nebo ""
-      tags: ["strings"],       // string[] — volné štítky
       fader1: {
         cc: 11,                // 0–127 — MIDI CC číslo
         channel: 0,            // 0–15 (zobrazuje se jako 1–16)
@@ -328,7 +365,7 @@ Definován na řádku 1412. Obsahuje 3 předdefinované banky (Bank 1–3) s rů
 
 Aktualizuje se při:
 - Příchozích MIDI CC zprávách ze zařízení (`onMidiMsg()` L2512)
-- Draggování fader thumbů v UI (viz `scheduleFaderFrame()` L2414)
+- Snapshotu faderů z `CMD_INFO` při připojení (`applyInfoFaders()`)
 
 ---
 
@@ -387,16 +424,18 @@ Při reconnectu (`onDeviceConnected`, v2) se porovná uložený hash (`ff-last-h
 
 | Stav zařízení | Akce |
 |---|---|
-| `config_source === 'defaults'` | `showSyncBanner('defaults')` (L2564) — nabídnout push mé konfigurace |
+| `config_source === 'defaults'` | `showSyncBanner('defaults')` — nabídnout volbu mezi verzí zařízení a browseru |
 | uložený hash ≠ `config_hash` | `showSyncBanner('differs')` — konfigurace se rozešly |
 | shodné / bez hashe | tichý `loadConfigFromDevice()` |
 
+Konfliktní banner nepoužívá neurčité „Send mine“. Akce jsou explicitní **Use device version** a **Overwrite device** a text vysvětluje, že browser a zařízení obsahují dvě rozdílné konfigurace.
+
 ### 5.5 Zápis konfigurace — `doSend()` (L2862)
 
-1. `validate()` (L2330); při chybě stop.
+1. `validate()`; při chybě stop. Každá chyba nese `field` a konkrétní DOM `target` pro navigaci přes `focusValidationError()`.
 2. `serialRequest('CMD_W', JSON.stringify(cfg), 5000)` (L2868) — celý `cfg` jako JSON, jeden řádek.
 3. **v2:** zařízení vrátí `ACK` s novým **config hashem** → uloží se do `ff-last-hash` + `DEVICE_INFO.config_hash`. **v1:** ACK prázdný (fire-and-forget).
-4. `cfgSave()`, `dirty=false`, toast „sent".
+4. `cfgSave()`, `dirty=false`, inline potvrzení **✓ Configuration sent to device** plynule vedle centrálního tlačítka; globální success toast ani velkou zelenou plochu nepoužívá.
 5. Chyby: `ERR:<reason>` → „Device rejected config" (drží jako unsaved); `timeout` → „No confirmation" (retry); jinak zavře port.
 
 ### 5.6 Čtení konfigurace — `loadConfigFromDevice()` (L2781)
@@ -418,10 +457,10 @@ App drží **web formát** (`cfg` — per-control, viz §4), device posílá **i
 // Device (banks[i]) — interní tvar z CMD_R
 { fader_cc:[cc1,cc2], fader_ch:[ch1,ch2], encoder:cc, encoder_ch:ch,
   uacc_values:[...], roller_mode, ks_notes, ks_channel, nav_keys_cw/ccw,
-  m:{ n:name, i:icon, t:tags, l:[label1,label2] } }   // m = prezentační meta
+  m:{ n:name, i:icon, l:[label1,label2] } }   // m = prezentační meta
 ```
 
-- **Prezentační pole** (name/icon/tags/label) čte device z `m{}`; když chybí, `normalizeFwConfig` je drží z dosavadního `cfg` (localStorage) — funkční data ale vždy ze zařízení.
+- **Prezentační pole** (name/icon/label) čte device z `m{}`; když chybí, `normalizeFwConfig` je drží z dosavadního `cfg` (localStorage) — funkční data ale vždy ze zařízení. Staré `tags` / `m.t` se při načtení zahodí.
 - **Každý ovladač má vlastní MIDI kanál** (`fader_ch[0/1]`, `encoder_ch`); fallback na starý jednokanálový `channel`.
 - ⚠️ Tento formát musí zůstat v synchronu s firmwarem — viz `CLAUDE.md` (pravidlo app↔firmware, nikdy společný merge).
 
@@ -517,4 +556,4 @@ Aktuálně podporován pouze **anglický jazyk**. Česká lokalizace není imple
 
 ---
 
-*Naposledy aktualizováno: 2026-07-12 (přidána §0 Design System Contract; čísla řádků srovnaná proti 3 466ř. souboru; odstraněné funkce označeny ⚠; §5 Transport kompletně přepsána podle reálného serial protokolu)*
+*Naposledy aktualizováno: 2026-07-14 (rychlejší onboarding, mobilní Send, 10× Undo, kontextová nápověda, drag/keyboard pořadí artikulací a konsolidované control primitivy)*
