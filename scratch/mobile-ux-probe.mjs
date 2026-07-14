@@ -115,12 +115,12 @@ async function runProfile(browser, url, profile) {
   const welcomeBefore = await page.evaluate(() => {
     const cta = document.getElementById('welcome-start').getBoundingClientRect();
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
-    const device = document.getElementById('welcome-device-img').getBoundingClientRect();
+    const device = document.getElementById('device-img').getBoundingClientRect();
     return { ctaTop: cta.top, stageHeight: stage.height, deviceTop: device.top };
   });
   await settle(page, 700);
   const welcomeDeviceTopAfter = await page.evaluate(() =>
-    document.getElementById('welcome-device-img').getBoundingClientRect().top);
+    document.getElementById('device-img').getBoundingClientRect().top);
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome.png`) });
   const introNavPositions = [];
   for (let slide = 0; slide < 3; slide += 1) {
@@ -277,32 +277,56 @@ async function runProfile(browser, url, profile) {
     liveSeen = { f1:true, f2:true };
     positionThumbs();
     showWelcome();
+    const controller = document.getElementById('device-wrap');
+    const rect = document.getElementById('device-img').getBoundingClientRect();
+    window.__sharedControllerRef = controller;
     connectTransitionWelcome();
-    const welcome = document.getElementById('welcome-device-img').getBoundingClientRect();
-    const app = document.getElementById('device-img').getBoundingClientRect();
     return {
-      topGap: Math.abs(welcome.top - app.top),
-      widthGap: Math.abs(welcome.width - app.width),
+      controllerCount: document.querySelectorAll('#device-wrap').length,
+      imageCount: document.querySelectorAll('#device-img').length,
+      faderCount: document.querySelectorAll('#thumb-l,#thumb-r').length,
+      parentId: controller.parentElement?.id || '',
+      top: rect.top,
+      width: rect.width,
     };
   });
   await settle(page, 800);
-  const transitionEnd = await page.evaluate(() => {
-    const welcomeL = document.querySelector('#welcome-thumb-l img').getBoundingClientRect();
-    const welcomeR = document.querySelector('#welcome-thumb-r img').getBoundingClientRect();
-    const appL = document.querySelector('#thumb-l img').getBoundingClientRect();
-    const appR = document.querySelector('#thumb-r img').getBoundingClientRect();
+  const transitionSettled = await page.evaluate(() => {
+    const trackL = document.getElementById('track-l').getBoundingClientRect();
+    const trackR = document.getElementById('track-r').getBoundingClientRect();
+    const thumbL = document.getElementById('thumb-l').getBoundingClientRect();
+    const thumbR = document.getElementById('thumb-r').getBoundingClientRect();
+    const expected = (track,thumb,value) => track.top + Math.round((1-value/127)*(track.height-thumb.height));
     return {
-      leftGap: Math.abs(welcomeL.top - appL.top),
-      rightGap: Math.abs(welcomeR.top - appR.top),
+      leftGap: Math.abs(thumbL.top - expected(trackL,thumbL,23)),
+      rightGap: Math.abs(thumbR.top - expected(trackR,thumbR,108)),
     };
   });
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-transition.png`) });
-  addCheck(checks, 'Welcome and app controllers are pixel-aligned for transition',
-    transitionStart.topGap <= 1 && transitionStart.widthGap <= 1,
-    `top ${transitionStart.topGap.toFixed(2)} px / width ${transitionStart.widthGap.toFixed(2)} px`);
+  await settle(page, 350);
+  const transitionEnd = await page.evaluate(() => {
+    const rect = document.getElementById('device-img').getBoundingClientRect();
+    return {
+      sameNode: window.__sharedControllerRef === document.getElementById('device-wrap'),
+      parentId: document.getElementById('device-wrap').parentElement?.id || '',
+      welcomeHidden: document.getElementById('welcome-screen').classList.contains('hidden'),
+      top: rect.top,
+      width: rect.width,
+    };
+  });
+  transitionEnd.topGap = Math.abs(transitionEnd.top - transitionStart.top);
+  const transitionWidthGap = Math.abs(transitionEnd.width - transitionStart.width);
+  addCheck(checks, 'Welcome uses one shared controller and fader pair',
+    transitionStart.controllerCount === 1 && transitionStart.imageCount === 1 && transitionStart.faderCount === 2
+      && transitionStart.parentId === 'welcome-controller-slot',
+    `${transitionStart.controllerCount} controller / ${transitionStart.imageCount} image / ${transitionStart.faderCount} faders`);
   addCheck(checks, 'Welcome faders settle onto the hardware snapshot before dissolve',
-    transitionEnd.leftGap <= 1.5 && transitionEnd.rightGap <= 1.5,
-    `left ${transitionEnd.leftGap.toFixed(2)} px / right ${transitionEnd.rightGap.toFixed(2)} px`);
+    transitionSettled.leftGap <= 1.5 && transitionSettled.rightGap <= 1.5,
+    `left ${transitionSettled.leftGap.toFixed(2)} px / right ${transitionSettled.rightGap.toFixed(2)} px`);
+  addCheck(checks, 'The same controller is handed to the app without moving',
+    transitionEnd.sameNode && transitionEnd.parentId === 'device-home' && transitionEnd.welcomeHidden
+      && transitionEnd.topGap <= 1 && transitionWidthGap <= 1,
+    `same ${transitionEnd.sameNode} / top ${transitionEnd.topGap.toFixed(2)} px / width ${transitionWidthGap.toFixed(2)} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();
