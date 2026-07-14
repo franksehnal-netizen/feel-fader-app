@@ -118,6 +118,29 @@ async function runProfile(browser, url, profile) {
     return { ctaTop: cta.top, stageHeight: stage.height };
   });
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome.png`) });
+  const introNavPositions = [];
+  for (let slide = 0; slide < 3; slide += 1) {
+    await page.evaluate(index => onbBeatGo(index), slide);
+    await settle(page, 250);
+    introNavPositions.push(await page.evaluate(() => ({
+      dotsTop: document.querySelector('.onb-dots').getBoundingClientRect().top,
+      skipTop: document.querySelector('.onb-skip').getBoundingClientRect().top,
+      skipBottom: document.querySelector('.onb-skip').getBoundingClientRect().bottom,
+      ctaTop: document.getElementById('welcome-start').getBoundingClientRect().top,
+      subHeight: document.querySelector('.onb-beat-sub').getBoundingClientRect().height,
+    })));
+    if (slide === 1) {
+      await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome-step2.png`) });
+    }
+  }
+  const dotsShift = Math.max(...introNavPositions.map(item => item.dotsTop))
+    - Math.min(...introNavPositions.map(item => item.dotsTop));
+  const skipShift = Math.max(...introNavPositions.map(item => item.skipTop))
+    - Math.min(...introNavPositions.map(item => item.skipTop));
+  const introClearance = Math.min(...introNavPositions.map(item => item.ctaTop - item.skipBottom));
+  addCheck(checks, 'Intro dots stay fixed across all three slides', dotsShift <= 1, `${dotsShift.toFixed(2)} px`);
+  addCheck(checks, 'Skip intro stays fixed across all three slides', skipShift <= 1, `${skipShift.toFixed(2)} px`);
+  addCheck(checks, 'Skip intro stays clear of the primary CTA', introClearance >= 4, `${introClearance.toFixed(2)} px`);
   await page.click('.onb-skip');
   await settle(page, 250);
   const welcomeAfter = await page.evaluate(() => {
@@ -126,7 +149,7 @@ async function runProfile(browser, url, profile) {
   });
   const ctaShift = Math.abs(welcomeAfter.ctaTop - welcomeBefore.ctaTop);
   addCheck(checks, 'Skip intro keeps the primary CTA fixed', ctaShift <= 1, `${ctaShift.toFixed(2)} px`);
-  addCheck(checks, 'Welcome copy uses a stable slot', Math.abs(welcomeBefore.stageHeight - 142) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
+  addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 164) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
 
   await page.evaluate(() => {
     _ffConnected = false;

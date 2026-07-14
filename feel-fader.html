@@ -1023,6 +1023,12 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 .onb-skip{background:none;border:none;color:var(--t3);font-size:11px;cursor:pointer;font-family:'Mulish',sans-serif;padding:4px;}
 .onb-skip:hover{color:var(--t2);}
 .onb-beats-fade{opacity:0;}
+@media(max-width:600px){
+  /* Reserve three lines for every intro description so longer slide copy cannot
+     push the dots or Skip intro down on narrow screens. */
+  .onb-beat-sub{height:59px;min-height:59px;overflow:hidden;}
+  .welcome-copy-stage{height:164px;flex-basis:164px;}
+}
 html.dark #welcome-device-img{
   box-shadow:none;
 }
