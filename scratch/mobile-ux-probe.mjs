@@ -80,6 +80,145 @@ async function settle(page, milliseconds = 0) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
+async function runDesktopFlow(browser, url) {
+  const page = await browser.newPage();
+  const checks = [];
+  const errors = [];
+  const profile = { name: 'desktop-flow', viewport: { width: 1200, height: 900 } };
+  page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+      errors.push(`console.error: ${message.text()}`);
+    }
+  });
+  await page.setViewport(profile.viewport);
+  await page.evaluateOnNewDocument(() => localStorage.setItem('ff-onboarded', '1'));
+  await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
+  await page.evaluate(() => {
+    loadDefaultDemoConfig();
+    handoffPrimaryActionToApp();
+    mountControllerInApp();
+    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('onb-intro-card').style.display = 'none';
+    render();
+    window.scrollTo(0, 0);
+  });
+  await settle(page, 120);
+  const initial = await page.evaluate(() => {
+    const stage = document.querySelector('.stage');
+    const controller = document.getElementById('device-img').getBoundingClientRect();
+    const send = document.getElementById('send-btn').getBoundingClientRect();
+    const panels = document.getElementById('panels-row').getBoundingClientRect();
+    const style = getComputedStyle(stage);
+    return {
+      stageTop: stage.getBoundingClientRect().top,
+      stagePosition: style.position,
+      stageAnimation: style.animationName,
+      controllerBottom: controller.bottom,
+      sendTop: send.top,
+      sendBottom: send.bottom,
+      panelsTop: panels.top,
+    };
+  });
+  await page.screenshot({ path: path.join(outputDir, 'desktop-flow-initial.png') });
+  await page.evaluate(() => {
+    _midiState = 'granted';
+    _ffConnected = true;
+    liveValues = { f1: 32, f2: 96 };
+    liveSeen = { f1: true, f2: true };
+    encLiveVal = 48;
+    renderConnState();
+  });
+  await settle(page, 80);
+  const hudAtController = await page.evaluate(() => {
+    const hud = document.getElementById('live-strip');
+    const rect = hud.getBoundingClientRect();
+    return {
+      visible: hud.classList.contains('is-contextual-visible'),
+      compact: hud.classList.contains('is-compact'),
+      ariaHidden: hud.getAttribute('aria-hidden'),
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  const targetScroll = await page.evaluate(() => {
+    const quick = document.querySelector('.bank-quick-setup').getBoundingClientRect();
+    return Math.max(0, quick.top + window.scrollY - 120);
+  });
+  await page.evaluate(scrollTop => window.scrollTo(0, scrollTop), targetScroll);
+  await settle(page, 460);
+  const scrolled = await page.evaluate(() => {
+    const stage = document.querySelector('.stage').getBoundingClientRect();
+    const controller = document.getElementById('device-img').getBoundingClientRect();
+    const send = document.getElementById('send-btn').getBoundingClientRect();
+    const quick = document.querySelector('.bank-quick-setup').getBoundingClientRect();
+    const hud = document.getElementById('live-strip');
+    const hudRect = hud.getBoundingClientRect();
+    const overlap = !(send.right <= quick.left || send.left >= quick.right || send.bottom <= quick.top || send.top >= quick.bottom);
+    return {
+      scrollY: window.scrollY,
+      stageTop: stage.top,
+      controllerBottom: controller.bottom,
+      sendTop: send.top,
+      sendBottom: send.bottom,
+      quickTop: quick.top,
+      quickBottom: quick.bottom,
+      overlap,
+      hudVisible: hud.classList.contains('is-contextual-visible'),
+      hudCompact: hud.classList.contains('is-compact'),
+      hudWidth: hudRect.width,
+      hudHeight: hudRect.height,
+      hudTech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id)?.textContent || ''),
+      hudTopGap: hudRect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
+      hudLeftGap: hudRect.left,
+    };
+  });
+  addCheck(checks, 'Desktop controller stays in normal page flow',
+    initial.stagePosition === 'relative' && initial.stageAnimation === 'none'
+      && Math.abs((initial.stageTop - scrolled.stageTop) - scrolled.scrollY) <= 2,
+    `${initial.stagePosition} / ${initial.stageAnimation} / moved ${(initial.stageTop - scrolled.stageTop).toFixed(1)} of ${scrolled.scrollY.toFixed(1)} px`);
+  addCheck(checks, 'Desktop stage reserves the complete Send to device tail',
+    initial.sendBottom <= initial.panelsTop + 1,
+    `button ${initial.sendBottom.toFixed(1)} / panels ${initial.panelsTop.toFixed(1)} px`);
+  const gapAbove = initial.sendTop - initial.controllerBottom;
+  const gapBelow = initial.panelsTop - initial.sendBottom;
+  addCheck(checks, 'Send to device is centered between controller and bank section',
+    Math.abs(gapAbove - gapBelow) <= 1,
+    `${gapAbove.toFixed(1)} px above / ${gapBelow.toFixed(1)} px below`);
+  addCheck(checks, 'Scrolled Send to device never covers Library setup',
+    !scrolled.overlap && scrolled.sendBottom <= scrolled.quickTop,
+    `button ${scrolled.sendTop.toFixed(1)}–${scrolled.sendBottom.toFixed(1)} / setup ${scrolled.quickTop.toFixed(1)}–${scrolled.quickBottom.toFixed(1)} px`);
+  addCheck(checks, 'Desktop controller may scroll fully above the viewport',
+    scrolled.controllerBottom < 0,
+    `${scrolled.controllerBottom.toFixed(1)} px`);
+  addCheck(checks, 'Hardware monitor stays visible with or without the controller in view',
+    hudAtController.visible && hudAtController.ariaHidden === 'false' && scrolled.hudVisible,
+    `at controller ${hudAtController.visible} / after scroll ${scrolled.hudVisible}`);
+  addCheck(checks, 'Desktop monitor morphs from the hardware square into a compact capsule',
+    !hudAtController.compact && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
+      && scrolled.hudCompact && Math.abs(scrolled.hudWidth - 202) <= 1 && Math.abs(scrolled.hudHeight - 46) <= 1,
+    `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
+  addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
+    scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
+    scrolled.hudTech.join(' / '));
+  addCheck(checks, 'Desktop hardware monitor aligns below the left side of the header',
+    Math.abs(scrolled.hudTopGap - 12) <= 1 && Math.abs(scrolled.hudLeftGap - 28) <= 1,
+    `${scrolled.hudLeftGap.toFixed(1)} px left / ${scrolled.hudTopGap.toFixed(1)} px below header`);
+  await page.evaluate(() => { _midiState = 'denied'; _ffConnected = false; renderConnState(); });
+  await settle(page, 380);
+  const hudOffline = await page.evaluate(() => {
+    const hud = document.getElementById('live-strip');
+    return { visible: hud.classList.contains('is-contextual-visible'), opacity: getComputedStyle(hud).opacity };
+  });
+  addCheck(checks, 'Hardware monitor remains visible but subdued without live feedback',
+    hudOffline.visible && Math.abs(Number.parseFloat(hudOffline.opacity) - .68) <= .01,
+    `${hudOffline.visible} / opacity ${hudOffline.opacity}`);
+  addCheck(checks, 'No desktop page or console errors', errors.length === 0, errors.join(' | ') || 'none');
+  await page.screenshot({ path: path.join(outputDir, 'desktop-flow.png') });
+  await page.close();
+  return { profile, checks, errors };
+}
+
 async function runProfile(browser, url, profile) {
   const page = await browser.newPage();
   const errors = [];
@@ -116,11 +255,26 @@ async function runProfile(browser, url, profile) {
     const cta = document.getElementById('send-btn').getBoundingClientRect();
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
     const device = document.getElementById('device-img').getBoundingClientRect();
-    return { ctaTop: cta.top, stageHeight: stage.height, deviceTop: device.top };
+    const wordmark = document.getElementById('welcome-wordmark');
+    const wordmarkRect = wordmark.getBoundingClientRect();
+    return {
+      ctaTop: cta.top,
+      stageHeight: stage.height,
+      stageTop: stage.top,
+      stageBottom: stage.bottom,
+      deviceTop: device.top,
+      wordmarkTop: wordmarkRect.top,
+      wordmarkBottom: wordmarkRect.bottom,
+      wordmarkLabel: wordmark.getAttribute('aria-label'),
+      wordmarkAnimating: wordmark.getAnimations({ subtree: true }).length >= 2,
+    };
   });
-  await settle(page, 700);
-  const welcomeDeviceTopAfter = await page.evaluate(() =>
-    document.getElementById('device-img').getBoundingClientRect().top);
+  await settle(page, 950);
+  const welcomeAfter = await page.evaluate(() => ({
+    deviceTop: document.getElementById('device-img').getBoundingClientRect().top,
+    wordmarkOpacity: Number.parseFloat(getComputedStyle(document.querySelector('.welcome-wordmark-text')).opacity),
+    wordmarkFilter: getComputedStyle(document.querySelector('.welcome-wordmark-text')).filter,
+  }));
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome.png`) });
   const introNavPositions = [];
   for (let slide = 0; slide < 3; slide += 1) {
@@ -145,8 +299,14 @@ async function runProfile(browser, url, profile) {
     await page.$('.onb-skip') === null, 'absent');
   addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 142) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
   addCheck(checks, 'Welcome controller stays still',
-    Math.abs(welcomeDeviceTopAfter - welcomeBefore.deviceTop) <= 0.25,
-    `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeDeviceTopAfter.toFixed(2)} px`);
+    Math.abs(welcomeAfter.deviceTop - welcomeBefore.deviceTop) <= 0.25,
+    `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeAfter.deviceTop.toFixed(2)} px`);
+  addCheck(checks, 'Feel Fader wordmark animates once inside its reserved slot',
+    welcomeBefore.wordmarkAnimating && welcomeBefore.wordmarkLabel === 'Feel Fader'
+      && welcomeBefore.wordmarkTop >= welcomeBefore.stageTop - 1
+      && welcomeBefore.wordmarkBottom <= welcomeBefore.stageBottom + 1
+      && welcomeAfter.wordmarkOpacity >= .99 && welcomeAfter.wordmarkFilter === 'blur(0px)',
+    `${welcomeBefore.wordmarkLabel || 'missing'} / ${welcomeBefore.wordmarkAnimating ? 'animated' : 'static'} / ${welcomeAfter.wordmarkFilter}`);
 
   await page.evaluate(() => {
     document.getElementById('welcome-text-block').classList.remove('welcome-onboarding');
@@ -158,7 +318,7 @@ async function runProfile(browser, url, profile) {
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
     const action = document.getElementById('send-btn').getBoundingClientRect();
     const controller = document.getElementById('device-img').getBoundingClientRect();
-    const visibleText = [document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
+    const visibleText = [document.getElementById('welcome-wordmark'), document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
       .filter(element => element.getClientRects().length > 0)
       .map(element => element.textContent.trim());
     return {
@@ -172,11 +332,11 @@ async function runProfile(browser, url, profile) {
   });
   addCheck(checks, 'Normal welcome uses the compact copy slot', Math.abs(compactWelcome.stageHeight - 50) <= 1,
     `${compactWelcome.stageHeight.toFixed(2)} px`);
-  addCheck(checks, 'Normal welcome contains only the essential copy',
+  addCheck(checks, 'Normal welcome contains only the brand and essential actions',
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
-      && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Connect & load', 'Continue without device']),
+      && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Feel Fader', 'Connect & load', 'Continue without device']),
     compactWelcome.visibleText.join(' / '));
-  addCheck(checks, 'Removing the welcome heading keeps the primary action in place',
+  addCheck(checks, 'Animated wordmark keeps the primary action in place',
     Math.abs(compactWelcome.actionGap - 70) <= 1,
     `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
@@ -285,6 +445,9 @@ async function runProfile(browser, url, profile) {
       bankTabs,
       bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
       midiHelpAbsent: !document.getElementById('midi-help-banner'),
+      rollerSummaryAbsent: !document.getElementById('section-summary-0-roller'),
+      faderSummariesAbsent: !document.getElementById('section-summary-0-fader1') && !document.getElementById('section-summary-0-fader2'),
+      contextHelpCount: document.querySelectorAll('.context-help').length,
       headerStatus: document.getElementById('h-status-text')?.textContent || '',
       headerStatusAria: document.getElementById('h-status')?.getAttribute('aria-label') || '',
       headerStatusText: (() => {
@@ -325,6 +488,15 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'MIDI status has no duplicate content banner',
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
     `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);
+  addCheck(checks, 'Roller header does not duplicate the selected mode on the right',
+    appState.rollerSummaryAbsent,
+    appState.rollerSummaryAbsent ? 'right-side summary absent' : 'duplicate summary present');
+  addCheck(checks, 'Fader headers leave channel and CC metadata to the hardware monitor',
+    appState.faderSummariesAbsent,
+    appState.faderSummariesAbsent ? 'right-side summaries absent' : 'duplicate summaries present');
+  addCheck(checks, 'Inline question-mark links do not duplicate the Help & Guide panel',
+    appState.contextHelpCount === 0,
+    `${appState.contextHelpCount} inline help buttons`);
   addCheck(checks, 'Mobile header renders MIDI status as an accessible dot',
     appState.headerStatusText && appState.headerStatusText.width <= 1.1 && appState.headerStatusText.height <= 1.1
       && appState.headerStatusText.position === 'absolute' && appState.headerStatusAria === appState.headerStatus,
@@ -407,6 +579,108 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'In-app onboarding starts below the shared action',
     transitionEnd.cardTop >= transitionEnd.send.top + transitionEnd.send.height,
     `button bottom ${(transitionEnd.send.top + transitionEnd.send.height).toFixed(2)} px / card ${transitionEnd.cardTop.toFixed(2)} px`);
+  await page.evaluate(() => {
+    onbFinish();
+    _midiState = 'granted';
+    _ffConnected = true;
+    liveValues = { f1: 23, f2: 108 };
+    liveSeen = { f1: true, f2: true };
+    encLiveVal = 48;
+    dirty = false;
+    renderConnState();
+    window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
+  });
+  await settle(page, 420);
+  const mobileStrip = await page.evaluate(() => {
+    const hud = document.getElementById('live-strip');
+    const rect = hud.getBoundingClientRect();
+    const controller = document.getElementById('device-img').getBoundingClientRect();
+    return {
+      visible: hud.classList.contains('is-contextual-visible'),
+      compact: hud.classList.contains('is-compact'),
+      opacity: getComputedStyle(hud).opacity,
+      topGap: rect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
+      leftGap: rect.left,
+      width: rect.width,
+      height: rect.height,
+      controllerBottom: controller.bottom,
+      values: ['live-f1-value','live-f2-value','live-roller-value'].map(id => document.getElementById(id).textContent),
+      tech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id).textContent),
+      valuesUnclipped: ['live-f1-value','live-f2-value','live-roller-value'].every(id => {
+        const value = document.getElementById(id);
+        return value.scrollWidth <= value.clientWidth + 1;
+      }),
+      techUnclipped: ['live-f1-tech','live-f2-tech','live-roller-tech'].every(id => {
+        const value = document.getElementById(id);
+        return value.scrollWidth <= value.clientWidth + 1;
+      }),
+      labels: ['live-f1-label-short','live-f2-label-short','live-roller-label-short'].map(id => document.getElementById(id).textContent),
+      metersVisible: [...hud.querySelectorAll('.live-hud-meter')].every(meter => getComputedStyle(meter).display !== 'none'),
+      meterRects: [...hud.querySelectorAll('.live-hud-meter')].map(meter => {
+        const meterRect = meter.getBoundingClientRect();
+        return { width: meterRect.width, height: meterRect.height };
+      }),
+      itemRects: [...hud.querySelectorAll('.live-hud-item')].map(item => {
+        const itemRect = item.getBoundingClientRect();
+        return { top: itemRect.top, right: itemRect.right, bottom: itemRect.bottom, left: itemRect.left };
+      }),
+    };
+  });
+  addCheck(checks, 'Mobile hardware monitor remains visible while the controller scrolls away',
+    mobileStrip.visible && mobileStrip.opacity === '1' && mobileStrip.controllerBottom < 0,
+    `controller ${mobileStrip.controllerBottom.toFixed(1)} px / visible ${mobileStrip.visible} / opacity ${mobileStrip.opacity}`);
+  addCheck(checks, 'Scrolled mobile monitor becomes a compact L, R and ART capsule',
+    mobileStrip.compact && Math.abs(mobileStrip.width - 190) <= 1 && Math.abs(mobileStrip.height - 44) <= 1
+      && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped
+      && mobileStrip.meterRects.every(rect => rect.width === 0 && rect.height === 0)
+      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,CC 48'
+      && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
+    `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
+  addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',
+    Math.abs(mobileStrip.topGap - 12) <= 1 && Math.abs(mobileStrip.leftGap - 16) <= 1,
+    `${mobileStrip.leftGap.toFixed(1)} px left / ${mobileStrip.topGap.toFixed(1)} px below header`);
+  await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip.png`) });
+  await page.evaluate(() => { dirty = true; reflectDirty(); });
+  await settle(page, 460);
+  const dockedStrip = await page.evaluate(() => {
+    const hud = document.getElementById('live-strip').getBoundingClientRect();
+    const send = document.querySelector('.send-callout').getBoundingClientRect();
+    const overlap = !(hud.right <= send.left || hud.left >= send.right || hud.bottom <= send.top || hud.top >= send.bottom);
+    return {
+      docked: document.body.classList.contains('mobile-send-docked'),
+      hudTop: hud.top,
+      sendBottomGap: window.innerHeight - send.bottom,
+      overlap,
+    };
+  });
+  addCheck(checks, 'Top-left hardware monitor stays clear of the dirty Send dock',
+    dockedStrip.docked && !dockedStrip.overlap && Math.abs(dockedStrip.sendBottomGap - 12) <= 1,
+    `docked ${dockedStrip.docked} / overlap ${dockedStrip.overlap} / HUD top ${dockedStrip.hudTop.toFixed(1)} px / Send ${dockedStrip.sendBottomGap.toFixed(1)} px`);
+  await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip-docked.png`) });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await settle(page, 420);
+  const stripBackAtController = await page.evaluate(() => {
+    const hud = document.getElementById('live-strip');
+    const rect = hud.getBoundingClientRect();
+    const meters = [...hud.querySelectorAll('.live-hud-meter')].map(meter => {
+      const meterRect = meter.getBoundingClientRect();
+      return { width: meterRect.width, height: meterRect.height };
+    });
+    return {
+      visible: hud.classList.contains('is-contextual-visible'),
+      compact: hud.classList.contains('is-compact'),
+      opacity: getComputedStyle(hud).opacity,
+      width: rect.width,
+      height: rect.height,
+      meters,
+    };
+  });
+  addCheck(checks, 'Hardware monitor expands back into the symmetric square with the controller',
+    stripBackAtController.visible && !stripBackAtController.compact && stripBackAtController.opacity === '1'
+      && Math.abs(stripBackAtController.width - 96) <= 1 && Math.abs(stripBackAtController.height - 96) <= 1
+      && stripBackAtController.meters[0].height >= stripBackAtController.meters[0].width * 4
+      && stripBackAtController.meters[1].height >= stripBackAtController.meters[1].width * 4,
+    `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / compact ${stripBackAtController.compact} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();
@@ -426,7 +700,7 @@ try {
     pipe: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
-  const results = [];
+  const results = [await runDesktopFlow(browser, testUrl)];
   for (const profile of profiles) results.push(await runProfile(browser, testUrl, profile));
   const report = { generatedAt: new Date().toISOString(), url: testUrl, results };
   fs.writeFileSync(path.join(outputDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);

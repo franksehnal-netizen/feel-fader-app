@@ -140,25 +140,45 @@ header{
 }
 .top-sticky{position:sticky;top:0;z-index:50;}
 .live-hud{
-  position:fixed;top:50px;right:14px;z-index:45;width:164px;padding:7px 8px;
-  border:1px solid var(--glass-border);border-radius:14px;
-  background:linear-gradient(145deg,var(--glass-dialog),var(--glass-soft));
-  backdrop-filter:blur(22px) saturate(165%);-webkit-backdrop-filter:blur(22px) saturate(165%);
-  box-shadow:0 10px 28px rgba(31,31,36,.12),inset 0 1px 0 rgba(255,255,255,.55);
+  position:fixed;top:64px;left:28px;z-index:45;width:112px;height:112px;box-sizing:border-box;padding:9px;
+  border:1px solid var(--glass-border);border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,255,255,.68),rgba(242,242,247,.48));
+  backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 8px 28px rgba(31,31,36,.09);
   opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-5px) scale(.98);
-  transition:opacity .24s ease,transform .30s cubic-bezier(.16,1,.3,1),visibility 0s linear .30s;
+  transition:opacity .28s ease,transform .36s cubic-bezier(.16,1,.3,1),top .36s cubic-bezier(.16,1,.3,1),width .38s cubic-bezier(.16,1,.3,1),height .38s cubic-bezier(.16,1,.3,1),padding .38s cubic-bezier(.16,1,.3,1),border-radius .38s cubic-bezier(.16,1,.3,1),visibility 0s linear .36s;
 }
-.live-hud[data-state="CONNECTED_LIVE"]{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
-.live-hud-inner{display:grid;gap:4px}
-.live-hud-bank{margin:0 0 3px;padding:0 1px 4px;border-bottom:1px solid var(--border);color:var(--t2);font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.live-hud-item{min-width:0;display:grid;grid-template-columns:30px minmax(24px,1fr) 46px;align-items:center;column-gap:5px;color:var(--t2)}
-.live-hud-label{font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.live-hud.is-contextual-visible{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
+.live-hud.is-contextual-visible.is-idle{opacity:.68}
+.live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 31px;gap:7px 5px;height:100%}
+.live-hud-bank{display:none}
+.live-hud-item{min-width:0;color:var(--t2)}
+.live-hud-item:not(.live-hud-roller){display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;align-items:center;justify-items:center;row-gap:2px}
+.live-hud-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
 .live-hud-label-long{display:none}
 .live-hud-label-short{display:inline}
 .live-hud-meter{height:3px;border-radius:var(--r-pill);background:rgba(127,127,135,.16);overflow:hidden}
-.live-hud-meter-fill{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8e8e93,#aeaeb2);transition:width .06s linear}
-.live-hud-value{min-width:3ch;text-align:right;color:var(--t1);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-html.dark .live-hud{box-shadow:0 12px 30px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.09)}
+.live-hud-item:not(.live-hud-roller) .live-hud-meter{position:relative;width:4px;height:32px}
+.live-hud-meter-fill{display:block;width:var(--live-level,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,#8e8e93,#aeaeb2);transition:width .06s linear}
+.live-hud-item:not(.live-hud-roller) .live-hud-meter-fill{position:absolute;right:0;bottom:0;left:0;width:100%;height:var(--live-level,0%);background:linear-gradient(0deg,#8e8e93,#aeaeb2);transition:height .06s linear}
+.live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
+.live-hud-tech{color:var(--t3);font:600 7px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;white-space:nowrap}
+.live-hud-roller{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(16px,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:5px;row-gap:2px;padding-top:5px;border-top:1px solid var(--border)}
+.live-hud-roller .live-hud-tech{grid-column:1/-1;justify-self:center}
+.live-hud.is-compact{width:202px;height:46px;padding:5px 7px;border-radius:var(--r-pill)}
+.live-hud.is-compact .live-hud-inner{grid-template-columns:repeat(3,auto);grid-template-rows:1fr;align-items:center;justify-content:center;gap:0}
+.live-hud.is-compact .live-hud-item,
+.live-hud.is-compact .live-hud-item:not(.live-hud-roller){display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;align-items:center;justify-items:center;column-gap:4px;row-gap:3px;padding:0 7px;border:0}
+.live-hud.is-compact .live-hud-item .live-hud-tech{grid-column:1/-1}
+.live-hud.is-compact .live-hud-item+.live-hud-item{border-left:1px solid var(--border)}
+.live-hud.is-compact .live-hud-roller{grid-column:auto;display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;align-items:center;justify-items:center;column-gap:4px;row-gap:3px;padding:0 7px;border-top:0}
+.live-hud.is-compact .live-hud-meter{display:none}
+.live-hud.is-compact .live-hud-value{min-width:0;font-size:10px}
+html.dark .live-hud{
+  background:linear-gradient(180deg,rgba(34,34,40,.62),rgba(18,18,22,.48));
+  backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 8px 28px rgba(0,0,0,.18)
+}
 .h-left{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
 .h-title{font-size:13px;font-weight:700;letter-spacing:-.01em}
 .h-ver{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
@@ -190,17 +210,19 @@ main{width:100%;}
 
 /* STAGE */
 .stage{
-  /* parkování: sticky (kompozitor, žádný jank) + scroll-driven ease dojezd níže (Frank 2026-07-03) */
-  position:sticky;
-  top:-348px;
-  z-index:40;
+  /* The controller belongs to the page flow on desktop. It scrolls away with the
+     page and can never park above Library setup or the bank controls. */
+  position:relative;
+  z-index:1;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   gap:0;
   margin-top:var(--stage-entry-offset,0px);
-  padding:32px 0 20px;
+  /* device-wrap is absolutely positioned inside device-home. Reserve its full
+     action tail here, including the handoff gap inherited from welcome. */
+  padding:32px 0 calc(var(--send-entry-gap,32px) + var(--send-entry-gap,32px) + 22px);
 }
 .device-home,.welcome-controller-slot{position:relative;width:min(65vw,clamp(120px,calc(44.24vh - 126px),220px));aspect-ratio:380/859;flex-shrink:0}
 .device-wrap{position:relative;width:100%;user-select:none;flex-shrink:0}
@@ -214,12 +236,6 @@ main{width:100%;}
 
 
 /* SEND / LOAD */
-/* Scroll-driven dobrzdění parkování: stage zaparkuje o 60px výš a posledních ~180px scrollu
-   se ease-out dosune do finální polohy. Vše na kompozitoru — plynulé, bez JS. */
-@supports (animation-timeline: scroll()) {
-  .stage{top:-408px;animation:stageSettle ease-out both;animation-timeline:scroll(root);animation-range:457px 640px;}
-}
-@keyframes stageSettle{from{transform:translateY(0)}to{transform:translateY(60px)}}
 .live-note{margin:6px 0 0;font-size:12px;color:var(--t3);text-align:center;line-height:1.4;}
 .live-note[hidden]{display:none;}
 .send-callout{
@@ -890,7 +906,6 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
   .send-callout.is-mobile-docked .send-change-note.is-visible{transform:translateX(0) scale(1)}
   .send-callout.is-mobile-docked .send-change-note.is-visible.is-swapping{transform:translateX(-3px) scale(.985)}
   .send-callout.is-mobile-docked .change-popover{top:auto;bottom:calc(100% + 10px)}
-  body.mobile-send-docked .live-hud{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
   .panel{min-width:100%;max-width:100%}.info-grid{grid-template-columns:1fr}
   #welcome-text-block.welcome-has-skip{padding-bottom:30px}
   #welcome-text-block .welcome-skip{
@@ -978,10 +993,48 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 .device-wrap.welcome-mode.action-handoff .change-popover{display:none}
 .welcome-copy-stage{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  width:100%;height:50px;flex:0 0 50px;
+  position:relative;width:100%;height:50px;flex:0 0 50px;
 }
 #welcome-text-block.welcome-onboarding .welcome-copy-stage{height:142px;flex-basis:142px;justify-content:flex-start}
 #onb-beats{width:100%}
+.welcome-wordmark{
+  position:relative;display:grid;place-items:center;width:190px;height:32px;overflow:hidden;
+  color:var(--t1);isolation:isolate;pointer-events:none;
+}
+.welcome-wordmark-text{
+  font:700 24px/1 'Mulish',sans-serif;letter-spacing:-.035em;white-space:nowrap;
+  color:transparent;background:linear-gradient(105deg,var(--t1) 0 38%,rgba(var(--highlight-rgb),.92) 48%,rgba(255,255,255,.94) 51%,var(--t1) 61% 100%);
+  background-size:250% 100%;background-position:112% 0;
+  -webkit-background-clip:text;background-clip:text;
+}
+.welcome-wordmark-scan{
+  position:absolute;top:15%;left:0;width:1px;height:70%;border-radius:var(--r-pill);
+  background:rgba(var(--highlight-rgb),.9);box-shadow:0 0 5px rgba(var(--highlight-rgb),.7),0 0 13px rgba(var(--highlight-rgb),.32);
+  opacity:0;transform:translate3d(-10px,0,0);
+}
+.welcome-wordmark.is-playing .welcome-wordmark-text{
+  animation:welcome-wordmark-focus 1.05s cubic-bezier(.16,1,.3,1) .06s both,
+    welcome-wordmark-glass 1.08s cubic-bezier(.22,.7,.2,1) .08s both;
+}
+.welcome-wordmark.is-playing .welcome-wordmark-scan{animation:welcome-wordmark-scan .82s cubic-bezier(.22,.7,.2,1) .08s both}
+#welcome-text-block.welcome-onboarding .welcome-wordmark{position:absolute;top:0;left:50%;transform:translateX(-50%);visibility:hidden}
+#welcome-text-block.welcome-onboarding.welcome-wordmark-beat .welcome-wordmark{visibility:visible}
+#welcome-text-block.welcome-onboarding.welcome-wordmark-beat .onb-beat-title{visibility:hidden}
+@keyframes welcome-wordmark-focus{
+  0%{opacity:0;filter:blur(7px);transform:translate3d(0,2px,0) scale(.985);letter-spacing:.015em}
+  42%{opacity:.72;filter:blur(2.2px)}
+  100%{opacity:1;filter:blur(0);transform:translate3d(0,0,0) scale(1);letter-spacing:-.035em}
+}
+@keyframes welcome-wordmark-glass{
+  0%{background-position:112% 0}
+  100%{background-position:-22% 0}
+}
+@keyframes welcome-wordmark-scan{
+  0%{opacity:0;transform:translate3d(-10px,0,0)}
+  16%{opacity:.94}
+  78%{opacity:.58}
+  100%{opacity:0;transform:translate3d(200px,0,0)}
+}
 .welcome-action-slot{display:flex;align-items:center;justify-content:center;width:100%;height:38px;margin:4px 0 2px}
 .welcome-start{
   display:inline-block;margin:0;
@@ -1070,6 +1123,8 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   100%{opacity:0;background-position:-45% 0}
 }
 @media(prefers-reduced-motion:reduce){
+  .welcome-wordmark.is-playing .welcome-wordmark-text{animation:none;background-position:-22% 0}
+  .welcome-wordmark.is-playing .welcome-wordmark-scan{animation:none;display:none}
   .device-wrap.connect-success::after,.device-wrap.connect-success .welcome-flash{animation:none}
   .device-wrap.connect-success .device-img{animation:welcome-device-glow .35s ease-out both}
 }
@@ -1092,13 +1147,15 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   animation:fi .16s ease;
 }
 @media(max-width:980px){
-  .live-hud{top:auto;right:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:50%;width:auto;max-width:calc(100vw - 24px);padding:5px 8px;transform:translate(-50%,5px) scale(.98);border-radius:var(--r-pill)}
-  .live-hud[data-state="CONNECTED_LIVE"]{transform:translateX(-50%)}
-  .live-hud-inner{display:grid;grid-template-columns:repeat(3,auto);align-items:center;gap:9px}
-  .live-hud-bank{display:none}
-  .live-hud-item{display:grid;grid-template-columns:auto auto;column-gap:4px}
-  .live-hud-meter{display:none}
-  .live-hud-value{font-size:10px}
+  .live-hud{left:16px;width:96px;height:96px;padding:7px;border-radius:19px}
+  .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:4px}
+  .live-hud-item:not(.live-hud-roller){row-gap:2px}
+  .live-hud-item:not(.live-hud-roller) .live-hud-meter{height:17px}
+  .live-hud-roller{column-gap:4px;row-gap:1px;padding-top:3px}
+  .live-hud.is-compact{width:190px;height:44px;padding:4px 5px;border-radius:var(--r-pill)}
+  .live-hud.is-compact .live-hud-item,
+  .live-hud.is-compact .live-hud-item:not(.live-hud-roller),
+  .live-hud.is-compact .live-hud-roller{padding:0 5px;column-gap:3px}
 }
 .icon-picker-modal{
   background:linear-gradient(145deg,var(--glass-dialog),var(--glass-card));border:1px solid var(--glass-border);
@@ -1431,7 +1488,6 @@ html.dark .onb-intro-icon{border-color:rgba(255,255,255,.10);background:var(--co
 #onb-demo-badge{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;background:var(--bg-card);border:1px solid var(--border-s);color:var(--t2);border-radius:var(--r-pill);padding:3px 10px;font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;}
 .onb-replay-btn{margin:0 0 12px;}
 
-.context-help{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:4px;padding:0;color:var(--t3);font:700 10px 'Mulish',sans-serif;vertical-align:middle}
 .uacc-tag[draggable="true"]{cursor:grab}
 .uacc-tag.is-sequence-dragging{opacity:.42;cursor:grabbing}
 .uacc-tag.sequence-drop-before{box-shadow:-3px 0 0 var(--red),var(--shadow-sm)}
@@ -1459,7 +1515,7 @@ html.dark .val-bar{background:var(--t2);}
 /* Glass fallback + lighter compositor load on small screens. Inputs and steppers
    deliberately remain opaque so configuration values retain maximum contrast. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .panel,.bank-card,.modal,.icon-picker-modal,.toast,.sync-banner{background:var(--bg-card)}
+  .panel,.bank-card,.modal,.icon-picker-modal,.toast,.sync-banner,.live-hud{background:var(--bg-card)}
 }
 @media(max-width:600px){
   .panel{backdrop-filter:blur(14px) saturate(135%);-webkit-backdrop-filter:blur(14px) saturate(135%)}
@@ -1495,23 +1551,26 @@ html.dark .val-bar{background:var(--t2);}
   </div>
 </header>
 </div>
-<div class="live-hud" id="live-strip" data-state="DISCONNECTED" role="group" aria-label="Live device values">
+<div class="live-hud" id="live-strip" data-state="DISCONNECTED" role="group" aria-label="Live device values" aria-hidden="true">
   <div class="live-hud-bank" id="live-hud-bank">B1 · Bank 1</div>
   <div class="live-hud-inner">
     <div class="live-hud-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f1-label-long">L</span><span class="live-hud-label-short" id="live-f1-label-short">L</span></span>
       <span class="live-hud-meter" aria-hidden="true"><span class="live-hud-meter-fill" id="live-f1-meter"></span></span>
       <span class="live-hud-value" id="live-f1-value">—</span>
+      <span class="live-hud-tech" id="live-f1-tech">Ch1·CC11</span>
     </div>
     <div class="live-hud-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f2-label-long">R</span><span class="live-hud-label-short" id="live-f2-label-short">R</span></span>
       <span class="live-hud-meter" aria-hidden="true"><span class="live-hud-meter-fill" id="live-f2-meter"></span></span>
       <span class="live-hud-value" id="live-f2-value">—</span>
+      <span class="live-hud-tech" id="live-f2-tech">Ch1·CC1</span>
     </div>
     <div class="live-hud-item live-hud-roller">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-roller-label">ROLLER · ARTICULATION</span><span class="live-hud-label-short" id="live-roller-label-short">ART</span></span>
       <span class="live-hud-meter" aria-hidden="true"><span class="live-hud-meter-fill" id="live-roller-meter"></span></span>
       <span class="live-hud-value" id="live-roller-value">—</span>
+      <span class="live-hud-tech" id="live-roller-tech">Ch1·CC32</span>
     </div>
   </div>
 </div>
@@ -1741,6 +1800,10 @@ html.dark .val-bar{background:var(--t2);}
     <!-- Text block — fades out on connect -->
     <div id="welcome-text-block">
       <div class="welcome-copy-stage">
+        <div class="welcome-wordmark is-playing" id="welcome-wordmark" aria-label="Feel Fader">
+          <span class="welcome-wordmark-text" aria-hidden="true">Feel Fader</span>
+          <span class="welcome-wordmark-scan" aria-hidden="true"></span>
+        </div>
         <div id="onb-beats" style="display:none">
           <div class="onb-beat-title" data-i18n="onb.beat1.title">Meet Feel Fader</div>
           <div class="onb-beat-sub" data-i18n="onb.beat1.sub"></div>
@@ -1936,31 +1999,20 @@ function sectionHeaderHtml(bi, key, cap, title, summary) {
       </span>
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
         onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
-        <span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span><span class="section-chevron" aria-hidden="true">▼</span>
+        ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
       </button>
     </div>`;
   }
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
     onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
-      <span class="section-toggle-meta"><span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span><span class="section-chevron" aria-hidden="true">▼</span></span>
+      <span class="section-toggle-meta">${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;
-}
-function rollerSectionSummary(bank) {
-  const mode = bank.roller_mode || 'cc';
-  if (mode === 'keyswitch') {
-    const notes = bank.ks_notes || [];
-    const lo = notes.length ? Math.min(...notes) : 0, hi = notes.length ? Math.max(...notes) : 0;
-    return {label:'Keyswitch',meta:`${noteName(lo)}–${noteName(hi)}`};
-  }
-  if (mode === 'track_nav') return {label:'Navigation',meta:`${keyComboLabel(bank.nav_keys_cw||[0x52])} / ${keyComboLabel(bank.nav_keys_ccw||[0x51])}`};
-  return {label:musicalCcName(bank.encoder.cc,'Articulation'),meta:`Ch ${bank.encoder.channel+1} · CC${bank.encoder.cc}`};
 }
 function refreshSectionSemantics(bi, key) {
   const bank = cfg.banks[bi]; if (!bank) return;
   if (key === 'roller') {
     setTxt(`section-title-${bi}-roller`, rollerModeTitle(bank.roller_mode || 'cc'));
-    setSectionSummary(`section-summary-${bi}-roller`, rollerSectionSummary(bank));
   } else {
     const ctrl = bank[key];
     const name = faderDisplayName(ctrl,key);
@@ -2262,6 +2314,8 @@ function updateMobileSendDock() {
   const mobile = window.matchMedia?.('(max-width:600px)').matches;
   const passed = anchor.getBoundingClientRect().bottom < 48;
   const docked = !!(mobile && dirty && passed);
+  if (docked && callout.parentElement !== document.body) document.body.appendChild(callout);
+  if (!docked && callout.parentElement !== anchor) anchor.appendChild(callout);
   callout.classList.toggle('is-mobile-docked',docked);
   document.body.classList.toggle('mobile-send-docked',docked);
 }
@@ -2380,7 +2434,7 @@ function renderPanels() {
         </div>
       </div>
       <div class="bank-quick-setup">
-        <span class="bank-quick-setup-label">Library setup <button class="context-help help-hint ui-control ui-pill ui-glass" type="button" onclick="openHelpAt('help-banks')" aria-label="Help with banks and Library setups">?</button></span>
+        <span class="bank-quick-setup-label">Library setup</span>
         <div class="quick-setup-picker" id="quick-setup-picker-${bi}">
           <input class="library-quick-input" id="quick-setup-input-${bi}" placeholder="Search setups…" autocomplete="off"
             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="quick-setup-menu-${bi}"
@@ -2434,7 +2488,7 @@ function faderSectionContent(key, ctrl, bi) {
   const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
   const open = isBankSectionOpen(bi,key);
   return `
-    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,{meta:`Ch ${ctrl.channel+1} · CC${ctrl.cc}`})}
+    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null)}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
     <div class="section-fields">
       <div class="section-field-row">
@@ -2516,7 +2570,7 @@ function ccEncoderBody(ctrl, bi) {
 
       <!-- Right: articulation list -->
       <div class="enc-right">
-        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER <button class="context-help help-hint ui-control ui-pill ui-glass" type="button" onclick="openHelpAt('help-roller')" aria-label="Help with articulation roller mode">?</button></span><span class="uacc-note">First → last</span></div>
+        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
         <div class="uacc-grid ks-sequence-grid" id="uacc-grid">${uaccTags}</div>
         ${uaccErr ? `<div style="font-size:12px;color:var(--danger);margin-top:6px">${escHtml(uaccErr)}</div>` : ''}
         <div class="uacc-add-row" style="margin-top:10px">
@@ -2666,7 +2720,7 @@ function keyswitchBody(bi) {
             </div>
           </div>
         </div>
-        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER <button class="context-help help-hint ui-control ui-pill ui-glass" type="button" onclick="openHelpAt('help-keyswitch')" aria-label="Help with keyswitch order">?</button></span><span class="uacc-note">First → last</span></div>
+        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
         <div class="uacc-grid ks-sequence-grid" id="ks-tags-${bi}">${keyswitchTagsHtml(bi)}</div>
         <div class="uacc-add-row" style="margin-top:8px">
           <input type="number" id="ks-note-input-${bi}" placeholder="MIDI 0–127" min="0" max="127" aria-label="Keyswitch MIDI note" />
@@ -2692,7 +2746,7 @@ function encoderPanel(ctrl, bi) {
 
   return `
   <div class="panel panel-wide">
-    ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),rollerSectionSummary(cfg.banks[bi]))}
+    ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),null)}
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
       <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${['cc','keyswitch','track_nav'].indexOf(rmode)}">
         ${['cc','keyswitch','track_nav'].map((m,mi) => {
@@ -2714,7 +2768,6 @@ function hidEnableNotice(feature) {
   return `<div class="hid-inline-notice">
     <div class="hid-inline-copy"><strong>Keyboard (HID) is off</strong><span>${escHtml(feature)} can be configured now, but sends keys only after Keyboard is enabled.</span></div>
     <button type="button" class="hid-inline-action ui-control ui-pill ui-glass" onclick="requestEnableHid()">${canEnable ? 'Enable Keyboard…' : 'Connect to enable'}</button>
-    <button class="context-help help-hint ui-control ui-pill ui-glass" type="button" onclick="openHelpAt('help-hid')" aria-label="Help with Keyboard HID">?</button>
   </div>`;
 }
 function trackNavBody(bi){
@@ -2724,7 +2777,7 @@ function trackNavBody(bi){
   return `
   <div class="enc-unified-body">
     ${hidEnableNotice('Navigation')}
-    <div class="uacc-note" style="margin:8px 0">Rotating the roller sends a key (HID). Click a field and press a key (also with Ctrl/Shift/Alt/Cmd). <button class="context-help help-hint ui-control ui-pill ui-glass" type="button" onclick="openHelpAt('help-roller')" aria-label="Help with navigation mode">?</button></div>
+    <div class="uacc-note" style="margin:8px 0">Rotating the roller sends a key (HID). Click a field and press a key (also with Ctrl/Shift/Alt/Cmd).</div>
     <div class="section-field-row">
       <div class="field-block">
         <span class="field-label">ROLL UP</span>
@@ -4327,18 +4380,6 @@ function toggleHelp(){
   btn && btn.setAttribute('aria-expanded', String(!open));
   btn && btn.blur && btn.blur();
 }
-function openHelpAt(id) {
-  const body = document.getElementById('help-body');
-  if (!body) return;
-  if (body.style.display === 'none') toggleHelp();
-  requestAnimationFrame(() => {
-    const target = document.getElementById(id);
-    if (!target) return;
-    target.tabIndex = -1;
-    target.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
-    target.focus({preventScroll:true});
-  });
-}
 function hoverFaderLink(key, on){
   document.querySelectorAll(`[data-fader="${key}"]`).forEach(el => el.classList.toggle('fader-linked', on));
 }
@@ -4353,6 +4394,23 @@ function connState(){
   if (_midiState === 'denied' || _midiState === 'unsupported') return 'MIDI_BLOCKED';
   return 'DISCONNECTED';
 }
+function updateContextualLiveStrip(){
+  const strip = document.getElementById('live-strip');
+  const controller = document.getElementById('device-img');
+  const welcome = document.getElementById('welcome-screen');
+  if (!strip) return;
+  const headerBottom = document.querySelector('.top-sticky')?.getBoundingClientRect().bottom || 0;
+  const welcomeClosed = !!welcome?.classList.contains('hidden');
+  const hasLiveData = !!(liveSeen.f1 || liveSeen.f2 || encLiveVal !== null || ksLiveNote !== null);
+  const live = strip.dataset.state === 'CONNECTED_LIVE' && hasLiveData;
+  const visible = welcomeClosed;
+  const compact = welcomeClosed && !!controller && controller.getBoundingClientRect().bottom <= headerBottom + 8;
+  strip.style.top = `${Math.round(headerBottom + 12)}px`;
+  strip.classList.toggle('is-contextual-visible',visible);
+  strip.classList.toggle('is-idle',!live);
+  strip.classList.toggle('is-compact',compact);
+  strip.setAttribute('aria-hidden',String(!visible));
+}
 function renderLiveStrip(){
   const strip = document.getElementById('live-strip');
   if (!strip) return;
@@ -4365,15 +4423,17 @@ function renderLiveStrip(){
     const valid = allowed && seen && Number.isFinite(value);
     setTxt(id, valid ? value : '—');
     const meter = document.getElementById(meterId);
-    if (meter) meter.style.width = valid ? (Math.max(0, Math.min(127, value)) / 127 * 100) + '%' : '0%';
+    if (meter) meter.style.setProperty('--live-level', valid ? (Math.max(0, Math.min(127, value)) / 127 * 100) + '%' : '0%');
   };
   const bank = cfg.banks[liveBank] || cfg.banks[activeBank];
-  if (!bank) return;
+  if (!bank) { updateContextualLiveStrip(); return; }
   setTxt('live-hud-bank', `${bank.icon ? bank.icon+' ' : ''}B${liveBank+1} · ${bank.name || `Bank ${liveBank+1}`}`);
   setTxt('live-f1-label-long', 'L');
   setTxt('live-f1-label-short', 'L');
   setTxt('live-f2-label-long', 'R');
   setTxt('live-f2-label-short', 'R');
+  setTxt('live-f1-tech', `Ch${bank.fader1.channel+1}·CC${bank.fader1.cc}`);
+  setTxt('live-f2-tech', `Ch${bank.fader2.channel+1}·CC${bank.fader2.cc}`);
   setLiveValue('live-f1-value', 'live-f1-meter', liveValues.f1, liveSeen.f1);
   setLiveValue('live-f2-value', 'live-f2-meter', liveValues.f2, liveSeen.f2);
 
@@ -4386,11 +4446,17 @@ function renderLiveStrip(){
   }
   setTxt('live-roller-label', mode === 'keyswitch' ? 'ROLLER · KEYSWITCH' : mode === 'track_nav' ? 'ROLLER · NAVIGATION' : 'ROLLER · ARTICULATION');
   setTxt('live-roller-label-short', mode === 'keyswitch' ? 'KS' : mode === 'track_nav' ? 'NAV' : 'ART');
+  const ksNotes = bank.ks_notes || [];
+  const ksRange = ksNotes.length ? `${noteName(Math.min(...ksNotes))}–${noteName(Math.max(...ksNotes))}` : 'no notes';
+  setTxt('live-roller-tech', mode === 'keyswitch'
+    ? `Ch${(bank.ks_channel ?? bank.encoder.channel ?? 0)+1}·${ksRange}`
+    : mode === 'track_nav' ? 'HID·keys' : `Ch${bank.encoder.channel+1}·CC${bank.encoder.cc}`);
   setTxt('live-roller-value', rollerValue);
   const rollerValueEl = document.getElementById('live-roller-value');
   if (rollerValueEl) rollerValueEl.title = mode === 'cc' && encLiveVal !== null ? `${uaccName(encLiveVal)} · CC ${encLiveVal}` : rollerValue;
   const rollerBar = document.getElementById('live-roller-meter');
-  if (rollerBar) rollerBar.style.width = rollerValue === '—' ? '0%' : (rollerMeter / 127 * 100) + '%';
+  if (rollerBar) rollerBar.style.setProperty('--live-level', rollerValue === '—' ? '0%' : (rollerMeter / 127 * 100) + '%');
+  updateContextualLiveStrip();
 }
 function renderConnState(){
   const status = document.getElementById('h-status');
@@ -4632,11 +4698,23 @@ function applyDeviceDark(serial) {
 // WELCOME SCREEN
 // ════════════════════════════════════════════════════════════════
 function sharedController() { return document.getElementById('device-wrap'); }
+function playWelcomeWordmark() {
+  const wordmark = document.getElementById('welcome-wordmark');
+  if (!wordmark) return;
+  wordmark.classList.remove('is-playing');
+  void wordmark.offsetWidth;
+  wordmark.classList.add('is-playing');
+}
 function mountPrimaryActionInWelcome() {
   const button = document.getElementById('send-btn');
   const slot = document.getElementById('welcome-action-slot');
   const controller = sharedController();
+  const anchor = document.getElementById('send-anchor');
+  const callout = document.querySelector('.send-callout');
   if (!button || !slot) return;
+  if (anchor && callout && callout.parentElement !== anchor) anchor.appendChild(callout);
+  callout?.classList.remove('is-mobile-docked');
+  document.body.classList.remove('mobile-send-docked');
   controller?.classList.remove('action-handoff');
   controller?.style.removeProperty('--send-entry-gap');
   slot.appendChild(button);
@@ -4695,8 +4773,9 @@ function showWelcome() {
   const textBlock = document.getElementById('welcome-text-block');
   if (textBlock) {
     textBlock.style.removeProperty('animation');
-    textBlock.classList.remove('welcome-onboarding');
+    textBlock.classList.remove('welcome-onboarding','welcome-wordmark-beat');
   }
+  playWelcomeWordmark();
   mountControllerInWelcome();
   mountPrimaryActionInWelcome();
   // Reset to the normal welcome state first — beats may have hidden these in an
@@ -4903,10 +4982,12 @@ function onbStartWelcome() {
 function onbBeatGo(i) {
   _onbBeat = Math.max(0, Math.min(2, i));
   const beats = document.getElementById('onb-beats');
+  const textBlock = document.getElementById('welcome-text-block');
   const tEl = beats.querySelector('.onb-beat-title');
   const sEl = beats.querySelector('.onb-beat-sub');
   const dots = beats.querySelectorAll('.onb-dot');
   tEl.classList.add('onb-beats-fade'); sEl.classList.add('onb-beats-fade');
+  textBlock?.classList.toggle('welcome-wordmark-beat', _onbBeat === 0);
   setTimeout(() => {
     tEl.textContent = t(_ONB_BEATS[_onbBeat].t);
     sEl.textContent = t(_ONB_BEATS[_onbBeat].s);
@@ -5380,7 +5461,9 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && document.getElementById('change-popover')?.classList.contains('is-open')) closeChangePopover();
 });
 window.addEventListener('scroll', updateMobileSendDock, {passive:true});
+window.addEventListener('scroll', updateContextualLiveStrip, {passive:true});
 window.addEventListener('resize', updateMobileSendDock, {passive:true});
+window.addEventListener('resize', updateContextualLiveStrip, {passive:true});
 
 function customPresetFromBank(bank) {
   const preset = { custom:true, saved_at:new Date().toISOString() };
@@ -5630,7 +5713,6 @@ window.requestEnableHid = requestEnableHid;
 window.renderMidiDiagnostics = renderMidiDiagnostics;
 window.copyMidiDiagnostics = copyMidiDiagnostics;
 window.toggleHelp        = toggleHelp;
-window.openHelpAt        = openHelpAt;
 window.hoverFaderLink    = hoverFaderLink;
 window.exportP           = exportP;
 window.importP           = importP;

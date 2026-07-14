@@ -144,7 +144,7 @@ se v demo režimu nepoužívá.
 **Idle stav:**
 - Device image je statický a má stejnou responzivní velikost jako controller v aplikaci
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
-- Běžný welcome obsahuje jen primární **Connect & load** a sekundární **Continue without device**. Nadpis „Connect Feel Fader", duplicitní „Waiting for device" i vysvětlující podtitulek byly odstraněny. Prázdný 50px obsahový slot zůstává záměrně rezervovaný, aby odstranění nadpisu neposunulo primární tlačítko.
+- Běžný welcome obsahuje animovaný wordmark **Feel Fader**, primární **Connect & load** a sekundární **Continue without device**. Popisný nadpis „Connect Feel Fader", duplicitní „Waiting for device" i vysvětlující podtitulek zůstávají odstraněné. Wordmark využívá původní rezervovaný 50px obsahový slot, takže nepřidává výšku ani neposouvá primární tlačítko. Při každém otevření welcome se jednou zaostří za tenkou červenou světelnou stopou a zakončí jemným glass shimmerem; první intro slide používá stejný wordmark místo duplicitního titulku. `prefers-reduced-motion` jej zobrazí okamžitě bez animace.
 
 **„Connect & load" tlačítko (`#send-btn` ve welcome režimu):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
 - **Zařízení detekováno + port už schválený** (vracející se uživatel) → `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup); viditelná akce tomu nebrání.
@@ -186,7 +186,7 @@ se v demo režimu nepoužívá.
 
 **Dark mode toggle:** Kompaktní kruhové liquid-glass tlačítko se plynule mění mezi ikonou slunce a měsíce. Přepnutí používá View Transitions API jako jednotný 360ms crossfade celého vykresleného UI, takže gradientní glass sekce, text i okraje mění motiv současně; fallback přepne motiv okamžitě a `prefers-reduced-motion` animaci vypíná. Stav se ukládá do `localStorage` (klíč `ff-dark`).
 
-**Floating Live HUD:** U pravého horního okraje je kompaktní liquid-glass box s aktuálními hodnotami levého faderu, pravého faderu a rolleru. Tři úzké řádky `L / R / ROL` používají tabulární monospace a mikro-metry; HUD nemá vlastní stavovou tečku ani text `LIVE/OFFLINE`. Zobrazuje se pouze při skutečně dostupných live datech a při blind, blocked nebo disconnected stavu plynule zmizí, takže výchozí či stará data nikdy nevydává za live stav. Pod 980 px se změní na malou horizontální kapsli u spodního okraje, respektuje `safe-area-inset-bottom` a při zaparkovaném mobilním Send calloutu se posune nad něj. Duplicitní číselné badges byly z hlaviček jednotlivých panelů odstraněny a header zůstává jednořádkový.
+**Adaptivní hardware monitor:** Zaoblený liquid-glass monitor s aktuálními hodnotami zůstává v aplikaci připnutý vlevo pod sticky headerem a používá přesně stejnou průsvitnost, `22px` blur a saturaci jako horní lišta v light i dark režimu. Dokud je controller viditelný, monitor má čtvercový tvar a symetricky kopíruje hardware: označení `L` a `R` je nad svislým mikro-metrem, pod live hodnotou je jemný technický popis `Ch·CC` a spodní řádek patří rolleru včetně jeho mapování. Technické souhrny proto nejsou duplicitně v pravé části hlaviček faderů; editovatelná pole zůstávají uvnitř rozbalených sekcí. Jakmile controller odscrolluje nad lištu, monitor se plynule promění v dvouřádkovou kapsli s live hodnotami a mapováním aktuální banky. Při návratu ke controlleru se stejně plynule rozbalí zpět. Během welcome je skrytý; bez skutečně přijatých live dat zůstává na místě v utlumeném stavu s pomlčkami. Čtverec má na desktopu `112 × 112 px`, pod 980 px `96 × 96 px`; kompaktní kapsle `202 × 46 px`, respektive `190 × 44 px`. Nemá vlastní stavovou tečku ani text `LIVE/OFFLINE`; roller se označuje podle režimu jako `ART`, `KS` nebo `NAV`.
 
 **Liquid glass systém:** Header používá nejsilnější skleněnou vrstvu, aktivní bank card střední blur a pomocné panely lehčí průsvitnost. Dialogy, toasty a stavové bannery mají vlastní výraznější glass vrstvu. Ambientní radial gradients na `body` dávají průsvitnosti vizuální hloubku; vstupy a steppery zůstávají záměrně neprůhledné kvůli čitelnosti. Na mobilu se blur snižuje a pro prohlížeče bez `backdrop-filter` existuje neprůhledný fallback.
 
@@ -197,6 +197,8 @@ se v demo režimu nepoužívá.
 ### 3.3 Stage — Device + Fadery
 
 **Co dělá:** Vizuální reprezentace fyzického zařízení. PNG obrázek zařízení s překrytými interaktivními fader thumby.
+
+**Chování při scrollu:** Desktopový controller je součást běžného toku stránky, není sticky ani fixed. Při scrollování přirozeně odjede nad viewport a nikdy se neparkuje nad Library setup nebo ovládacími sekcemi banku. Stage rezervuje také celou dynamickou mezeru a výšku `Send to device` přes `--send-entry-gap`, takže tlačítko nepřekrývá následující obsah ani po seamless přechodu z welcome screenu. Na desktopu používá stejnou optickou mezeru nad i pod tlačítkem, takže hlavní akce leží přesně mezi controllerem a kartou banky.
 
 **Fader thumbs:**
 - Dva dragovatelné thumby (PNG obrázky) pozicované absolutně na device imagu
@@ -221,7 +223,7 @@ se v demo režimu nepoužívá.
 
 **Pravidla inline notifikací:** Dočasná potvrzení (`Device loaded`, `Configuration sent`) sdílejí jednotnou dobu 2,2 s. Stavové zprávy (`unsaved changes`, validační problém) zůstávají viditelné do vyřešení stavu. Všechny varianty používají stejné plynulé objevení a zmizení, 180ms crossfade při změně obsahu a stejný motion pattern na desktopu i v mobilním docku; při `prefers-reduced-motion` se animace vypnou.
 
-**Mobil:** Po odscrollování původní pozice se toto stejné jediné tlačítko — pouze pokud existují neodeslané změny — přepne do kompaktního fixed liquid-glass calloutu nad safe area. Po návratu nahoru nebo odeslání se vrátí do stage; druhá akce se nevytváří.
+**Mobil:** Po odscrollování původní pozice se toto stejné jediné tlačítko — pouze pokud existují neodeslané změny — přepne do kompaktního fixed liquid-glass calloutu nad safe area. Tentýž callout se při dockování dočasně přesune mimo transformovaný stage přímo pod `body`, aby jej prohlížeč skutečně kotvil k viewportu; po návratu nahoru nebo odeslání se synchronně vrátí do původního `#send-anchor`. Druhá akce se nevytváří.
 
 **Navigace validace:** Chybový banner i **Show error** pod controllerem přepnou na první problematický bank, otevřou odpovídající akordeonovou sekci, plynule doscrollují ke konkrétnímu CC/channel/articulation poli a zaměří jej. Po opravě se další chyba stane novým cílem.
 
