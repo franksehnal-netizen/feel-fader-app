@@ -144,7 +144,7 @@ se v demo režimu nepoužívá.
 **Idle stav:**
 - Device image je statický a má stejnou responzivní velikost jako controller v aplikaci
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
-- Běžný welcome obsahuje jen „Connect Feel Fader", primární **Connect & load** a sekundární **Continue without device**. Duplicitní „Waiting for device" i vysvětlující podtitulek byly odstraněny. Mimo intro používá text kompaktní 50px slot.
+- Běžný welcome obsahuje jen primární **Connect & load** a sekundární **Continue without device**. Nadpis „Connect Feel Fader", duplicitní „Waiting for device" i vysvětlující podtitulek byly odstraněny. Prázdný 50px obsahový slot zůstává záměrně rezervovaný, aby odstranění nadpisu neposunulo primární tlačítko.
 
 **„Connect & load" tlačítko (`#send-btn` ve welcome režimu):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
 - **Zařízení detekováno + port už schválený** (vracející se uživatel) → `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup); viditelná akce tomu nebrání.

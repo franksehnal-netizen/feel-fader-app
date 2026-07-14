@@ -151,17 +151,19 @@ async function runProfile(browser, url, profile) {
   await page.evaluate(() => {
     document.getElementById('welcome-text-block').classList.remove('welcome-onboarding');
     document.getElementById('onb-beats').style.display = 'none';
-    document.querySelector('.welcome-title').style.display = '';
     showStartBtn();
   });
   await settle(page, 100);
   const compactWelcome = await page.evaluate(() => {
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
-    const visibleText = [document.querySelector('#welcome-text-block .welcome-title'), document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
+    const action = document.getElementById('send-btn').getBoundingClientRect();
+    const controller = document.getElementById('device-img').getBoundingClientRect();
+    const visibleText = [document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
       .filter(element => element.getClientRects().length > 0)
       .map(element => element.textContent.trim());
     return {
       stageHeight: stage.height,
+      actionGap: action.top - controller.bottom,
       visibleText,
       continueBottomGap: window.innerHeight - document.querySelector('.welcome-skip').getBoundingClientRect().bottom,
       redundantStatusAbsent: !document.getElementById('welcome-status-row'),
@@ -172,8 +174,11 @@ async function runProfile(browser, url, profile) {
     `${compactWelcome.stageHeight.toFixed(2)} px`);
   addCheck(checks, 'Normal welcome contains only the essential copy',
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
-      && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Connect Feel Fader', 'Connect & load', 'Continue without device']),
+      && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Connect & load', 'Continue without device']),
     compactWelcome.visibleText.join(' / '));
+  addCheck(checks, 'Removing the welcome heading keeps the primary action in place',
+    Math.abs(compactWelcome.actionGap - 70) <= 1,
+    `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
     compactWelcome.continueBottomGap >= 7 && compactWelcome.continueBottomGap <= 9,
     `${compactWelcome.continueBottomGap.toFixed(2)} px`);
