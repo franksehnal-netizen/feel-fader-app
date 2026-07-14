@@ -142,7 +142,7 @@ se v demo režimu nepoužívá.
 **Co dělá:** Fixed overlay (z-index 200) zobrazený při startu, dokud není zařízení připojeno nebo uživatel neklikne „Continue without device".
 
 **Idle stav:**
-- Device image (220 px) s float animací (vertikální houpání, 3s)
+- Device image je statický a má stejnou responzivní velikost jako controller v aplikaci
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
 - Text: „Waiting for device" → „Connect Feel Fader" → skip tlačítko
 
@@ -155,7 +155,9 @@ se v demo režimu nepoužívá.
 
 **Connect transition** (spouští se přes `hideWelcome()` → `connectTransitionWelcome()`):
 1. Podkladová appka se vždy synchronně vrátí na `scrollTop=0` (`history.scrollRestoration='manual'`), takže welcome nikdy neodhalí starou pozici u spodku stránky.
-2. App controller se přes `--stage-entry-offset` pixelově zarovná na aktuální viewport pozici welcome controlleru; oba používají stejnou responzivní šířku.
+2. Controller na welcome screenu je statický; animují se pouze jeho fadery.
+3. App controller se přes `--stage-entry-offset` pixelově zarovná na aktuální viewport pozici welcome controlleru; oba používají stejnou responzivní šířku. Mobilní onboarding karta se vkládá až pod controller, takže po odkrytí nezpůsobí reflow.
+4. Welcome fadery dojedou na snapshot `info.faders` z `CMD_INFO`; teprve potom se welcome vrstva krátce rozpustí do pixelově shodného controlleru aplikace.
 3. Fadery zamrznou na aktuální pozici, pak plynule dojedou na hodnoty z `CMD_INFO.faders` snapshotu zařízení.
 4. Float animace se zastaví (`animationPlayState: paused`).
 5. Připojení potvrdí velmi jemný frosty-green hairline obrys, lokální halo a jeden krátký glass shimmer přes zařízení; používá stejný highlight odstín jako propojené sekce a prvky v appce a rychle čistě odezní.

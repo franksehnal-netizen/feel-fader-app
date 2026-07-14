@@ -115,8 +115,12 @@ async function runProfile(browser, url, profile) {
   const welcomeBefore = await page.evaluate(() => {
     const cta = document.getElementById('welcome-start').getBoundingClientRect();
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
-    return { ctaTop: cta.top, stageHeight: stage.height };
+    const device = document.getElementById('welcome-device-img').getBoundingClientRect();
+    return { ctaTop: cta.top, stageHeight: stage.height, deviceTop: device.top };
   });
+  await settle(page, 700);
+  const welcomeDeviceTopAfter = await page.evaluate(() =>
+    document.getElementById('welcome-device-img').getBoundingClientRect().top);
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome.png`) });
   const introNavPositions = [];
   for (let slide = 0; slide < 3; slide += 1) {
@@ -140,6 +144,9 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Redundant Skip intro action is absent',
     await page.$('.onb-skip') === null, 'absent');
   addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 142) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
+  addCheck(checks, 'Welcome controller stays still',
+    Math.abs(welcomeDeviceTopAfter - welcomeBefore.deviceTop) <= 0.25,
+    `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeDeviceTopAfter.toFixed(2)} px`);
 
   const feedbackState = await page.evaluate(async () => {
     const originalLoad = window.loadConfigFromDevice;
@@ -229,6 +236,7 @@ async function runProfile(browser, url, profile) {
       controller: controller ? { left: controller.left, right: controller.right } : null,
       introCard: introCard ? { top: introCard.top, bottom: introCard.bottom } : null,
       controllerTop: controller?.top ?? null,
+      controllerBottom: controller?.bottom ?? null,
       bankTabs,
       bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
       midiHelpAbsent: !document.getElementById('midi-help-banner'),
@@ -247,9 +255,10 @@ async function runProfile(browser, url, profile) {
     appState.controller && appState.controller.left >= -1 && appState.controller.right <= appState.viewportWidth + 1,
     appState.controller ? `${appState.controller.left.toFixed(1)}–${appState.controller.right.toFixed(1)} px` : 'missing');
   addCheck(checks, 'Onboarding card does not overlap the controller',
-    appState.introCard && appState.controllerTop !== null && appState.introCard.bottom <= appState.controllerTop,
-    appState.introCard && appState.controllerTop !== null
-      ? `card bottom ${appState.introCard.bottom.toFixed(1)} / controller top ${appState.controllerTop.toFixed(1)} px`
+    appState.introCard && appState.controllerTop !== null && appState.controllerBottom !== null
+      && (appState.introCard.bottom <= appState.controllerTop || appState.introCard.top >= appState.controllerBottom),
+    appState.introCard && appState.controllerTop !== null && appState.controllerBottom !== null
+      ? `card ${appState.introCard.top.toFixed(1)}–${appState.introCard.bottom.toFixed(1)} / controller ${appState.controllerTop.toFixed(1)}–${appState.controllerBottom.toFixed(1)} px`
       : 'missing');
   const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer
     && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
@@ -262,6 +271,38 @@ async function runProfile(browser, url, profile) {
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
     `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);
   addCheck(checks, 'App opens at the top', appState.scrollY <= 1, `${appState.scrollY} px`);
+
+  const transitionStart = await page.evaluate(() => {
+    liveValues = { f1:23, f2:108 };
+    liveSeen = { f1:true, f2:true };
+    positionThumbs();
+    showWelcome();
+    connectTransitionWelcome();
+    const welcome = document.getElementById('welcome-device-img').getBoundingClientRect();
+    const app = document.getElementById('device-img').getBoundingClientRect();
+    return {
+      topGap: Math.abs(welcome.top - app.top),
+      widthGap: Math.abs(welcome.width - app.width),
+    };
+  });
+  await settle(page, 800);
+  const transitionEnd = await page.evaluate(() => {
+    const welcomeL = document.querySelector('#welcome-thumb-l img').getBoundingClientRect();
+    const welcomeR = document.querySelector('#welcome-thumb-r img').getBoundingClientRect();
+    const appL = document.querySelector('#thumb-l img').getBoundingClientRect();
+    const appR = document.querySelector('#thumb-r img').getBoundingClientRect();
+    return {
+      leftGap: Math.abs(welcomeL.top - appL.top),
+      rightGap: Math.abs(welcomeR.top - appR.top),
+    };
+  });
+  await page.screenshot({ path: path.join(outputDir, `${profile.name}-transition.png`) });
+  addCheck(checks, 'Welcome and app controllers are pixel-aligned for transition',
+    transitionStart.topGap <= 1 && transitionStart.widthGap <= 1,
+    `top ${transitionStart.topGap.toFixed(2)} px / width ${transitionStart.widthGap.toFixed(2)} px`);
+  addCheck(checks, 'Welcome faders settle onto the hardware snapshot before dissolve',
+    transitionEnd.leftGap <= 1.5 && transitionEnd.rightGap <= 1.5,
+    `left ${transitionEnd.leftGap.toFixed(2)} px / right ${transitionEnd.rightGap.toFixed(2)} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();

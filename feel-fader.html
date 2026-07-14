@@ -871,10 +871,10 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 
 @media(max-width:600px){
   header{padding:5px 16px}main{width:100%;}
-  /* The first-run card is inserted after the welcome-to-app alignment is measured.
-     On mobile, discard that temporary offset so the controller stays in normal flow
-     below the card instead of covering its copy and actions. */
-  .stage{position:static;top:auto;animation:none;margin-top:0;}
+  /* Keep the app controller on the exact welcome-screen pixels during the dissolve.
+     The onboarding card is moved below the stage on mobile, so this compositor-only
+     correction cannot overlap or reflow its copy. */
+  .stage{position:static;top:auto;animation:none;margin-top:0;transform:translate3d(0,var(--stage-entry-offset,0px),0);}
   .send-callout{justify-content:center}
   .send-callout.is-mobile-docked{
     position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:90;
@@ -966,7 +966,6 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   position:relative;
   z-index:10;
   width:min(65vw,clamp(120px,calc(44.24vh - 126px),220px));
-  animation:float 3s ease-in-out infinite;
 }
 #welcome-device-img{
   display:block;
@@ -1026,7 +1025,6 @@ html.dark #welcome-device-img{
   box-shadow:none;
 }
 @media(max-width:540px){.welcome-device{width:min(55vw,clamp(120px,calc(44.24vh - 126px),196px))}}
-
 /* ── WELCOME FADER OVERLAY ── */
 .welcome-flash{
   position:absolute;inset:-9%;z-index:0;
@@ -1115,7 +1113,7 @@ html.dark #welcome-device-img{
   to  {opacity:0}
 }
 #welcome-screen.connecting{
-  animation:welcome-screen-out .65s ease .4s forwards;
+  animation:welcome-screen-out .34s ease .72s forwards;
   pointer-events:none;
 }
 
@@ -1276,10 +1274,6 @@ button:focus-visible{outline-offset:3px;}
 ::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:var(--r-pill)}
 ::-webkit-scrollbar-thumb:hover{background:var(--t3)}
 
-@keyframes float{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-6px)}
-}
 /* ── BANK BLOCK ── */
 .bank-block-tabs{
   display:flex;
@@ -4762,9 +4756,9 @@ function connectTransitionWelcome() {
     thumbR.style.transform = `translate3d(-50%,${curR}px,0)`;
   }
 
-  // 2. Stop float on .welcome-device wrapper
+  // 2. Both controller renders now have identical static geometry, so the
+  //    overlay can dissolve without any positional correction or double motion.
   const devWrap = document.querySelector('#welcome-screen .welcome-device');
-  if (devWrap) devWrap.style.animationPlayState = 'paused';
   alignAppControllerToWelcome();
 
   // 3. Settle to the device snapshot already applied by serialReadInfo(). This uses
@@ -4773,11 +4767,11 @@ function connectTransitionWelcome() {
   const targetR = thumbR && railR ? welcomeFaderTargetY(thumbR, railR, liveValues.f2) : 0;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (thumbL && railL) {
-      thumbL.style.transition = 'transform 0.7s ease-in-out';
+      thumbL.style.transition = 'transform .72s cubic-bezier(.22,.8,.2,1)';
       thumbL.style.transform = `translate3d(-50%,${targetL}px,0)`;
     }
     if (thumbR && railR) {
-      thumbR.style.transition = 'transform 0.7s ease-in-out';
+      thumbR.style.transition = 'transform .72s cubic-bezier(.22,.8,.2,1)';
       thumbR.style.transform = `translate3d(-50%,${targetR}px,0)`;
     }
   }));
@@ -4795,7 +4789,9 @@ function connectTransitionWelcome() {
     if (tb) tb.style.animation = 'welcome-text-out 0.55s ease-in forwards';
   }, 100);
 
-  // 6. Fade out entire welcome screen, then hide
+  // 6. Fade only after the welcome faders have reached the hardware snapshot.
+  //    At that point both controller renders are pixel-aligned, so the dissolve
+  //    reveals the app without a visible jump or a second fader position.
   ws.classList.add('connecting');
   setTimeout(() => {
     resetAppScrollTop();
@@ -4806,7 +4802,7 @@ function connectTransitionWelcome() {
       resetAppScrollTop();
       positionThumbs();
     });
-  }, 1350);
+  }, 1100);
 }
 
 function hideWelcome() {
@@ -4920,6 +4916,12 @@ function onbMaybeStartConfig() {
 }
 function onbStartConfig() {
   const card = document.getElementById('onb-intro-card');
+  const stage = document.querySelector('.stage');
+  const vbar = document.getElementById('vbar');
+  if (card && stage && vbar) {
+    if (window.matchMedia?.('(max-width:600px)').matches) stage.insertAdjacentElement('afterend',card);
+    else vbar.parentElement?.insertBefore(card,vbar);
+  }
   const title = document.getElementById('onb-intro-title');
   const txt = document.getElementById('onb-intro-text');
   const live = liveAllowed();
