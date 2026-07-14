@@ -148,6 +148,32 @@ async function runProfile(browser, url, profile) {
     Math.abs(welcomeDeviceTopAfter - welcomeBefore.deviceTop) <= 0.25,
     `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeDeviceTopAfter.toFixed(2)} px`);
 
+  await page.evaluate(() => {
+    document.getElementById('welcome-text-block').classList.remove('welcome-onboarding');
+    document.getElementById('onb-beats').style.display = 'none';
+    document.querySelector('.welcome-title').style.display = '';
+    showStartBtn();
+  });
+  await settle(page, 100);
+  const compactWelcome = await page.evaluate(() => {
+    const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
+    const visibleText = [...document.querySelectorAll('#welcome-text-block button, #welcome-text-block .welcome-title')]
+      .filter(element => element.getClientRects().length > 0)
+      .map(element => element.textContent.trim());
+    return {
+      stageHeight: stage.height,
+      visibleText,
+      redundantStatusAbsent: !document.getElementById('welcome-status-row'),
+      redundantSubtitleAbsent: !document.querySelector('#welcome-screen .welcome-sub'),
+    };
+  });
+  addCheck(checks, 'Normal welcome uses the compact copy slot', Math.abs(compactWelcome.stageHeight - 50) <= 1,
+    `${compactWelcome.stageHeight.toFixed(2)} px`);
+  addCheck(checks, 'Normal welcome contains only the essential copy',
+    compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
+      && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Connect Feel Fader', 'Connect & load', 'Continue without device']),
+    compactWelcome.visibleText.join(' / '));
+
   const feedbackState = await page.evaluate(async () => {
     const originalLoad = window.loadConfigFromDevice;
     const continueButton = document.querySelector('#welcome-text-block .welcome-skip');
@@ -241,6 +267,12 @@ async function runProfile(browser, url, profile) {
       bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
       midiHelpAbsent: !document.getElementById('midi-help-banner'),
       headerStatus: document.getElementById('h-status-text')?.textContent || '',
+      headerStatusAria: document.getElementById('h-status')?.getAttribute('aria-label') || '',
+      headerStatusText: (() => {
+        const element = document.getElementById('h-status-text');
+        const rect = element?.getBoundingClientRect();
+        return element && rect ? { width: rect.width, height: rect.height, position: getComputedStyle(element).position } : null;
+      })(),
       scrollY: window.scrollY,
     };
   });
@@ -270,6 +302,10 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'MIDI status has no duplicate content banner',
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
     `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);
+  addCheck(checks, 'Mobile header renders MIDI status as an accessible dot',
+    appState.headerStatusText && appState.headerStatusText.width <= 1.1 && appState.headerStatusText.height <= 1.1
+      && appState.headerStatusText.position === 'absolute' && appState.headerStatusAria === appState.headerStatus,
+    `${appState.headerStatusText?.width ?? 'missing'}x${appState.headerStatusText?.height ?? 'missing'} / ${appState.headerStatusAria || 'no label'}`);
   addCheck(checks, 'App opens at the top', appState.scrollY <= 1, `${appState.scrollY} px`);
 
   const transitionStart = await page.evaluate(() => {

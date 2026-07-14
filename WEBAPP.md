@@ -144,7 +144,7 @@ se v demo režimu nepoužívá.
 **Idle stav:**
 - Device image je statický a má stejnou responzivní velikost jako controller v aplikaci
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
-- Text: „Waiting for device" → „Connect Feel Fader" → skip tlačítko
+- Běžný welcome obsahuje jen „Connect Feel Fader", primární **Connect & load** a sekundární **Continue without device**. Duplicitní „Waiting for device" i vysvětlující podtitulek byly odstraněny. Mimo intro používá text kompaktní 50px slot.
 
 **„Connect & load" tlačítko (`#welcome-start`):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
 - **Zařízení detekováno + port už schválený** (vracející se uživatel) → `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup); viditelná akce tomu nebrání.
@@ -178,6 +178,7 @@ se v demo režimu nepoužívá.
 - Šedý pulzující bod → hledá zařízení
 - Zelený bod + „Connected [název portu]" → Feel Fader nalezen
 - Červený bod + „MIDI unavailable/blocked" → jediná viditelná informace o nedostupném Web MIDI; duplicitní obsahový banner byl odstraněn, podrobnost zůstává v tooltipu a MIDI diagnostics
+- Na mobilu zůstává v liště pouze barevný bod. Text stavu je vizuálně skrytý, ale zachovaný pro čtečky obrazovky přes `aria-label` a pro tooltip; hlavička se proto nikdy nezalomí kvůli „MIDI unavailable".
 
 **Banky na mobilu:** Aktivní bank zachová svůj název, neaktivní banky se zkomprimují na `B2`, `B3` atd. Výchozí banky 1–3 tak zůstávají současně viditelné bez horizontálního posunu lišty.
 

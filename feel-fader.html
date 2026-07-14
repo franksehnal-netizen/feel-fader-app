@@ -588,7 +588,8 @@ html.dark .btn-remove-bank:hover{background:rgba(255,90,66,.1);}
   .device-home,.welcome-controller-slot{width:min(55vw,clamp(120px,calc(44.24vh - 126px),196px));}
   .bank-tab{font-size:11px;padding:8px;}
   .panel{min-width:0;}
-  .h-status-text{font-size:11px;}
+  .h-status{width:7px;min-width:7px;flex:0 0 7px}
+  .h-status-text{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
   header{padding:5px 16px;}
   .bank-block-tab .bank-tab-name{max-width:72px;}
   .bank-block-name-top{flex-wrap:wrap}
@@ -908,10 +909,6 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 }
 .h-status-dot.err{background:var(--danger)}
 .h-status-dot.warn{background:var(--amber)}
-@keyframes status-pulse{
-  0%,100%{opacity:.4;transform:scale(1)}
-  50%{opacity:1;transform:scale(1.25)}
-}
 .h-status-text{
   font-size:11px;color:var(--t3);
   letter-spacing:.02em;
@@ -968,19 +965,13 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 .welcome-controller-slot{z-index:10}
 .device-wrap.welcome-mode .device-img{box-shadow:none;position:relative;z-index:1}
 .device-wrap.welcome-mode .send-anchor,.device-wrap.welcome-mode .ctrl-zone{display:none}
-.welcome-status{display:flex;align-items:center;gap:6px;justify-content:center;}
 .welcome-copy-stage{
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
-  width:100%;height:142px;flex:0 0 142px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  width:100%;height:50px;flex:0 0 50px;
 }
+#welcome-text-block.welcome-onboarding .welcome-copy-stage{height:142px;flex-basis:142px;justify-content:flex-start}
 #onb-beats{width:100%}
-.welcome-status-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--t3);flex-shrink:0;
-  animation:status-pulse 1.6s ease-in-out infinite;
-}
 .welcome-title{font-size:22px;font-weight:700;color:var(--t1);letter-spacing:-.02em;line-height:1.2;}
-.welcome-sub{font-size:13px;color:var(--t2);line-height:1.5;}
 .welcome-start{
   display:inline-block;margin:4px 0 2px;
   background:var(--red);color:#fff;border:none;border-radius:var(--r-pill);
@@ -1441,7 +1432,6 @@ html.dark .uacc-tag{color:var(--t1);}
 html.dark .bank-name-input{color:var(--t1);}
 html.dark .welcome-inner{background:var(--bg);}
 html.dark .welcome-title{color:var(--t1);}
-html.dark .welcome-sub{color:var(--t2);}
 /* .bank-block-name: no background in either theme — it sits on .bank-card (var(--bg-card) both themes),
    so a dark-only bg would alpha-fade transparent→opaque off-rhythm vs the rest of the card on theme toggle. */
 html.dark .advanced-toggle-btn{color:var(--t1);}
@@ -1732,10 +1722,6 @@ html.dark .val-bar{background:var(--t2);}
     <!-- Text block — fades out on connect -->
     <div id="welcome-text-block">
       <div class="welcome-copy-stage">
-        <div class="welcome-status" id="welcome-status-row">
-          <div class="welcome-status-dot"></div>
-          <span style="font-size:11px;color:var(--t2);letter-spacing:.04em;text-transform:uppercase" data-i18n="welcome.waiting">Waiting for device</span>
-        </div>
         <div id="onb-beats" style="display:none">
           <div class="onb-beat-title" data-i18n="onb.beat1.title">Meet Feel Fader</div>
           <div class="onb-beat-sub" data-i18n="onb.beat1.sub"></div>
@@ -1746,7 +1732,6 @@ html.dark .val-bar{background:var(--t2);}
           </div>
         </div>
         <div class="welcome-title" data-i18n="welcome.connect">Connect Feel Fader</div>
-        <div class="welcome-sub" data-i18n="welcome.sub">Plug in via USB-C, then connect and load your configuration.</div>
       </div>
       <button class="welcome-start" id="welcome-start" onclick="doStart()">Connect &amp; load</button>
       <div class="welcome-start-msg" id="welcome-start-msg" role="status" aria-live="polite"></div>
@@ -3815,10 +3800,6 @@ function connectInputs(){
   _midiInputNames = names;
   renderMidiDiagnostics();
   if(found){
-    const dot = document.querySelector('.welcome-status-dot');
-    if (dot) { dot.style.background = 'var(--green)'; dot.style.animation = 'none'; }
-    const statusTxt = document.querySelector('.welcome-status span');
-    if (statusTxt) statusTxt.textContent = t('welcome.found');
     if (!_ffConnected) {
       onbOnConnect();
       _ffConnected = true;
@@ -4156,8 +4137,6 @@ function showStartBtn() {
   if (btn) { btn.classList.add('show'); btn.disabled = false; btn.textContent = 'Connect & load'; }
   const msg = document.getElementById('welcome-start-msg');
   if (msg) { msg.textContent = ''; msg.removeAttribute('title'); }
-  const sub = document.querySelector('#welcome-screen .welcome-sub');   // audit V12 — copy odpovídá reálnému kroku
-  if (sub) sub.textContent = 'Choose your Feel Fader to connect and load its configuration.';
   updateWelcomeSkip();
 }
 
@@ -4389,6 +4368,7 @@ function renderLiveStrip(){
   if (rollerBar) rollerBar.style.width = rollerValue === '—' ? '0%' : (rollerMeter / 127 * 100) + '%';
 }
 function renderConnState(){
+  const status = document.getElementById('h-status');
   const dot  = document.getElementById('h-status-dot');
   const txt  = document.getElementById('h-status-text');
   const note = document.getElementById('live-note');
@@ -4419,6 +4399,10 @@ function renderConnState(){
   if (s === 'MIDI_BLOCKED') {
     txt.title = _midiState === 'unsupported' ? t('midi.unavailable_help') : t('midi.denied_help');
   } else txt.removeAttribute('title');
+  if (status) {
+    status.setAttribute('aria-label',txt.textContent);
+    status.title = txt.title || txt.textContent;
+  }
   renderLiveStrip();
   renderMidiDiagnostics();
 }
@@ -4659,17 +4643,16 @@ function showWelcome() {
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden','connecting');
   const textBlock = document.getElementById('welcome-text-block');
-  if (textBlock) textBlock.style.removeProperty('animation');
+  if (textBlock) {
+    textBlock.style.removeProperty('animation');
+    textBlock.classList.remove('welcome-onboarding');
+  }
   mountControllerInWelcome();
   // Reset to the normal welcome state first — beats may have hidden these in an
   // earlier first-run this session, and a later reconnect must show normal copy.
-  const statusRow = document.getElementById('welcome-status-row');
   const title = document.querySelector('#welcome-text-block .welcome-title');
-  const sub = document.querySelector('#welcome-text-block .welcome-sub');
   const beats = document.getElementById('onb-beats');
-  if (statusRow) statusRow.style.display = '';
   if (title) title.style.display = '';
-  if (sub) sub.style.display = '';
   updateWelcomeSkip();   // hide "Continue without device" if a device is already present
   if (beats) beats.style.display = 'none';
   clearTimeout(_onbBeatTimer);
@@ -4847,13 +4830,11 @@ const _ONB_BEATS = [
 ];
 function onbStartWelcome() {
   const beats = document.getElementById('onb-beats');
-  const statusRow = document.getElementById('welcome-status-row');
+  const textBlock = document.getElementById('welcome-text-block');
   const title = document.querySelector('#welcome-text-block .welcome-title');
-  const sub = document.querySelector('#welcome-text-block .welcome-sub');
   if (!beats) return;
-  if (statusRow) statusRow.style.display = 'none';
+  if (textBlock) textBlock.classList.add('welcome-onboarding');
   if (title) title.style.display = 'none';
-  if (sub) sub.style.display = 'none';
   beats.style.display = 'block';
   updateWelcomeSkip();
   showStartBtn();
