@@ -195,8 +195,8 @@ async function runProfile(browser, url, profile) {
     _midiState = 'unsupported';
     _onbConfigStarted = false;
     _onbDone = false;
+    cfg.banks[0].name = 'Bang go b';
     skipWelcome();
-    render();
     onbMaybeStartConfig();
     positionThumbs();
     window.scrollTo(0, 0);
@@ -222,6 +222,7 @@ async function runProfile(browser, url, profile) {
         right: document.getElementById('thumb-r')?.style.transform || '',
       },
       demoBadgeVisible: Boolean(badge && getComputedStyle(badge).display !== 'none'),
+      bankNames: cfg.banks.map(bank => bank.name),
       viewportWidth: window.innerWidth,
       rootScrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
@@ -254,6 +255,9 @@ async function runProfile(browser, url, profile) {
     && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
   addCheck(checks, 'Mobile header shows default banks B1, B2 and B3', threeDefaultBanksVisible,
     appState.bankTabs.map(tab => tab.text).join(' / ') || 'missing');
+  addCheck(checks, 'Continue without device ignores stale browser configuration',
+    JSON.stringify(appState.bankNames) === JSON.stringify(['Bank 1', 'Bank 2', 'Bank 3']),
+    appState.bankNames.join(' / '));
   addCheck(checks, 'MIDI status has no duplicate content banner',
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
     `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);

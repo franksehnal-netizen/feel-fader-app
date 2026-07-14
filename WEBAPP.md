@@ -135,6 +135,10 @@ Načtení stránky
 
 ### 3.1 Welcome Screen (`#welcome-screen`)
 
+**Demo bez zařízení:** `Continue without device` vždy načte čistou výchozí konfiguraci
+se třemi bankami `Bank 1–3`. Historická konfigurace z browserového `localStorage`
+se v demo režimu nepoužívá.
+
 **Co dělá:** Fixed overlay (z-index 200) zobrazený při startu, dokud není zařízení připojeno nebo uživatel neklikne „Continue without device".
 
 **Idle stav:**

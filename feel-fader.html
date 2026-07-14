@@ -4813,7 +4813,24 @@ function hideWelcome() {
   connectTransitionWelcome();
 }
 
+function loadDefaultDemoConfig() {
+  clearTimeout(_autosaveT);
+  cfg = cloneConfig(DEFAULT_CFG);
+  activeBank = 0;
+  liveBank = 0;
+  encIndex = 0;
+  loaded = true;
+  dirty = false;
+  liveSeen = { f1:false, f2:false };
+  encLiveVal = null;
+  ksLiveNote = null;
+  markConfigSynced();
+  render();
+}
+
 function skipWelcome() {
+  // No-device mode is a predictable demo, never a stale browser snapshot.
+  loadDefaultDemoConfig();
   // Bypass animation — instant hide
   const ws = document.getElementById('welcome-screen');
   resetAppScrollTop();
