@@ -92,14 +92,16 @@ async function runDesktopFlow(browser, url) {
     }
   });
   await page.setViewport(profile.viewport);
-  await page.evaluateOnNewDocument(() => localStorage.setItem('ff-onboarded', '1'));
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('ff-onboarded', '1');
+    localStorage.setItem('ff-library-setup-cue-seen', '1');
+  });
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
   await page.evaluate(() => {
     loadDefaultDemoConfig();
     handoffPrimaryActionToApp();
     mountControllerInApp();
     document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('onb-intro-card').style.display = 'none';
     render();
     window.scrollTo(0, 0);
   });
@@ -142,6 +144,8 @@ async function runDesktopFlow(browser, url) {
     };
   });
   const targetScroll = await page.evaluate(() => {
+    localStorage.removeItem('ff-library-setup-cue-seen');
+    armLibrarySetupCue();
     const quick = document.querySelector('.bank-quick-setup').getBoundingClientRect();
     return Math.max(0, quick.top + window.scrollY - 120);
   });
@@ -171,8 +175,12 @@ async function runDesktopFlow(browser, url) {
       hudTech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id)?.textContent || ''),
       hudTopGap: hudRect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
       hudLeftGap: hudRect.left,
+      cueActive: document.querySelector('.bank-quick-setup').classList.contains('is-first-run-highlight'),
+      cueSeen: localStorage.getItem('ff-library-setup-cue-seen') === '1',
     };
   });
+  await settle(page, 1400);
+  const cueEnded = await page.evaluate(() => !document.querySelector('.bank-quick-setup').classList.contains('is-first-run-highlight'));
   addCheck(checks, 'Desktop controller stays in normal page flow',
     initial.stagePosition === 'relative' && initial.stageAnimation === 'none'
       && Math.abs((initial.stageTop - scrolled.stageTop) - scrolled.scrollY) <= 2,
@@ -180,6 +188,9 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Desktop stage reserves the complete Send to device tail',
     initial.sendBottom <= initial.panelsTop + 1,
     `button ${initial.sendBottom.toFixed(1)} / panels ${initial.panelsTop.toFixed(1)} px`);
+  addCheck(checks, 'First Library setup cue is subtle, automatic and one-time',
+    scrolled.cueActive && scrolled.cueSeen && cueEnded,
+    `active ${scrolled.cueActive} / stored ${scrolled.cueSeen} / ended ${cueEnded}`);
   const gapAbove = initial.sendTop - initial.controllerBottom;
   const gapBelow = initial.panelsTop - initial.sendBottom;
   addCheck(checks, 'Send to device is centered between controller and bank section',
@@ -236,15 +247,26 @@ async function runProfile(browser, url, profile) {
   await page.setUserAgent(iphoneUserAgent);
   await page.setViewport(profile.viewport);
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+  await page.evaluateOnNewDocument(() => {
+    localStorage.removeItem('ff-onboarded');
+    window.__coldWordmarkStarts = [];
+    document.addEventListener('animationstart', event => {
+      if (event.animationName.startsWith('welcome-wordmark-')) window.__coldWordmarkStarts.push(event.animationName);
+    });
+  });
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
+  const coldWordmark = await page.evaluate(() => ({
+    starts: [...new Set(window.__coldWordmarkStarts || [])],
+    armed: document.getElementById('welcome-wordmark')?.classList.contains('is-arming') || false,
+    playing: document.getElementById('welcome-wordmark')?.classList.contains('is-playing') || false,
+  }));
   await page.evaluate(async () => {
     if (document.fonts?.ready) await document.fonts.ready;
     localStorage.removeItem('ff-onboarded');
+    localStorage.removeItem('ff-library-setup-cue-seen');
     _ffConnected = false;
     _serialPort = null;
     _midiState = 'unsupported';
-    _onbConfigStarted = false;
-    _onbDone = false;
     showWelcome();
     onbStartWelcome();
     window.scrollTo(0, 0);
@@ -301,6 +323,12 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Welcome controller stays still',
     Math.abs(welcomeAfter.deviceTop - welcomeBefore.deviceTop) <= 0.25,
     `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeAfter.deviceTop.toFixed(2)} px`);
+  addCheck(checks, 'Cold-load Feel Fader animation starts after welcome is mounted',
+    coldWordmark.starts.includes('welcome-wordmark-focus')
+      && coldWordmark.starts.includes('welcome-wordmark-glass')
+      && coldWordmark.starts.includes('welcome-wordmark-scan')
+      && !coldWordmark.armed && coldWordmark.playing,
+    `${coldWordmark.starts.join(', ') || 'no animation'} / armed ${coldWordmark.armed} / playing ${coldWordmark.playing}`);
   addCheck(checks, 'Feel Fader wordmark animates once inside its reserved slot',
     welcomeBefore.wordmarkAnimating && welcomeBefore.wordmarkLabel === 'Feel Fader'
       && welcomeBefore.wordmarkTop >= welcomeBefore.stageTop - 1
@@ -395,11 +423,8 @@ async function runProfile(browser, url, profile) {
     _ffConnected = false;
     _serialPort = null;
     _midiState = 'unsupported';
-    _onbConfigStarted = false;
-    _onbDone = false;
     cfg.banks[0].name = 'Bang go b';
     skipWelcome();
-    onbMaybeStartConfig();
     positionThumbs();
     window.scrollTo(0, 0);
   });
@@ -411,7 +436,6 @@ async function runProfile(browser, url, profile) {
   await settle(page, 1650);
   const appState = await page.evaluate(() => {
     const controller = document.getElementById('device-img')?.getBoundingClientRect();
-    const introCard = document.getElementById('onb-intro-card')?.getBoundingClientRect();
     const badge = document.getElementById('onb-demo-badge');
     const bankTabContainer = document.getElementById('bank-tabs')?.getBoundingClientRect();
     const bankTabs = [...document.querySelectorAll('#bank-tabs .bank-block-tab')].slice(0, 3).map(tab => {
@@ -439,7 +463,7 @@ async function runProfile(browser, url, profile) {
       rootScrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
       controller: controller ? { left: controller.left, right: controller.right } : null,
-      introCard: introCard ? { top: introCard.top, bottom: introCard.bottom } : null,
+      introCardAbsent: !document.getElementById('onb-intro-card'),
       controllerTop: controller?.top ?? null,
       controllerBottom: controller?.bottom ?? null,
       bankTabs,
@@ -468,12 +492,7 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Controller remains inside the viewport',
     appState.controller && appState.controller.left >= -1 && appState.controller.right <= appState.viewportWidth + 1,
     appState.controller ? `${appState.controller.left.toFixed(1)}–${appState.controller.right.toFixed(1)} px` : 'missing');
-  addCheck(checks, 'Onboarding card does not overlap the controller',
-    appState.introCard && appState.controllerTop !== null && appState.controllerBottom !== null
-      && (appState.introCard.bottom <= appState.controllerTop || appState.introCard.top >= appState.controllerBottom),
-    appState.introCard && appState.controllerTop !== null && appState.controllerBottom !== null
-      ? `card ${appState.introCard.top.toFixed(1)}–${appState.introCard.bottom.toFixed(1)} / controller ${appState.controllerTop.toFixed(1)}–${appState.controllerBottom.toFixed(1)} px`
-      : 'missing');
+  addCheck(checks, 'App entry has no second onboarding card', appState.introCardAbsent, String(appState.introCardAbsent));
   const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer
     && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
   const minimalistBankIndices = appState.bankTabs.map(tab => tab.fallback).join(',') === '1,2,3'
@@ -502,6 +521,32 @@ async function runProfile(browser, url, profile) {
       && appState.headerStatusText.position === 'absolute' && appState.headerStatusAria === appState.headerStatus,
     `${appState.headerStatusText?.width ?? 'missing'}x${appState.headerStatusText?.height ?? 'missing'} / ${appState.headerStatusAria || 'no label'}`);
   addCheck(checks, 'App opens at the top', appState.scrollY <= 1, `${appState.scrollY} px`);
+
+  await page.evaluate(() => toast('s', 'Setup saved'));
+  await settle(page, 120);
+  const toastState = await page.evaluate(() => {
+    const item = document.querySelector('#toasts .toast');
+    const close = item?.querySelector('.tx');
+    if (!item || !close) return null;
+    const rect = item.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    const hit = document.elementFromPoint(closeRect.left + closeRect.width / 2, closeRect.top + closeRect.height / 2);
+    const style = getComputedStyle(item);
+    return {
+      height: rect.height,
+      centerGap: Math.abs((rect.left + rect.width / 2) - window.innerWidth / 2),
+      radius: Number.parseFloat(style.borderRadius),
+      backdrop: style.backdropFilter || style.webkitBackdropFilter,
+      closeHit: hit === close || close.contains(hit),
+    };
+  });
+  await page.click('#toasts .toast .tx');
+  await settle(page, 340);
+  const toastDismissed = await page.evaluate(() => !document.querySelector('#toasts .toast'));
+  addCheck(checks, 'Global notifications use a compact centered liquid-glass pill',
+    toastState && toastState.height <= 44 && toastState.centerGap <= 1 && toastState.radius >= toastState.height / 2
+      && toastState.backdrop !== 'none' && toastState.closeHit && toastDismissed,
+    toastState ? `${toastState.height.toFixed(1)} px / center ${toastState.centerGap.toFixed(1)} px / ${toastState.backdrop} / dismissed ${toastDismissed}` : 'missing');
 
   const transitionStart = await page.evaluate(() => {
     liveValues = { f1:23, f2:108 };
@@ -543,7 +588,6 @@ async function runProfile(browser, url, profile) {
   const transitionEnd = await page.evaluate(() => {
     const rect = document.getElementById('device-img').getBoundingClientRect();
     const sendRect = document.getElementById('send-btn').getBoundingClientRect();
-    const card = document.getElementById('onb-intro-card');
     return {
       sameNode: window.__sharedControllerRef === document.getElementById('device-wrap'),
       sameActionNode: window.__sharedActionRef === document.getElementById('send-btn'),
@@ -552,7 +596,7 @@ async function runProfile(browser, url, profile) {
       top: rect.top,
       width: rect.width,
       send: { top: sendRect.top, width: sendRect.width, height: sendRect.height },
-      cardTop: card.getBoundingClientRect().top,
+      introCardAbsent: !document.getElementById('onb-intro-card'),
     };
   });
   transitionEnd.topGap = Math.abs(transitionEnd.top - transitionStart.top);
@@ -576,11 +620,10 @@ async function runProfile(browser, url, profile) {
       && Math.abs(transitionEnd.send.width - transitionStart.cta.width) <= 1
       && Math.abs(transitionEnd.send.height - transitionStart.cta.height) <= 1,
     `top ${Math.abs(transitionEnd.send.top - transitionStart.cta.top).toFixed(2)} px / width ${Math.abs(transitionEnd.send.width - transitionStart.cta.width).toFixed(2)} px / height ${Math.abs(transitionEnd.send.height - transitionStart.cta.height).toFixed(2)} px`);
-  addCheck(checks, 'In-app onboarding starts below the shared action',
-    transitionEnd.cardTop >= transitionEnd.send.top + transitionEnd.send.height,
-    `button bottom ${(transitionEnd.send.top + transitionEnd.send.height).toFixed(2)} px / card ${transitionEnd.cardTop.toFixed(2)} px`);
+  addCheck(checks, 'Shared action handoff adds no second onboarding card',
+    transitionEnd.introCardAbsent,
+    String(transitionEnd.introCardAbsent));
   await page.evaluate(() => {
-    onbFinish();
     _midiState = 'granted';
     _ffConnected = true;
     liveValues = { f1: 23, f2: 108 };
