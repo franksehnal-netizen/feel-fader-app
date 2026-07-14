@@ -113,7 +113,7 @@ async function runProfile(browser, url, profile) {
   await settle(page, 250);
 
   const welcomeBefore = await page.evaluate(() => {
-    const cta = document.getElementById('welcome-start').getBoundingClientRect();
+    const cta = document.getElementById('send-btn').getBoundingClientRect();
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
     const device = document.getElementById('device-img').getBoundingClientRect();
     return { ctaTop: cta.top, stageHeight: stage.height, deviceTop: device.top };
@@ -128,7 +128,7 @@ async function runProfile(browser, url, profile) {
     await settle(page, 250);
     introNavPositions.push(await page.evaluate(() => ({
       dotsTop: document.querySelector('.onb-dots').getBoundingClientRect().top,
-      ctaTop: document.getElementById('welcome-start').getBoundingClientRect().top,
+      ctaTop: document.getElementById('send-btn').getBoundingClientRect().top,
       subHeight: document.querySelector('.onb-beat-sub').getBoundingClientRect().height,
     })));
     if (slide === 1) {
@@ -157,7 +157,7 @@ async function runProfile(browser, url, profile) {
   await settle(page, 100);
   const compactWelcome = await page.evaluate(() => {
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
-    const visibleText = [...document.querySelectorAll('#welcome-text-block button, #welcome-text-block .welcome-title')]
+    const visibleText = [document.querySelector('#welcome-text-block .welcome-title'), document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
       .filter(element => element.getClientRects().length > 0)
       .map(element => element.textContent.trim());
     return {
@@ -192,7 +192,7 @@ async function runProfile(browser, url, profile) {
       return {
         continueTop: continueTop(),
         message: document.getElementById('welcome-start-msg').textContent,
-        button: document.getElementById('welcome-start').textContent,
+        button: document.getElementById('send-btn').textContent,
       };
     };
     const before = continueTop();
@@ -319,13 +319,16 @@ async function runProfile(browser, url, profile) {
     showWelcome();
     const controller = document.getElementById('device-wrap');
     const rect = document.getElementById('device-img').getBoundingClientRect();
-    const ctaRect = document.getElementById('welcome-start').getBoundingClientRect();
+    const primaryAction = document.getElementById('send-btn');
+    const ctaRect = primaryAction.getBoundingClientRect();
     window.__sharedControllerRef = controller;
+    window.__sharedActionRef = primaryAction;
     connectTransitionWelcome();
     return {
       controllerCount: document.querySelectorAll('#device-wrap').length,
       imageCount: document.querySelectorAll('#device-img').length,
       faderCount: document.querySelectorAll('#thumb-l,#thumb-r').length,
+      actionCount: document.querySelectorAll('#send-btn').length,
       parentId: controller.parentElement?.id || '',
       top: rect.top,
       width: rect.width,
@@ -349,13 +352,16 @@ async function runProfile(browser, url, profile) {
   const transitionEnd = await page.evaluate(() => {
     const rect = document.getElementById('device-img').getBoundingClientRect();
     const sendRect = document.getElementById('send-btn').getBoundingClientRect();
+    const card = document.getElementById('onb-intro-card');
     return {
       sameNode: window.__sharedControllerRef === document.getElementById('device-wrap'),
+      sameActionNode: window.__sharedActionRef === document.getElementById('send-btn'),
       parentId: document.getElementById('device-wrap').parentElement?.id || '',
       welcomeHidden: document.getElementById('welcome-screen').classList.contains('hidden'),
       top: rect.top,
       width: rect.width,
       send: { top: sendRect.top, width: sendRect.width, height: sendRect.height },
+      cardTop: card.getBoundingClientRect().top,
     };
   });
   transitionEnd.topGap = Math.abs(transitionEnd.top - transitionStart.top);
@@ -367,6 +373,9 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Welcome faders settle onto the hardware snapshot before dissolve',
     transitionSettled.leftGap <= 1.5 && transitionSettled.rightGap <= 1.5,
     `left ${transitionSettled.leftGap.toFixed(2)} px / right ${transitionSettled.rightGap.toFixed(2)} px`);
+  addCheck(checks, 'Welcome and app use one shared primary action',
+    transitionStart.actionCount === 1 && transitionEnd.sameActionNode,
+    `${transitionStart.actionCount} button / same ${transitionEnd.sameActionNode}`);
   addCheck(checks, 'The same controller is handed to the app without moving',
     transitionEnd.sameNode && transitionEnd.parentId === 'device-home' && transitionEnd.welcomeHidden
       && transitionEnd.topGap <= 1 && transitionWidthGap <= 1,
@@ -376,6 +385,9 @@ async function runProfile(browser, url, profile) {
       && Math.abs(transitionEnd.send.width - transitionStart.cta.width) <= 1
       && Math.abs(transitionEnd.send.height - transitionStart.cta.height) <= 1,
     `top ${Math.abs(transitionEnd.send.top - transitionStart.cta.top).toFixed(2)} px / width ${Math.abs(transitionEnd.send.width - transitionStart.cta.width).toFixed(2)} px / height ${Math.abs(transitionEnd.send.height - transitionStart.cta.height).toFixed(2)} px`);
+  addCheck(checks, 'In-app onboarding starts below the shared action',
+    transitionEnd.cardTop >= transitionEnd.send.top + transitionEnd.send.height,
+    `button bottom ${(transitionEnd.send.top + transitionEnd.send.height).toFixed(2)} px / card ${transitionEnd.cardTop.toFixed(2)} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();

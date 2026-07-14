@@ -146,7 +146,7 @@ se v demo režimu nepoužívá.
 - Dva animované fadery: levý (master, ~30% dráha, 5.5s), pravý (slave, ~14% dráha, 5.5s + 0.5s offset) — čistý CSS, stejný směr pohybu
 - Běžný welcome obsahuje jen „Connect Feel Fader", primární **Connect & load** a sekundární **Continue without device**. Duplicitní „Waiting for device" i vysvětlující podtitulek byly odstraněny. Mimo intro používá text kompaktní 50px slot.
 
-**„Connect & load" tlačítko (`#welcome-start`):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
+**„Connect & load" tlačítko (`#send-btn` ve welcome režimu):** Welcome je jediná plocha, kde se uděluje serial port (Web Serial vyžaduje uživatelské gesto). Primární akce i **Continue without device** jsou dostupné okamžitě, také během tří volitelných intro slidů. Logika v `onDeviceConnected()` + `showWelcome()`:
 - **Zařízení detekováno + port už schválený** (vracející se uživatel) → `loadConfigFromDevice()` proběhne tiše a spustí se transition (plně automatický vstup); viditelná akce tomu nebrání.
 - **Zařízení detekováno + port neschválený** (první připojení) → klik na **Connect & load** (`doStart()`) = grant + load + transition.
 - **MIDI detekce neproběhne** (port quirk) → stejné tlačítko obejde MIDI přes serial picker bez čekání na timeout.
@@ -164,7 +164,7 @@ se v demo režimu nepoužívá.
 
 **Welcome intro:** Tři stručné slidy se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. Samostatné **Skip intro** bylo odstraněno jako redundantní; primární akce je dostupná stále. Intro používá pevný 142px obsahový slot a na mobilu rezervuje popisu tři řádky, takže tečky ani tlačítka pod nimi nemění pozici.
 
-**Mobilní ukotvení akcí:** **Continue without device** je fixované 8 px nad spodní safe-area prohlížeče. Při vstupu do aplikace se změří skutečná vzdálenost **Connect & load** od controlleru a předá se přes `--send-entry-gap` tlačítku **Send to device**; obě akce tak mají stejnou šířku, výšku i pixelovou pozici také po intro slidu s vyšším textovým slotem.
+**Mobilní ukotvení akcí:** **Continue without device** je fixované 8 px nad spodní safe-area prohlížeče. **Connect & load** a **Send to device** jsou jeden sdílený `#send-btn`: welcome jej vloží do rezervovaného `.welcome-action-slot`, při zahájení přechodu se tentýž uzel přesune do `.send-callout` a po načtení pouze změní popisek a funkci. Skutečná vzdálenost od controlleru se zachová přes `--send-entry-gap`, takže se tlačítko nepřekreslí ani nepohne také po intro slidu s vyšším textovým slotem.
 
 **První krok v appce:** Po prvním vstupu se zobrazí kompaktní neutrální liquid-glass karta; na mobilu je pod controllerem, aby nenarušila welcome handoff. Nevysvětluje znovu celý produkt; vede přímo k akci **Choose a setup**, která kartu plynule zavře, doscrolluje k Library setup pickeru, zaměří jej a otevře nabídku. Sekundární **Not now** kartu pouze zavře. Text rozlišuje připojené zařízení (`Ready to configure`) a demo bez zařízení (`Explore Feel Fader`) a vysvětluje také symbol banku aktivního na hardware. Demo bez zařízení má pouze čitelný badge; fadery zůstávají stabilní a nikdy nepředstírají periodická live data. Replay zůstává v Help & Guide. Komponenta používá `role="region"`, podporuje dark mode, mobil a `prefers-reduced-motion`.
 
