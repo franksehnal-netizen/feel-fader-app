@@ -173,7 +173,9 @@ Načtení stránky
 **Stav připojení** (`#h-status-dot`, `#h-status-text`):
 - Šedý pulzující bod → hledá zařízení
 - Zelený bod + „Connected [název portu]" → Feel Fader nalezen
-- Červený bod → chyba nebo odpojení
+- Červený bod + „MIDI unavailable/blocked" → jediná viditelná informace o nedostupném Web MIDI; duplicitní obsahový banner byl odstraněn, podrobnost zůstává v tooltipu a MIDI diagnostics
+
+**Banky na mobilu:** Aktivní bank zachová svůj název, neaktivní banky se zkomprimují na `B2`, `B3` atd. Výchozí banky 1–3 tak zůstávají současně viditelné bez horizontálního posunu lišty.
 
 **Dark mode toggle:** Kompaktní kruhové liquid-glass tlačítko se plynule mění mezi ikonou slunce a měsíce. Přepnutí používá View Transitions API jako jednotný 360ms crossfade celého vykresleného UI, takže gradientní glass sekce, text i okraje mění motiv současně; fallback přepne motiv okamžitě a `prefers-reduced-motion` animaci vypíná. Stav se ukládá do `localStorage` (klíč `ff-dark`).
 

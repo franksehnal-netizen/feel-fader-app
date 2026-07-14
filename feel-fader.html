@@ -853,10 +853,6 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 .sync-btn{border:1px solid var(--border-s);background:var(--bg-input);
   padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .sync-btn-overwrite{border-color:color-mix(in srgb,var(--red) 42%,var(--border-s));color:var(--red)}
-.midi-help-banner{margin-top:12px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--danger) 28%,transparent);border-radius:var(--r-sm);background:linear-gradient(var(--danger-bg),var(--danger-bg)),var(--glass-soft);box-shadow:inset 0 1px 0 rgba(255,255,255,.20);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);color:var(--t2);font-size:12px;line-height:1.45;display:flex;gap:8px;align-items:flex-start}
-.midi-help-banner strong{color:var(--danger);white-space:nowrap}
-.midi-help-banner[hidden]{display:none}
-
 /* Touch: enlarge tap targets to >=44px without bloating desktop */
 @media(pointer:coarse){
   .step-btn{width:44px;height:44px}
@@ -1340,6 +1336,12 @@ button:focus-visible{outline-offset:3px;}
   border-radius:var(--r-pill);
   box-shadow:none;
 }
+@media(max-width:600px){
+  .bank-block-tab{padding:2px 8px}
+  .bank-block-tab .bank-tab-name{max-width:0;opacity:0;margin-left:0}
+  .bank-block-tab.active .bank-tab-name{max-width:68px;opacity:1;margin-left:4px}
+  .bank-block-tab-add{padding:4px 7px}
+}
 .bank-tab-device{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--t2);opacity:.78}
 .bank-tab-device svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.35;stroke-linecap:round}
 .bank-block-tab.is-live{box-shadow:none}
@@ -1487,7 +1489,7 @@ html.dark .val-bar{background:var(--t2);}
 /* Glass fallback + lighter compositor load on small screens. Inputs and steppers
    deliberately remain opaque so configuration values retain maximum contrast. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .panel,.bank-card,.modal,.icon-picker-modal,.toast,.sync-banner,.midi-help-banner{background:var(--bg-card)}
+  .panel,.bank-card,.modal,.icon-picker-modal,.toast,.sync-banner{background:var(--bg-card)}
 }
 @media(max-width:600px){
   .panel{backdrop-filter:blur(14px) saturate(135%);-webkit-backdrop-filter:blur(14px) saturate(135%)}
@@ -1545,11 +1547,6 @@ html.dark .val-bar{background:var(--t2);}
 </div>
 <main>
 <div class="center-col">
-
-  <div id="midi-help-banner" class="midi-help-banner" role="alert" hidden>
-    <strong id="midi-help-title">MIDI blocked</strong>
-    <span id="midi-help-text"></span>
-  </div>
 
   <div id="onb-intro-card" style="display:none" role="region" aria-labelledby="onb-intro-title" aria-hidden="true">
     <div class="onb-intro-icon" aria-hidden="true">
@@ -4433,9 +4430,6 @@ function renderConnState(){
   const dot  = document.getElementById('h-status-dot');
   const txt  = document.getElementById('h-status-text');
   const note = document.getElementById('live-note');
-  const help = document.getElementById('midi-help-banner');
-  const helpTitle = document.getElementById('midi-help-title');
-  const helpText = document.getElementById('midi-help-text');
   if (!dot || !txt) return;
   const s = connState();
   if (s === 'CONNECTED_LIVE'){
@@ -4460,15 +4454,9 @@ function renderConnState(){
     note.hidden = (s !== 'CONNECTED_BLIND');
     if (s === 'CONNECTED_BLIND') note.textContent = t('live.note_unavailable');
   }
-  if (help) {
-    help.hidden = s !== 'MIDI_BLOCKED';
-    if (s === 'MIDI_BLOCKED') {
-      const unsupported = _midiState === 'unsupported';
-      helpTitle.textContent = unsupported ? t('midi.unavailable') : t('midi.denied');
-      helpText.textContent = unsupported ? t('midi.unavailable_help') : t('midi.denied_help');
-      txt.title = helpText.textContent;
-    } else txt.removeAttribute('title');
-  }
+  if (s === 'MIDI_BLOCKED') {
+    txt.title = _midiState === 'unsupported' ? t('midi.unavailable_help') : t('midi.denied_help');
+  } else txt.removeAttribute('title');
   renderLiveStrip();
   renderMidiDiagnostics();
 }

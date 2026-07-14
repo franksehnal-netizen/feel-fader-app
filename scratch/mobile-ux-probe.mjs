@@ -211,6 +211,11 @@ async function runProfile(browser, url, profile) {
     const controller = document.getElementById('device-img')?.getBoundingClientRect();
     const introCard = document.getElementById('onb-intro-card')?.getBoundingClientRect();
     const badge = document.getElementById('onb-demo-badge');
+    const bankTabContainer = document.getElementById('bank-tabs')?.getBoundingClientRect();
+    const bankTabs = [...document.querySelectorAll('#bank-tabs .bank-block-tab')].slice(0, 3).map(tab => {
+      const rect = tab.getBoundingClientRect();
+      return { text: tab.textContent.trim(), left: rect.left, right: rect.right };
+    });
     return {
       faders: {
         left: document.getElementById('thumb-l')?.style.transform || '',
@@ -223,6 +228,10 @@ async function runProfile(browser, url, profile) {
       controller: controller ? { left: controller.left, right: controller.right } : null,
       introCard: introCard ? { top: introCard.top, bottom: introCard.bottom } : null,
       controllerTop: controller?.top ?? null,
+      bankTabs,
+      bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
+      midiHelpAbsent: !document.getElementById('midi-help-banner'),
+      headerStatus: document.getElementById('h-status-text')?.textContent || '',
       scrollY: window.scrollY,
     };
   });
@@ -241,6 +250,13 @@ async function runProfile(browser, url, profile) {
     appState.introCard && appState.controllerTop !== null
       ? `card bottom ${appState.introCard.bottom.toFixed(1)} / controller top ${appState.controllerTop.toFixed(1)} px`
       : 'missing');
+  const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer
+    && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
+  addCheck(checks, 'Mobile header shows default banks B1, B2 and B3', threeDefaultBanksVisible,
+    appState.bankTabs.map(tab => tab.text).join(' / ') || 'missing');
+  addCheck(checks, 'MIDI status has no duplicate content banner',
+    appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
+    `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);
   addCheck(checks, 'App opens at the top', appState.scrollY <= 1, `${appState.scrollY} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
