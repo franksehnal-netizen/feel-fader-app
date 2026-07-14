@@ -158,9 +158,9 @@ Načtení stránky
 6. Text „Waiting for device" vyjede nahoru a zmizí.
 7. Welcome screen se rozplyne; před i po přidání `.hidden` se znovu vynutí horní scroll pozice.
 
-**Welcome intro:** Tři stručné slidy se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. **Skip intro** slidy ihned ukončí a vrátí standardní connect copy.
+**Welcome intro:** Tři stručné slidy se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. Intro a standardní connect copy sdílejí pevný 142px obsahový slot, takže **Skip intro** text vymění bez vertikálního posunu tlačítek pod ním.
 
-**První krok v appce:** Po prvním vstupu se nad controllerem zobrazí kompaktní neutrální liquid-glass karta. Nevysvětluje znovu celý produkt; vede přímo k akci **Choose a setup**, která kartu plynule zavře, doscrolluje k Library setup pickeru, zaměří jej a otevře nabídku. Sekundární **Not now** kartu pouze zavře. Text rozlišuje připojené zařízení (`Ready to configure`) a demo bez zařízení (`Explore Feel Fader`) a vysvětluje také symbol banku aktivního na hardware. Replay zůstává v Help & Guide. Komponenta používá `role="region"`, podporuje dark mode, mobil a `prefers-reduced-motion`.
+**První krok v appce:** Po prvním vstupu se nad controllerem zobrazí kompaktní neutrální liquid-glass karta. Nevysvětluje znovu celý produkt; vede přímo k akci **Choose a setup**, která kartu plynule zavře, doscrolluje k Library setup pickeru, zaměří jej a otevře nabídku. Sekundární **Not now** kartu pouze zavře. Text rozlišuje připojené zařízení (`Ready to configure`) a demo bez zařízení (`Explore Feel Fader`) a vysvětluje také symbol banku aktivního na hardware. Demo bez zařízení má pouze čitelný badge; fadery zůstávají stabilní a nikdy nepředstírají periodická live data. Replay zůstává v Help & Guide. Komponenta používá `role="region"`, podporuje dark mode, mobil a `prefers-reduced-motion`.
 
 **Klíčové funkce:** `initWelcomeFaderOverlay()` (L3144), `connectTransitionWelcome()` (L3154), `hideWelcome()` (L3207), `skipWelcome()` (L3211)
 
