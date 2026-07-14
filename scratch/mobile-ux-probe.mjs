@@ -256,7 +256,17 @@ async function runProfile(browser, url, profile) {
     const bankTabContainer = document.getElementById('bank-tabs')?.getBoundingClientRect();
     const bankTabs = [...document.querySelectorAll('#bank-tabs .bank-block-tab')].slice(0, 3).map(tab => {
       const rect = tab.getBoundingClientRect();
-      return { text: tab.textContent.trim(), left: rect.left, right: rect.right };
+      const fallback = tab.querySelector('.bank-tab-fallback');
+      const fallbackStyle = fallback ? getComputedStyle(fallback) : null;
+      return {
+        text: tab.textContent.trim(),
+        fallback: fallback?.textContent.trim() || '',
+        fallbackOpacity: fallbackStyle ? Number.parseFloat(fallbackStyle.opacity) : null,
+        fallbackFontSize: fallbackStyle ? Number.parseFloat(fallbackStyle.fontSize) : null,
+        active: tab.classList.contains('active'),
+        left: rect.left,
+        right: rect.right,
+      };
     });
     return {
       faders: {
@@ -303,7 +313,11 @@ async function runProfile(browser, url, profile) {
       : 'missing');
   const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer
     && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
-  addCheck(checks, 'Mobile header shows default banks B1, B2 and B3', threeDefaultBanksVisible,
+  const minimalistBankIndices = appState.bankTabs.map(tab => tab.fallback).join(',') === '1,2,3'
+    && appState.bankTabs.every(tab => tab.fallbackFontSize <= 10
+      && (tab.active || tab.fallbackOpacity <= .7));
+  addCheck(checks, 'Mobile header shows minimalist bank indices 1, 2 and 3',
+    threeDefaultBanksVisible && minimalistBankIndices,
     appState.bankTabs.map(tab => tab.text).join(' / ') || 'missing');
   addCheck(checks, 'Continue without device ignores stale browser configuration',
     JSON.stringify(appState.bankNames) === JSON.stringify(['Bank 1', 'Bank 2', 'Bank 3']),

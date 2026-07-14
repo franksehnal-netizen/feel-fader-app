@@ -182,7 +182,7 @@ se v demo režimu nepoužívá.
 - Červený bod + „MIDI unavailable/blocked" → jediná viditelná informace o nedostupném Web MIDI; duplicitní obsahový banner byl odstraněn, podrobnost zůstává v tooltipu a MIDI diagnostics
 - Na mobilu zůstává v liště pouze barevný bod. Text stavu je vizuálně skrytý, ale zachovaný pro čtečky obrazovky přes `aria-label` a pro tooltip; hlavička se proto nikdy nezalomí kvůli „MIDI unavailable".
 
-**Banky na mobilu:** Aktivní bank zachová svůj název, neaktivní banky se zkomprimují na `B2`, `B3` atd. Výchozí banky 1–3 tak zůstávají současně viditelné bez horizontálního posunu lišty.
+**Banky na mobilu:** Aktivní bank zachová svůj název, neaktivní banky se zkomprimují na minimalistické indexy `2`, `3` atd. Výchozí banky 1–3 tak zůstávají současně viditelné bez horizontálního posunu lišty.
 
 **Dark mode toggle:** Kompaktní kruhové liquid-glass tlačítko se plynule mění mezi ikonou slunce a měsíce. Přepnutí používá View Transitions API jako jednotný 360ms crossfade celého vykresleného UI, takže gradientní glass sekce, text i okraje mění motiv současně; fallback přepne motiv okamžitě a `prefers-reduced-motion` animaci vypíná. Stav se ukládá do `localStorage` (klíč `ff-dark`).
 
@@ -231,7 +231,7 @@ se v demo režimu nepoužívá.
 
 ### 3.5 Bank Tabs
 
-**Co dělá:** Horizontálně scrollovatelná řada záložek (max. 8 banků). Bank editovaný v appce označuje plochý frosty pill bez vnějšího i vnitřního shadow efektu; používá pouze tónovanou průsvitnou výplň a jemný glass border. Fyzicky aktivní bank zařízení označuje výhradně symbol controlleru, bez spodní linky nebo dalšího fillu. Editovaný a fyzicky aktivní stav jsou tak vizuálně oddělené a nemohou se číst jako dvě současné selekce. Význam symbolu vysvětluje první in-app krok, `title="Active on device"`, `aria-label` tabu a kontextová nápověda u Library setup. Jeho ikonu, slot a název současně ukazuje desktopový Live HUD. Tlačítko „+“ přidá nový bank. Každá záložka zobrazuje jméno banku i mimo aktivní stav; bank bez ikony má čitelný fallback `B1`, `B2`… a aktivní záložka používá `aria-current`.
+**Co dělá:** Horizontálně scrollovatelná řada záložek (max. 8 banků). Bank editovaný v appce označuje plochý frosty pill bez vnějšího i vnitřního shadow efektu; používá pouze tónovanou průsvitnou výplň a jemný glass border. Fyzicky aktivní bank zařízení označuje výhradně symbol controlleru, bez spodní linky nebo dalšího fillu. Editovaný a fyzicky aktivní stav jsou tak vizuálně oddělené a nemohou se číst jako dvě současné selekce. Význam symbolu vysvětluje první in-app krok, `title="Active on device"`, `aria-label` tabu a kontextová nápověda u Library setup. Jeho ikonu, slot a název současně ukazuje desktopový Live HUD. Tlačítko „+“ přidá nový bank. Každá záložka zobrazuje jméno banku i mimo aktivní stav; bank bez ikony má minimalistický číselný fallback `1`, `2`… a aktivní záložka používá `aria-current`.
 
 **Interakce:**
 - Klik na záložku → `selectBank(i)` — přepne `activeBank` a překreslí panely

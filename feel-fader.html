@@ -1274,7 +1274,16 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-tab span{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bank-tab-ic{font-size:13px;line-height:1;}
-.bank-tab-fallback{font:600 10px 'IBM Plex Mono',monospace;min-width:20px;text-align:center;color:inherit;opacity:.86}
+.bank-tab-fallback{
+  font:500 10px 'IBM Plex Mono',monospace;
+  font-variant-numeric:tabular-nums;
+  min-width:14px;
+  text-align:center;
+  color:inherit;
+  opacity:.62;
+  letter-spacing:-.02em;
+}
+.bank-block-tab.active .bank-tab-fallback{opacity:.9}
 .bank-block-tab .bank-tab-name{
   display:inline-block;max-width:96px;opacity:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
   transition:max-width .2s ease,opacity .2s ease,margin-left .2s ease;margin-left:0;
@@ -2299,7 +2308,7 @@ function renderBankTabs() {
   const tabsHtml = cfg.banks.map((b,i) => {
     const iconHtml = b.icon
       ? `<span class="bank-tab-ic" aria-hidden="true">${escHtml(b.icon)}</span>`
-      : `<span class="bank-tab-fallback" aria-hidden="true">B${i+1}</span>`;
+      : `<span class="bank-tab-fallback" aria-hidden="true">${i+1}</span>`;
     const isLive = i === liveBank && _ffConnected;
     const liveMarker = isLive ? '<span class="bank-tab-device" title="Active on device" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M4 2.5v9M10 2.5v9M2.5 5.2h3M8.5 8.8h3"/></svg></span>' : '';
     const nm = escHtml(b.name || 'Bank '+(i+1));
