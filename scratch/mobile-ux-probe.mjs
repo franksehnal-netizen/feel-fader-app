@@ -126,7 +126,7 @@ async function runDesktopFlow(browser, url) {
     _ffConnected = true;
     liveValues = { f1: 32, f2: 96 };
     liveSeen = { f1: true, f2: true };
-    encLiveVal = 48;
+    encLiveVal = 32;
     renderConnState();
   });
   await settle(page, 80);
@@ -585,7 +585,7 @@ async function runProfile(browser, url, profile) {
     _ffConnected = true;
     liveValues = { f1: 23, f2: 108 };
     liveSeen = { f1: true, f2: true };
-    encLiveVal = 48;
+    encLiveVal = 32;
     dirty = false;
     renderConnState();
     window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
@@ -633,7 +633,7 @@ async function runProfile(browser, url, profile) {
     mobileStrip.compact && Math.abs(mobileStrip.width - 190) <= 1 && Math.abs(mobileStrip.height - 44) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped
       && mobileStrip.meterRects.every(rect => rect.width === 0 && rect.height === 0)
-      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,CC 48'
+      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Harmonics'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
   addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',
