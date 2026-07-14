@@ -13,6 +13,7 @@ const root = path.resolve(here, '..');
 const htmlPath = path.join(root, 'feel-fader.html');
 const outputDir = path.join(here, 'mobile-ux-output');
 const html = fs.readFileSync(htmlPath);
+const remoteUrl = process.env.MOBILE_TEST_URL || '';
 
 const profiles = [
   {
@@ -84,8 +85,14 @@ async function runProfile(browser, url, profile) {
   const errors = [];
   const checks = [];
   page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+  page.on('response', response => {
+    if (response.status() < 400 || new URL(response.url()).pathname.endsWith('/favicon.ico')) return;
+    errors.push(`http ${response.status()}: ${response.url()}`);
+  });
   page.on('console', message => {
-    if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+      errors.push(`console.error: ${message.text()}`);
+    }
   });
   await page.setUserAgent(iphoneUserAgent);
   await page.setViewport(profile.viewport);
@@ -141,6 +148,7 @@ async function runProfile(browser, url, profile) {
   await settle(page, 1650);
   const appState = await page.evaluate(() => {
     const controller = document.getElementById('device-img')?.getBoundingClientRect();
+    const introCard = document.getElementById('onb-intro-card')?.getBoundingClientRect();
     const badge = document.getElementById('onb-demo-badge');
     return {
       faders: {
@@ -152,6 +160,8 @@ async function runProfile(browser, url, profile) {
       rootScrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
       controller: controller ? { left: controller.left, right: controller.right } : null,
+      introCard: introCard ? { top: introCard.top, bottom: introCard.bottom } : null,
+      controllerTop: controller?.top ?? null,
       scrollY: window.scrollY,
     };
   });
@@ -165,6 +175,11 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Controller remains inside the viewport',
     appState.controller && appState.controller.left >= -1 && appState.controller.right <= appState.viewportWidth + 1,
     appState.controller ? `${appState.controller.left.toFixed(1)}–${appState.controller.right.toFixed(1)} px` : 'missing');
+  addCheck(checks, 'Onboarding card does not overlap the controller',
+    appState.introCard && appState.controllerTop !== null && appState.introCard.bottom <= appState.controllerTop,
+    appState.introCard && appState.controllerTop !== null
+      ? `card bottom ${appState.introCard.bottom.toFixed(1)} / controller top ${appState.controllerTop.toFixed(1)} px`
+      : 'missing');
   addCheck(checks, 'App opens at the top', appState.scrollY <= 1, `${appState.scrollY} px`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
@@ -177,7 +192,8 @@ let browser;
 let server;
 let exitCode = 0;
 try {
-  server = await startServer();
+  if (!remoteUrl) server = await startServer();
+  const testUrl = remoteUrl || serverUrl(server);
   browser = await puppeteer.launch({
     headless: 'new',
     executablePath: findChrome(),
@@ -185,8 +201,8 @@ try {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const results = [];
-  for (const profile of profiles) results.push(await runProfile(browser, serverUrl(server), profile));
-  const report = { generatedAt: new Date().toISOString(), url: serverUrl(server), results };
+  for (const profile of profiles) results.push(await runProfile(browser, testUrl, profile));
+  const report = { generatedAt: new Date().toISOString(), url: testUrl, results };
   fs.writeFileSync(path.join(outputDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 
   for (const result of results) {

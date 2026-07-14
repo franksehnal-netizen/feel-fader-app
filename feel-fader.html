@@ -875,7 +875,10 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 
 @media(max-width:600px){
   header{padding:5px 16px}main{width:100%;}
-  .stage{position:static;top:auto;animation:none;}
+  /* The first-run card is inserted after the welcome-to-app alignment is measured.
+     On mobile, discard that temporary offset so the controller stays in normal flow
+     below the card instead of covering its copy and actions. */
+  .stage{position:static;top:auto;animation:none;margin-top:0;}
   .send-callout{justify-content:center}
   .send-callout.is-mobile-docked{
     position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:90;
