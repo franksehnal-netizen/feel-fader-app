@@ -20,6 +20,7 @@ const PROBES = [
   'onb-wordmark-sync-probe.mjs',
   'skip-welcome-send-btn-probe.mjs',
   'skip-welcome-send-entry-gap-probe.mjs',
+  'send-btn-idle-state-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
