@@ -29,6 +29,7 @@ const PROBES = [
   'vbar-aria-live-probe.mjs',
   'safe-batch-2026-07-20-probe.mjs',
   'help-deep-links-probe.mjs',
+  'c10-bank-switch-preserves-edit-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
