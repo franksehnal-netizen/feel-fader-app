@@ -46,18 +46,18 @@ Zbylých 15 nálezů (P2/P3) je čistá diagnostika — žádný kód neměněn,
 | A9 | Přístupnost | P1 | ✅ opraveno | S | |
 | A1 | Firmware UX | P2 | diagnostika | S/M | ⚠️ pokud konfigurovatelné |
 | A3 | Firmware UX | P2 | diagnostika | S | |
-| B2 | Vizuální jazyk | P2 | diagnostika | S/M | |
+| B2 | Vizuální jazyk | P2 | ✅ opraveno (doc) | S/M | |
 | C10 | Cross-device seamlessness | P2 | diagnostika | S | |
 | C11 | Cross-device seamlessness | P2 | diagnostika | S–M | |
-| A10 | Přístupnost | P2 | diagnostika | S | |
-| S11 | Stavy & edge cases | P2 | diagnostika | S | |
+| A10 | Přístupnost | P2 | ✅ opraveno | S | |
+| S11 | Stavy & edge cases | P2 | ✅ opraveno | S | |
 | F-01 | Interakce & flow | P2 | diagnostika | S | |
-| F-02 | Interakce & flow | P2 | diagnostika (částečně A9) | S | |
-| F-03 | Interakce & flow | P3 | diagnostika | S | |
-| A2 | Firmware UX | P3 | diagnostika | S ⚠️ | |
+| F-02 | Interakce & flow | P2 | ✅ opraveno (částečně A9) | S | |
+| F-03 | Interakce & flow | P3 | ✅ opraveno | S | |
+| A2 | Firmware UX | P3 | ✅ opraveno | S ⚠️ | |
 | B1/V10 | Vizuální jazyk / Stavy | P3 | diagnostika | S | |
-| B3 | Vizuální jazyk | P3 | diagnostika | S | |
-| B4 | Vizuální jazyk | P3 | diagnostika | S | |
+| B3 | Vizuální jazyk | P3 | ✅ opraveno | S | |
+| B4 | Vizuální jazyk | P3 | ✅ opraveno | S | |
 
 ---
 

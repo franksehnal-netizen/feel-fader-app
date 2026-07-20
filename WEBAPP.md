@@ -45,10 +45,12 @@ Kompaktní interaktivní prvky skládají tři znovupoužitelné třídy: `.ui-c
 
 ### Motion
 
-Všechny transice: **`ease`** (default), duration **.06s–.45s**. Bez výjimky — v celém souboru není jediný `cubic-bezier`, bounce ani overshoot, a to je záměr.
+Dvě křivky, žádné jiné. Duration **.06s–.45s**.
 
-- **Micro-interakce** (hover, stepper, drag): `.12–.15s`
-- **Větší přechody** (welcome transition, theme switch, glow): `.3–.45s`
+- **Micro-interakce** (hover, stepper, drag): **`ease`**, `.12–.15s`
+- **Větší/vstupní přechody** (welcome transition, HID switch, toasty, roller content, bank-tab, keyswitch chipy, theme switch, glow): **`cubic-bezier(.16,1,.3,1)`**, `.3–.45s`
+
+Žádný spring/bounce/overshoot mimo tuto rodinu.
 
 Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme to „klidný, přesný" charakter appky.
 
