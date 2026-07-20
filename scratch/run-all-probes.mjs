@@ -35,6 +35,7 @@ const PROBES = [
   'send-without-web-serial-probe.mjs',
   'live-hud-meter-value-gap-probe.mjs',
   'footer-pinned-to-bottom-probe.mjs',
+  'hide-controller-toggle-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
