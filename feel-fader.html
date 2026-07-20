@@ -4970,6 +4970,16 @@ function skipWelcome() {
   // while the rest of the app rendered normally. Root cause confirmed
   // 2026-07-20 (Frank screenshot: "3 unsaved changes" visible, no button).
   handoffPrimaryActionToApp();
+  // handoffPrimaryActionToApp() also measures the button/image gap and sets
+  // --send-entry-gap so the animated connect transition doesn't visually
+  // jump. skipWelcome() has no such animation (it's an instant swap, per
+  // the comment above), and at this point in the skip flow the button and
+  // image aren't in a coherent "before" layout yet, so the measured gap is
+  // meaningless (confirmed: 162px instead of the ~32px default, doubled by
+  // the CSS that consumes it into a ~350px empty gap — Frank screenshot
+  // 2026-07-20). Reset it back to the CSS default immediately.
+  document.getElementById('device-wrap')?.style.removeProperty('--send-entry-gap');
+  document.querySelector('.stage')?.style.removeProperty('--send-entry-gap');
   mountControllerInApp();
   if (ws) ws.classList.add('hidden');
   onbAfterWelcome();

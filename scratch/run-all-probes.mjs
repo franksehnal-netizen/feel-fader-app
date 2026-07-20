@@ -19,6 +19,7 @@ const PROBES = [
   'validation-clamp-probe.mjs',
   'onb-wordmark-sync-probe.mjs',
   'skip-welcome-send-btn-probe.mjs',
+  'skip-welcome-send-entry-gap-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
