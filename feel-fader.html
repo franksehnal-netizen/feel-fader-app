@@ -913,7 +913,9 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .h-status-wrap{position:relative;display:flex;align-items:center;flex:0 0 auto}
 .h-status{
   appearance:none;display:flex;align-items:center;min-height:28px;padding:3px 7px;
-  border:1px solid transparent;border-radius:var(--r-pill);background:transparent;
+  border:1px solid var(--control-glass-border);border-radius:var(--r-pill);
+  background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow);
+  backdrop-filter:blur(14px) saturate(155%);-webkit-backdrop-filter:blur(14px) saturate(155%);
   color:inherit;font:inherit;cursor:pointer;
   transition:background .22s,border-color .22s,box-shadow .22s;
 }
@@ -932,7 +934,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
   background:var(--green);
   box-shadow:0 0 0 2px rgba(52,199,89,.2);
 }
-.h-status-dot.err{background:var(--danger)}
+.h-status-dot.err{background:var(--red)}
 .h-status-dot.warn{background:var(--amber)}
 .h-status-text{
   font-size:11px;color:var(--t3);
@@ -4639,6 +4641,8 @@ function updateNvmDegradedNotice() {
   const connected = s === 'CONNECTED_LIVE' || s === 'CONNECTED_BLIND';
   el.hidden = !(connected && DEVICE_INFO.config_source === 'file');
 }
+let _statusCollapseTimer = null;
+let _lastConnState = null;
 function renderConnState(){
   const status = document.getElementById('h-status');
   const dot  = document.getElementById('h-status-dot');
@@ -4646,9 +4650,18 @@ function renderConnState(){
   const note = document.getElementById('live-note');
   if (!dot || !txt) return;
   const s = connState();
+  const entering = s !== _lastConnState;
+  _lastConnState = s;
+  if (entering) { clearTimeout(_statusCollapseTimer); _statusCollapseTimer = null; }
   if (s === 'CONNECTED_LIVE'){
     dot.className = 'h-status-dot on';
-    txt.classList.remove('hidden'); txt.textContent = t('status.connected');
+    // Give the "connected" text a moment to register, then collapse it back to
+    // just the dot so the header row has room (Frank 2026-07-21) — only on the
+    // DISCONNECTED->LIVE transition, not on every re-render while already live.
+    if (entering) {
+      txt.classList.remove('hidden'); txt.textContent = t('status.connected');
+      _statusCollapseTimer = setTimeout(() => txt.classList.add('hidden'), 3000);
+    }
   } else if (s === 'CONNECTED_BLIND'){
     dot.className = 'h-status-dot warn';
     txt.classList.remove('hidden'); txt.textContent = t('status.no_live_view');
