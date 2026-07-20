@@ -501,8 +501,18 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Mobile header shows minimalist bank indices 1, 2 and 3',
     threeDefaultBanksVisible && minimalistBankIndices,
     appState.bankTabs.map(tab => tab.text).join(' / ') || 'missing');
-  addCheck(checks, 'Continue without device ignores stale browser configuration',
-    JSON.stringify(appState.bankNames) === JSON.stringify(['Bank 1', 'Bank 2', 'Bank 3']),
+  // Was "...ignores stale browser configuration" (asserted skip always resets
+  // to DEFAULT_CFG). Reversed 2026-07-20 (S10, functional-audit finding):
+  // that behavior silently destroyed a returning user's saved config on
+  // every "Continue without device" click — confirmed as real, irreversible
+  // data loss. skipWelcome() now only resets to demo defaults when there is
+  // no saved config at all (_savedCfg null at module load); a genuinely
+  // fresh browser still gets the predictable demo defaults. Frank confirmed
+  // 2026-07-20 that saved-work preservation wins when the two conflict.
+  // See scratch/skip-welcome-preserves-saved-config-probe.mjs for dedicated
+  // fresh-vs-returning-user coverage.
+  addCheck(checks, 'Continue without device preserves an existing saved configuration',
+    appState.bankNames[0] === 'Bang go b',
     appState.bankNames.join(' / '));
   addCheck(checks, 'MIDI status has no duplicate content banner',
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
