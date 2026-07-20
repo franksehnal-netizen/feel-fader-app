@@ -177,7 +177,7 @@ html.dark .live-hud{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 8px 28px rgba(0,0,0,.18)
 }
 .h-left{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
-.h-title{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.h-title{font-size:13px;font-weight:700;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap}
 .h-ver{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3)}
 .h-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);border:1px solid var(--border-s);border-radius:var(--r-sm);padding:2px 8px}
 .h-badge.dev{color:#b07d00;border-color:rgba(176,125,0,.35);background:rgba(176,125,0,.07)}
@@ -539,7 +539,7 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
   text-align:left;letter-spacing:-.01em;
 }
 .bank-name-input:focus{border-bottom-color:var(--t2);}
-.bank-name-input:focus-visible{outline:none;border-radius:0;border-bottom-color:var(--t2);box-shadow:none}
+.bank-name-input:focus-visible{outline:none;border-radius:var(--r-sm);border-bottom-color:var(--t2);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 20%,transparent)}
 .bank-name-input::placeholder{color:var(--t3);font-weight:400}
 .btn-remove-bank{
   position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;
@@ -550,8 +550,8 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
   flex-shrink:0;
 }
 .btn-remove-bank:hover{color:var(--danger);background:var(--danger-bg);border-style:solid;border-color:var(--danger);}
-html.dark .btn-remove-bank{border-color:rgba(255,90,66,.3);color:#ff5a42;}
-html.dark .btn-remove-bank:hover{background:rgba(255,90,66,.1);}
+html.dark .btn-remove-bank{border-color:color-mix(in srgb,var(--danger) 30%,transparent);color:var(--danger);}
+html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);}
 .bank-actions{position:relative;z-index:2;isolation:isolate;display:flex;align-items:center;gap:3px;flex-shrink:0}
 .bank-action-btn{
   position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;
@@ -695,10 +695,10 @@ html.dark .hid-switch-thumb{background:rgba(245,245,247,.90)}
 .settings-divider{height:1px;background:var(--border);margin:16px 0;}
 .info-lbl{font-size:11px;font-family:'Mulish',sans-serif;color:var(--t2);min-width:100px;flex-shrink:0;}
 .info-val{font-family:'Mulish',sans-serif;font-size:13px;color:var(--t1);font-weight:400;}
-html.dark .info-lbl{color:#888}
-html.dark .info-val{color:#e0e0e0}
+html.dark .info-lbl{color:var(--t2)}
+html.dark .info-val{color:var(--t1)}
 html.dark .device-info-toggle{color:var(--t1)}
-html.dark #device-settings-chevron{color:#888}
+html.dark #device-settings-chevron{color:var(--t3)}
 
 /* BOTTOM */
 .bottom-row{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:600px;flex-wrap:wrap;gap:8px}
@@ -803,7 +803,7 @@ html.dark #device-settings-chevron{color:#888}
   font-size:11px;color:var(--t3);
   border-top:1px solid var(--border);padding-top:14px;
 }
-html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
+html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !important}
 @media(max-width:600px){
   .footer-top{flex-direction:column;}
   .footer-links{align-items:flex-start;}
@@ -2452,7 +2452,7 @@ function renderPanels() {
           <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="right" data-bank-index="${bi}" onclick="moveBank(${bi},1,'right')" title="Move bank right" aria-label="Move ${escHtml(b.name || 'Bank '+(bi+1))} right" ${bi===cfg.banks.length-1?'disabled':''}>
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5"/></svg>
           </button>
-          <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="duplicate" data-bank-index="${bi}" onclick="duplicateBank(${bi})" title="Duplicate bank" aria-label="Duplicate ${escHtml(b.name || 'Bank '+(bi+1))}" ${cfg.banks.length>=MAX_BANKS?'disabled':''}>
+          <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="duplicate" data-bank-index="${bi}" onclick="duplicateBank(${bi})" title="Duplicate bank" aria-label="Duplicate ${escHtml(b.name || 'Bank '+(bi+1))}">
             <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="2"/><path d="M3 10.5H2.5A1.5 1.5 0 0 1 1 9V2.5A1.5 1.5 0 0 1 2.5 1H9a1.5 1.5 0 0 1 1.5 1.5V3"/></svg>
           </button>
           ${cfg.banks.length > 1 ? `<button type="button" class="btn-remove-bank ui-control ui-pill" onclick="removeBank(${bi})" title="Remove bank" aria-label="Remove ${escHtml(b.name || 'Bank '+(bi+1))}">✕</button>` : ''}
@@ -2519,7 +2519,8 @@ function faderSectionContent(key, ctrl, bi) {
           <div class="stepper">
             <button class="step-btn" onclick="stepCtrl(${bi},'${key}','channel',-1)" aria-label="Decrease ${ariaDisplayLabel} MIDI channel">−</button><div class="stepper-sep"></div>
             <input type="number" id="b${bi}-${key}-ch" value="${ctrl.channel+1}" min="1" max="16"
-              oninput="onCtrl(${bi},'${key}','channel',+this.value-1)" aria-label="${ariaDisplayLabel} MIDI channel"/>
+              oninput="onCtrl(${bi},'${key}','channel',+this.value-1)" aria-label="${ariaDisplayLabel} MIDI channel"
+              aria-invalid="${err?'true':'false'}" aria-describedby="err-b${bi}-${key}"/>
             <button class="step-btn" onclick="stepCtrl(${bi},'${key}','channel',1)" aria-label="Increase ${ariaDisplayLabel} MIDI channel">+</button>
           </div>
         </div>
@@ -2528,7 +2529,8 @@ function faderSectionContent(key, ctrl, bi) {
           <div class="stepper">
             <button class="step-btn" onclick="stepCtrl(${bi},'${key}','cc',-1)" aria-label="Decrease ${ariaDisplayLabel} MIDI CC">−</button><div class="stepper-sep"></div>
             <input type="number" id="b${bi}-${key}-cc" value="${ctrl.cc}" min="0" max="127"
-              oninput="onCtrl(${bi},'${key}','cc',+this.value)" aria-label="${ariaDisplayLabel} MIDI CC"/>
+              oninput="onCtrl(${bi},'${key}','cc',+this.value)" aria-label="${ariaDisplayLabel} MIDI CC"
+              aria-invalid="${err?'true':'false'}" aria-describedby="err-b${bi}-${key}"/>
             <button class="step-btn" onclick="stepCtrl(${bi},'${key}','cc',1)" aria-label="Increase ${ariaDisplayLabel} MIDI CC">+</button>
           </div>
           <span class="cc-meaning" id="cc-meaning-${bi}-${key}">${escHtml(ccMeaning)}</span>
@@ -2570,7 +2572,8 @@ function ccEncoderBody(ctrl, bi) {
             <div class="stepper">
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',-1)" aria-label="Decrease roller MIDI channel">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-ch" value="${ctrl.channel+1}" min="1" max="16"
-                oninput="onCtrl(${bi},'encoder','channel',+this.value-1)" aria-label="Roller MIDI channel"/>
+                oninput="onCtrl(${bi},'encoder','channel',+this.value-1)" aria-label="Roller MIDI channel"
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',1)" aria-label="Increase roller MIDI channel">+</button>
             </div>
           </div>
@@ -2579,7 +2582,8 @@ function ccEncoderBody(ctrl, bi) {
             <div class="stepper">
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',-1)" aria-label="Decrease roller MIDI CC">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-cc" value="${ctrl.cc}" min="0" max="127"
-                oninput="onCtrl(${bi},'encoder','cc',+this.value)" aria-label="Roller MIDI CC"/>
+                oninput="onCtrl(${bi},'encoder','cc',+this.value)" aria-label="Roller MIDI CC"
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',1)" aria-label="Increase roller MIDI CC">+</button>
             </div>
           </div>
@@ -3723,6 +3727,15 @@ function runValidation() {
       const e = errs.find(x => x.field === `b${bi}.${key}`);
       el.textContent = e ? e.msg : '';
       el.style.display = e ? 'block' : 'none';
+      // F-02 (functional-audit 2026-07-20): the error text was screen-reader
+      // accessible via #vbar (A9) but the individual cc/channel inputs never
+      // reflected their own error state — a screen reader user tabbing
+      // straight to a flagged field heard only its numeric value, not why
+      // it's flagged.
+      const ccEl = document.getElementById(`b${bi}-${key}-cc`);
+      const chEl = document.getElementById(`b${bi}-${key}-ch`);
+      if (ccEl) ccEl.setAttribute('aria-invalid', e ? 'true' : 'false');
+      if (chEl) chEl.setAttribute('aria-invalid', e ? 'true' : 'false');
     });
   });
 }

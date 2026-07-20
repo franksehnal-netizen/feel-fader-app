@@ -62,7 +62,7 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 
 - **Spacing** — gapy/paddingy jsou raw px (`8 / 12 / 16 / 28`), žádný `--space-*` token.
 - **Font-size** — raw px, žádný `--fs-*` token.
-- **Jednorázové hex mimo tokeny** — `h-badge.dev/.prod` (zlaté/zelené `#b07d00`, `#2e7d32`…), dark overrides (`#111115`, `#1a1a1e` pro JSON/artic display). Legit výjimky, ale při přidávání podobného prvku sáhni po existující variabli, ne po nové konstantě.
+- **Jednorázové hex mimo tokeny** — `h-badge.dev/.prod` (zlaté/zelené `#b07d00`, `#2e7d32`…), dark overrides (`#111115`, `#1a1a1e` pro JSON/artic display), `html.dark .lib-badge-sm{background:#555}` (viditelnější chip než `--bg-input` dark by dal). Legit výjimky, ale při přidávání podobného prvku sáhni po existující variabli, ne po nové konstantě.
 
 ---
 
