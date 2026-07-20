@@ -25,6 +25,7 @@ const PROBES = [
   'skip-welcome-preserves-saved-config-probe.mjs',
   'serial-disconnect-clears-stale-port-probe.mjs',
   'bank-fader-name-limits-match-firmware-probe.mjs',
+  'touch-target-stepper-specificity-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',

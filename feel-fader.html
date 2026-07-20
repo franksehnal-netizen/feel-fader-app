@@ -849,7 +849,16 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 /* Touch: enlarge tap targets to >=44px without bloating desktop */
 @media(pointer:coarse){
   .step-btn{width:44px;height:44px}
+  /* .stepper .step-btn (line 420, no media query) is a 2-class compound
+     selector — higher specificity than the coarse-media .step-btn rule
+     above, so it kept winning even on touch and steppers stayed 24x24
+     instead of the intended 44x44 (functional-audit finding A8,
+     2026-07-20: the earlier A3/A7 touch-target fix existed but never
+     actually applied to the most-used control in the app). Match the
+     compound selector here so specificity ties and source order decides. */
+  .stepper .step-btn{width:44px;height:44px}
   .stepper input{width:40px}
+  .section-toggle-action{min-height:44px}
   .btn-remove-bank,.bank-action-btn{width:44px;height:44px}
   .icon-picker-trigger{min-width:44px;min-height:44px}
   .dark-toggle{width:44px;height:44px}
