@@ -33,6 +33,7 @@ const PROBES = [
   'c11-connect-with-dirty-edits-probe.mjs',
   'a3-nvm-degraded-notice-probe.mjs',
   'send-without-web-serial-probe.mjs',
+  'live-hud-meter-value-gap-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
