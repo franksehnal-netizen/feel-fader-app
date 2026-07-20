@@ -30,6 +30,7 @@ const PROBES = [
   'safe-batch-2026-07-20-probe.mjs',
   'help-deep-links-probe.mjs',
   'c10-bank-switch-preserves-edit-probe.mjs',
+  'c11-connect-with-dirty-edits-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
