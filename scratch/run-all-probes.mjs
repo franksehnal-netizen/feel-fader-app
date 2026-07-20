@@ -23,6 +23,7 @@ const PROBES = [
   'send-btn-idle-state-probe.mjs',
   'skip-welcome-demo-badge-probe.mjs',
   'skip-welcome-preserves-saved-config-probe.mjs',
+  'serial-disconnect-clears-stale-port-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',

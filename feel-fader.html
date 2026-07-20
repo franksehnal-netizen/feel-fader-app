@@ -3905,6 +3905,23 @@ function initMidi(){
     connectInputs();
   },()=>{ _midiState='denied'; renderConnState(); });
 }
+// connState() treats any truthy _serialPort as "linked" (CONNECTED_BLIND at
+// minimum) — but nothing ever cleared it on a real physical disconnect, so
+// unplugging the device left the header stuck on "connected · no live view"
+// indefinitely (until the next serial write happened to fail and its own
+// catch block nulled it). The Web Serial 'disconnect' event is the
+// authoritative signal a port is actually gone (functional-audit finding
+// C7, 2026-07-20) — MIDI enumeration dropping the device is a separate,
+// already-handled signal (connectInputs()'s !found branch).
+function initSerialDisconnectWatch() {
+  if (!navigator.serial) return;
+  navigator.serial.addEventListener('disconnect', (e) => {
+    if (e.target === _serialPort) {
+      _serialPort = null;
+      renderConnState();
+    }
+  });
+}
 // Feel Fader device name as set in boot.py via supervisor.set_usb_identification
 const DEVICE_NAME = 'Feel Fader';
 
@@ -5821,6 +5838,7 @@ window.addEventListener('load',()=>{
   }
   setTimeout(positionThumbs, 80);
   initMidi();
+  initSerialDisconnectWatch();
   showWelcome();
 });
 window.addEventListener('resize',()=>{layoutFaders();positionThumbs();});</script>
