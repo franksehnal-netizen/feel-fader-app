@@ -31,6 +31,7 @@ const PROBES = [
   'help-deep-links-probe.mjs',
   'c10-bank-switch-preserves-edit-probe.mjs',
   'c11-connect-with-dirty-edits-probe.mjs',
+  'a3-nvm-degraded-notice-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
