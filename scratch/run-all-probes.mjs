@@ -18,6 +18,7 @@ const PROBES = [
   'connstate-reconnect-probe.mjs',
   'validation-clamp-probe.mjs',
   'onb-wordmark-sync-probe.mjs',
+  'skip-welcome-send-btn-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
