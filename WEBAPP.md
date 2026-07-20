@@ -2,7 +2,7 @@
 
 Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funkční popis UI i technické detaily implementace.
 
-> ℹ️ **Stav (2026-07-12):** Všechny odkazy `Lxxxx` srovnané proti aktuálnímu souboru (3 466 řádků). Funkce odstraněné/přejmenované refaktorem od 06-27 jsou označené `⚠` s ukazatelem na náhradu. **§5 (transport) kompletně přepsána** podle reálného kódu — config jde přes line-based serial protokol, ne přes MIDI SysEx. §0 (design contract) je proti driftu imunní (popisuje `:root`, ne řádky).
+> ℹ️ **Stav (2026-07-20):** Appka roste rychle (3 466 → 5 821 řádků mezi 2026-07-12 a 2026-07-20), takže odkazy na konkrétní čísla řádků byly z tohoto dokumentu odstraněny — místo nich se dokument odkazuje na jména funkcí (dohledatelná greppem, přežijí refaktor). Výjimka: `## 6. Klíčové funkce` níže má sloupec Popis místo Řádek. Funkce odstraněné/přejmenované refaktorem od 06-27 jsou označené `⚠` s ukazatelem na náhradu. **§5 (transport) kompletně přepsána** podle reálného kódu — config jde přes line-based serial protokol, ne přes MIDI SysEx. §0 (design contract) je proti driftu imunní (popisuje `:root`, ne řádky).
 
 ---
 
@@ -68,7 +68,7 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 
 ## 1. Přehled
 
-**Soubor:** `feel-fader.html` — jedna HTML stránka (~3 466 řádků), žádný build step, žádné závislosti (fonty z Google Fonts).
+**Soubor:** `feel-fader.html` — jedna HTML stránka (roste rychle, řádově tisíce řádků — přesný počet viz `wc -l feel-fader.html`), žádný build step, žádné závislosti (fonty z Google Fonts).
 
 **Účel:** Webový konfigurátor pro hardwarový MIDI kontrolér Feel Fader. Umožňuje nastavit MIDI kanál a CC číslo pro každý fader a enkodér, spravovat presets (banky) a synchronizovat konfiguraci se zařízením.
 
@@ -76,10 +76,10 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 | Vrstva | Co se používá |
 |---|---|
 | UI | Vanilla JS, CSS animace, IBM Plex Mono + Mulish (Google Fonts) |
-| MIDI | Web MIDI API (`navigator.requestMIDIAccess`) — vyžaduje povolení v browseru |
-| Serial | Web Serial API — fallback/doplněk pro čtení dat ze zařízení |
+| MIDI | Web MIDI API (`navigator.requestMIDIAccess`) — detekce zařízení + příjem live hodnot (fader/encoder CC, bank Program Change, keyswitch NoteOn) |
+| Serial | Web Serial API — **jediný transport configu** (read i write); viz §5 |
 | Persistence | `localStorage` — klíč `ff-cfg` |
-| Transport | SysEx zprávy přes MIDI výstup |
+| Transport | Line-based textový protokol po Web Serial; MIDI SysEx je jen vedlejší příjmový kanál, appka SysEx nikdy neposílá |
 
 **Kompatibilita:** Chrome / Edge (Web MIDI API není dostupné v Safari ani Firefox bez rozšíření).
 
@@ -91,15 +91,16 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 
 ```
 feel-fader.html
-├── <style>          CSS (řádky 10–1071)
+├── <style>          CSS blok (na začátku souboru)
 ├── <body>
 │   ├── <header>     Stavový řádek + dark mode toggle
 │   ├── <main>       Hlavní obsah (center-col)
-│   ├── #modal       Overlay — Settings (počet banků)
 │   ├── #welcome-screen  Uvítací obrazovka (fixed overlay)
 │   ├── #icon-picker Overlay — výběr ikony banku
-│   └── <script>     Veškerý JS (řádky 1325–3465)
+│   └── <script>     Veškerý JS (za CSS blokem, tvoří většinu souboru)
 ```
+
+(Poznámka: starší verze tohoto diagramu uváděla `#modal` — Settings modal byl nahrazen `toggleDeviceSettings()` sekcí, viz §3.9, a `#modal` element v HTML už neexistuje.)
 
 ### Životní cyklus
 
@@ -169,7 +170,7 @@ se v demo režimu nepoužívá.
 
 **První krok v appce:** Po prvním vstupu se nezobrazuje žádná další karta ani povinné odkliknutí. Jakmile uživatel poprvé doscrolluje k **Library setup**, picker se jednou jemně zvýrazní bez změny layoutu, automatického scrollu nebo otevření nabídky. Demo bez zařízení má samostatný čitelný badge; fadery zůstávají stabilní a nikdy nepředstírají periodická live data. **Show intro again** v Help & Guide znovu otevře skutečný welcome intro.
 
-**Klíčové funkce:** `initWelcomeFaderOverlay()` (L3144), `connectTransitionWelcome()` (L3154), `hideWelcome()` (L3207), `skipWelcome()` (L3211)
+**Klíčové funkce:** `initWelcomeFaderOverlay()`, `connectTransitionWelcome()`, `hideWelcome()`, `skipWelcome()`
 
 ---
 
@@ -193,7 +194,7 @@ Na desktopu je stav připojení trvale čitelný a funguje jako tlačítko. Otev
 
 **Liquid glass systém:** Header používá nejsilnější skleněnou vrstvu, aktivní bank card střední blur a pomocné panely lehčí průsvitnost. Globální notifikace jsou kompaktní liquid-glass kapsle: typ zprávy rozlišuje jen malý barevný stavový symbol, nikoli celá barevná plocha; plynule se objeví i zavřou a na mobilu se centrují nad safe-area. Zbytečná notifikace při přepnutí motivu se nezobrazuje. Dialogy a stavové bannery mají vlastní výraznější glass vrstvu. Ambientní radial gradients na `body` dávají průsvitnosti vizuální hloubku; vstupy a steppery zůstávají záměrně neprůhledné kvůli čitelnosti. Na mobilu se blur snižuje a pro prohlížeče bez `backdrop-filter` existuje neprůhledný fallback.
 
-**Klíčové funkce:** `renderConnState()` (L2976, dřív `updateStatus`), `toggleDark()` (L3090), `initDark()` (L3104)
+**Klíčové funkce:** `renderConnState()` (dřív `updateStatus`), `toggleDark()`, `initDark()`
 
 ---
 
@@ -209,7 +210,7 @@ Na desktopu je stav připojení trvale čitelný a funguje jako tlačítko. Otev
 - Pohyb myší/dotykem aktualizuje `liveValues` a odesílá MIDI CC
 - Pod stage je volitelný `#fader-visual-wrap` s numerickými hodnotami (viditelný jen při připojení)
 
-**Klíčové funkce:** `onImgLoad()` (L2386), `layoutFaders()` (L2387), `pF()` (L2424), `positionThumbs()` (L2403). ⚠ `mF()` / `drag()` / `dragT()` **odstraněny** — drag path je teď `scheduleFaderFrame()` (L2414) + `flushFaderFrame()` (L2419) + `applyInfoFaders()` (L2406).
+**Klíčové funkce:** `onImgLoad()`, `layoutFaders()`, `pF()`, `positionThumbs()`. ⚠ `mF()` / `drag()` / `dragT()` **odstraněny** — drag path je teď `scheduleFaderFrame()` + `flushFaderFrame()` + `applyInfoFaders()`.
 
 ---
 
@@ -278,7 +279,7 @@ Na desktopu je stav připojení trvale čitelný a funguje jako tlačítko. Otev
 
 **Live hodnoty:** Duplicitní lokální čísla nejsou v sekcích. Floating Live HUD odvozuje krátkou značku z vlastního jména faderu (`Bow Pressure` → `BOWP`); roller používá `ART/KS/NAV` a zobrazuje název artikulace nebo notu namísto samotného raw čísla.
 
-**Klíčové funkce:** `faderSectionContent()` (L1604), `stepCtrl()` (L1986), `onCtrl()` (L1996). ⚠ `onFaderLabel()` **odstraněno.**
+**Klíčové funkce:** `faderSectionContent()`, `stepCtrl()`, `onCtrl()`. ⚠ `onFaderLabel()` **odstraněno.**
 
 ---
 
@@ -312,7 +313,7 @@ Každá artikulace je CC hodnota (0–127) s volitelným pojmenováním (intern�
 
 Rozbalovací sekce obsahuje informace o zařízení, liquid-glass switch Keyboard (HID), sbalený **MIDI diagnostics** a kompaktní blok **Backup & reset**. Zapnutí HID používá vlastní přístupný glass dialog namísto nativního `confirm()`; Navigation a trvale viditelný Button Macro nabízejí stejnou akci **Enable Keyboard…** přímo v kontextu. Diagnostika ukazuje connection state, nalezený MIDI input, fyzicky aktivní bank, výsledné L/R/roller mapování, poslední MIDI event, firmware, HID a config hash; **Copy diagnostics** vytvoří textový support snapshot. **Device backup** má pouze tři akce pro celou konfiguraci zařízení: Export, Import a Reset; původní viditelný JSON inspector byl odstraněn. Reset vyžaduje potvrzení, obnoví `DEFAULT_CFG` jako lokální konfiguraci a nastaví `dirty=true`; zařízení se změní až po **Send to device**. Živé pozice faderů se resetem lokální konfigurace nemění.
 
-**Klíčové funkce:** ⚠ `openModal()` / `closeModal()` / `onBankCount()` **odstraněny** — device/advanced settings teď přes `toggleDeviceSettings()` (L2934).
+**Klíčové funkce:** ⚠ `openModal()` / `closeModal()` / `onBankCount()` **odstraněny** — device/advanced settings teď přes `toggleDeviceSettings()`.
 
 ---
 
@@ -361,7 +362,7 @@ Web appka rozlišuje dva nezávislé typy záloh:
 
 ### `DEFAULT_CFG`
 
-Definován na řádku 1412. Obsahuje 3 předdefinované banky (Bank 1–3) s různými CC čísly a kanály. Použije se při prvním spuštění nebo po factory resetu.
+Definován v `<script>` bloku appky (`const DEFAULT_CFG`, dohledatelné greppem). Obsahuje 3 předdefinované banky (Bank 1–3) s různými CC čísly a kanály. Použije se při prvním spuštění nebo po factory resetu.
 
 ### localStorage
 
@@ -378,7 +379,7 @@ Definován na řádku 1412. Obsahuje 3 předdefinované banky (Bank 1–3) s rů
 ```
 
 Aktualizuje se při:
-- Příchozích MIDI CC zprávách ze zařízení (`onMidiMsg()` L2512)
+- Příchozích MIDI CC zprávách ze zařízení (`onMidiMsg()`)
 - Snapshotu faderů z `CMD_INFO` při připojení (`applyInfoFaders()`)
 
 ---
@@ -391,18 +392,18 @@ Aktualizuje se při:
 
 | Rovina | API | K čemu | Klíčové funkce |
 |---|---|---|---|
-| **MIDI** | Web MIDI (`requestMIDIAccess({sysex:true})`) | Detekce Feel Faderu; příjem live hodnot (fader CC, encoder CC, bank Program Change, keyswitch NoteOn) | `initMidi` (L2442), `connectInputs` (L2471), `onMidiMsg` (L2512) |
-| **Serial** | Web Serial (115200 baud, vendor `0x2E8A` = RP Pico) | **Veškerý přenos configu** — read i write, + device info | `serialRequest` (L2696), `serialReadConfig` (L2749), `serialReadInfo` (L2755), `_serialEnsureOpen` (L2668) |
+| **MIDI** | Web MIDI (`requestMIDIAccess({sysex:true})`) | Detekce Feel Faderu; příjem live hodnot (fader CC, encoder CC, bank Program Change, keyswitch NoteOn) | `initMidi`, `connectInputs`, `onMidiMsg` |
+| **Serial** | Web Serial (115200 baud, vendor `0x2E8A` = RP Pico) | **Veškerý přenos configu** — read i write, + device info | `serialRequest`, `serialReadConfig`, `serialReadInfo`, `_serialEnsureOpen` |
 
 ### 5.2 Detekce a vstup do appky
 
 ```
-initMidi() (L2442)
+initMidi()
   → requestMIDIAccess({sysex:true})  → onstatechange (debounce 400 ms, ignoruje CC churn)
-  → connectInputs() (L2471)
-      → isFeelFader(name) (L2466): match "feel fader" | "circuitpython audio"
+  → connectInputs()
+      → isFeelFader(name): match "feel fader" | "circuitpython audio"
       → inp.onmidimessage = onMidiMsg;  _ffConnected = true
-      → onDeviceConnected() (L2828) — rozhodne vstup:
+      → onDeviceConnected() — rozhodne vstup:
           • serial port už schválený + !dirty → tichý load / sync banner (viz 5.4)
           • port neschválený → ukázat „Start" na welcome (gesto nutné pro requestPort)
           • po skipu → re-welcome
@@ -412,7 +413,7 @@ initMidi() (L2442)
 
 ### 5.3 Serial protokol (line-based text)
 
-Ne SysEx — prosté textové řádky ukončené `\n`. `serialRequest(cmd, payload, timeoutMs)` (L2696) je **jediné místo, které serial zapisuje**; transakce jsou serializované přes `_txnChain` (jedna naráz).
+Ne SysEx — prosté textové řádky ukončené `\n`. `serialRequest(cmd, payload, timeoutMs)` je **jediné místo, které serial zapisuje**; transakce jsou serializované přes `_txnChain` (jedna naráz).
 
 **Dvě verze rámování** (`protocolVersion`, bootstrapuje `serialReadInfo`):
 
@@ -421,14 +422,14 @@ Ne SysEx — prosté textové řádky ukončené `\n`. `serialRequest(cmd, paylo
 | **v1** (legacy) | `CMD` nebo `CMD:payload` | první řádek vyhrává | žádné (fire-first) |
 | **v2** (rid framing) | `CMD:rid:payload` | `TYP:rid:payload`, `TYP ∈ {CFG,INFO,ACK,ERR}` | podle `rid` (stale/cizí řádky se zahazují) |
 
-- **Command jména** (řetězce, ne byty): `CMD_R`, `CMD_INFO`, `CMD_W`, `CMD_HID`. Konstanty `MFR/DEV_ID/CMD_*` (L2584) drží **jen** MIDI-SysEx vrstva (`handleSysEx`), serial používá stringy.
-- **Expect-mapa** (L2709): `{CMD_R:'CFG', CMD_INFO:'INFO', CMD_W:'ACK', CMD_HID:'ACK'}`. `_readReply` (L2717) čeká na řádek typu = expect se správným `rid`; `ERR:*` → reject, timeout → reject.
+- **Command jména** (řetězce, ne byty): `CMD_R`, `CMD_INFO`, `CMD_W`, `CMD_HID`. Konstanty `MFR/DEV_ID/CMD_*` drží **jen** MIDI-SysEx vrstva (`handleSysEx`), serial používá stringy.
+- **Expect-mapa**: `{CMD_R:'CFG', CMD_INFO:'INFO', CMD_W:'ACK', CMD_HID:'ACK'}`. `_readReply` čeká na řádek typu = expect se správným `rid`; `ERR:*` → reject, timeout → reject.
 - **v1 fire-and-forget:** `CMD_W`/`CMD_HID` ve v1 nevrací nic (`serialRequest` vrátí `''`).
-- **Port:** `_serialEnsureOpen` (L2668) recykluje session port; auto-connect na dřív schválený port (řadí podle uloženého `usbProductId`, klíč `ff-serial-pid`), jinak `requestPort` filtrovaný na vendor `0x2E8A`. „Busy" chyba = port drží jiný tab/aplikace (viz memory `project_feelfader_serial_port_exclusive`).
+- **Port:** `_serialEnsureOpen` recykluje session port; auto-connect na dřív schválený port (řadí podle uloženého `usbProductId`, klíč `ff-serial-pid`), jinak `requestPort` filtrovaný na vendor `0x2E8A`. „Busy" chyba = port drží jiný tab/aplikace (viz memory `project_feelfader_serial_port_exclusive`).
 
 ### 5.4 CMD_INFO bootstrap + sync detekce
 
-`serialReadInfo()` (L2755): pošle `CMD_INFO` **vždy nejdřív v1 rámcem** (odpoví starý i nový firmware), pak z odpovědi:
+`serialReadInfo()`: pošle `CMD_INFO` **vždy nejdřív v1 rámcem** (odpoví starý i nový firmware), pak z odpovědi:
 
 - `schema_version >= 2 && config_hash:string` → `protocolVersion = 2`, jinak `1`.
 - Uloží `DEVICE_INFO.{firmware, serial, hid_available, hid_enabled, config_hash, config_source}`.
@@ -444,28 +445,28 @@ Při reconnectu (`onDeviceConnected`, v2) se porovná uložený hash (`ff-last-h
 
 Konfliktní banner nepoužívá neurčité „Send mine“. Akce jsou explicitní **Use device version** a **Overwrite device** a text vysvětluje, že browser a zařízení obsahují dvě rozdílné konfigurace.
 
-### 5.5 Zápis konfigurace — `doSend()` (L2862)
+### 5.5 Zápis konfigurace — `doSend()`
 
 1. `validate()`; při chybě stop. Každá chyba nese `field` a konkrétní DOM `target` pro navigaci přes `focusValidationError()`.
-2. `serialRequest('CMD_W', JSON.stringify(cfg), 5000)` (L2868) — celý `cfg` jako JSON, jeden řádek.
+2. `serialRequest('CMD_W', JSON.stringify(cfg), 5000)` — celý `cfg` jako JSON, jeden řádek.
 3. **v2:** zařízení vrátí `ACK` s novým **config hashem** → uloží se do `ff-last-hash` + `DEVICE_INFO.config_hash`. **v1:** ACK prázdný (fire-and-forget).
 4. `cfgSave()`, `dirty=false`, inline potvrzení **✓ Configuration sent to device** plynule vedle centrálního tlačítka; globální success toast ani velkou zelenou plochu nepoužívá.
 5. Chyby: `ERR:<reason>` → „Device rejected config" (drží jako unsaved); `timeout` → „No confirmation" (retry); jinak zavře port.
 
-### 5.6 Čtení konfigurace — `loadConfigFromDevice()` (L2781)
+### 5.6 Čtení konfigurace — `loadConfigFromDevice()`
 
-`_serialEnsureOpen` → `serialReadInfo` (best-effort) → `serialReadConfig()` (L2749 = `serialRequest('CMD_R', null, 5000)`) → `JSON.parse` → `normalizeFwConfig` → `cfg`, `loaded=true`, `dirty=false`, `cfgSave`, `render`. Volané z `doStart` (welcome gesto, L2808) i tichého reconnectu.
+`_serialEnsureOpen` → `serialReadInfo` (best-effort) → `serialReadConfig()` (= `serialRequest('CMD_R', null, 5000)`) → `JSON.parse` → `normalizeFwConfig` → `cfg`, `loaded=true`, `dirty=false`, `cfgSave`, `render`. Volané z `doStart` (welcome gesto) i tichého reconnectu.
 
-### 5.7 MIDI příjem — `onMidiMsg()` (L2512)
+### 5.7 MIDI příjem — `onMidiMsg()`
 
 - **CC (0xB0):** porovná s `fader1/2.cc+channel` → `liveValues` + `scheduleFaderFrame`; encoder CC → artikulace/UACC.
 - **NoteOn (0x90) na `ks_channel`:** live keyswitch pozice (roller_mode `keyswitch`).
 - **Program Change (0xC0):** hardware bank switch → `liveBank`+`activeBank`.
-- **SysEx (0xF0):** `handleSysEx` (L2624) — dekóduje `dec7()` (L2590), reaguje jen na příchozí `CMD_W` (config push) a `CMD_INFO`. Toto je jediné zbylé využití SysEx a je pouze **příjem**; app SysEx nikdy neposílá (viz 5.2).
+- **SysEx (0xF0):** `handleSysEx` — dekóduje `dec7()`, reaguje jen na příchozí `CMD_W` (config push) a `CMD_INFO`. Toto je jediné zbylé využití SysEx a je pouze **příjem**; app SysEx nikdy neposílá (viz 5.2).
 
 ### 5.8 Formát konfigurace: app vs. device
 
-App drží **web formát** (`cfg` — per-control, viz §4), device posílá **interní kompaktní formát**; převod `normalizeFwConfig()` (L2593):
+App drží **web formát** (`cfg` — per-control, viz §4), device posílá **interní kompaktní formát**; převod `normalizeFwConfig()`:
 
 ```js
 // Device (banks[i]) — interní tvar z CMD_R
@@ -482,51 +483,51 @@ App drží **web formát** (`cfg` — per-control, viz §4), device posílá **i
 
 ## 6. Klíčové funkce
 
-> Čísla řádků ověřena proti aktuálnímu souboru 2026-07-12. ⚠ = funkce od 06-27 odstraněna/přejmenována refaktorem (SysEx-chunking → serial request/reply, value bar zrušen) — viz náhrada.
+> Bez čísel řádků — appka roste rychle a čísla by za pár dní zase zastarala (viz hlavička dokumentu). Funkci dohledáš greppem podle jména. ⚠ = funkce od 06-27 odstraněna/přejmenována refaktorem (SysEx-chunking → serial request/reply, value bar zrušen) — viz náhrada.
 
-| Funkce | Řádek | Popis |
-|---|---|---|
-| `render()` | 1473 | Překreslí celé UI podle aktuálního `cfg`. Volá `renderBankTabs()` + `renderPanels()`. |
-| `renderBankTabs()` | 1487 | Vykreslí záložky banků. |
-| `renderPanels()` | 1525 | Vykreslí sekce aktivního banku (fader1, fader2, encoder). |
-| `selectBank(i)` | 2065 | Přepne aktivní bank, překreslí UI. |
-| `stepCtrl(bi,key,field,delta)` | 1986 | Změní hodnotu pole (CC/channel) o delta (±1) přes stepper tlačítka. |
-| `onCtrl(bi,key,field,val)` | 1996 | Zapíše novou hodnotu do `cfg`, uloží do localStorage. |
-| `layoutFaders()` | 2387 | Pozicuje fader tracky na device imagu podle layout konstant. |
-| `pF(tid,thid,v)` | 2424 | Pozicuje fader thumb na pixel pozici odpovídající MIDI hodnotě v (0–127). |
-| ⚠ `mF()` | — | **Odstraněno.** Drag path refaktorován → `scheduleFaderFrame()` (2414) + `flushFaderFrame()` (2419) + `applyInfoFaders()` (2406). |
-| `connectInputs()` | 2471 | Připojí MIDI vstup/výstup Feel Faderu, spustí connect sekvenci. |
-| `onMidiMsg(event)` | 2512 | Zpracuje příchozí MIDI zprávy (CC → liveValues, SysEx → handleSysEx). |
-| `handleSysEx(data)` | 2624 | Zpracuje příchozí SysEx. |
-| ⚠ `sysexWriteConfig(cfg)` | — | **Odstraněno.** Zápis teď `serialRequest('CMD_W', …)` (`serialRequest` 2696, volané z `doSend` 2868). |
-| ⚠ `sysexReadConfig()` | — | **Odstraněno.** Nahrazeno `serialReadConfig()` (2749). |
-| `doSend()` | 2862 | UI handler pro „send to device" — validuje, pak `serialRequest('CMD_W', …)`. |
-| `doStart()` | 2808 | Welcome „Start": grant serial portu + `loadConfigFromDevice()` + transition. |
-| `loadConfigFromDevice()` | 2781 | Sdílené: otevře port → `serialReadInfo` → `serialReadConfig` → `cfg` → `render()`. |
-| `onDeviceConnected()` | 2828 | Po detekci zařízení: auto-vstup (port schválený) vs Start vs re-welcome. |
-| ⚠ `updateStatus()` | — | **Odstraněno.** Nahrazeno `renderConnState()` (2976). |
-| `connectTransitionWelcome()` | 3154 | Animovaný přechod welcome screenu při připojení zařízení. |
-| `hideWelcome()` | 3207 | Spustí connect transition. Volá `connectTransitionWelcome()`. |
-| `skipWelcome()` | 3211 | Okamžitě skryje welcome screen bez animace. |
-| `initWelcomeFaderOverlay()` | 3144 | Zkopíruje PNG thumby z hlavního stage na welcome screen overlay. |
-| ⚠ `renderFaderVisual()` | — | **Odstraněno** (value bar zrušen — viz komentář na L3007 `setBar`). |
-| ⚠ `updateFaderVisual()` | — | **Odstraněno** (dtto). |
-| `toggleDark()` | 3090 | Přepne dark/light mode + uloží do localStorage. |
-| `initDark()` | 3104 | Načte preferenci dark mode při startu. |
-| `applyLang()` | 3076 | Aplikuje překlady (data-i18n atributy). Aktuálně pouze EN. |
-| `validate()` | 2330 | Validuje `cfg` — kontroluje duplicitní CC/kanál kombinace. |
-| `openIconPicker(bi, mode)` | 3262 | Otevře overlay pro výběr ikony banku. |
-| `onImport(e)` | 2902 | Importuje JSON konfiguraci ze souboru. |
-| `refreshJson()` | 2965 | Aktualizuje JSON inspector. |
-| `toast(t, m)` | 3008 | Zobrazí dočasné notifikační hlášení (success/error/info). |
-| `cfgSave()` | 1432 | Uloží `cfg` do localStorage. |
-| `cfgLoad()` | 1440 | Načte `cfg` z localStorage, vrátí null pokud neexistuje. |
+| Funkce | Popis |
+|---|---|
+| `render()` | Překreslí celé UI podle aktuálního `cfg`. Volá `renderBankTabs()` + `renderPanels()`. |
+| `renderBankTabs()` | Vykreslí záložky banků. |
+| `renderPanels()` | Vykreslí sekce aktivního banku (fader1, fader2, encoder). |
+| `selectBank(i)` | Přepne aktivní bank, překreslí UI. |
+| `stepCtrl(bi,key,field,delta)` | Změní hodnotu pole (CC/channel) o delta (±1) přes stepper tlačítka. |
+| `onCtrl(bi,key,field,val)` | Zapíše novou hodnotu do `cfg`, uloží do localStorage. |
+| `layoutFaders()` | Pozicuje fader tracky na device imagu podle layout konstant. |
+| `pF(tid,thid,v)` | Pozicuje fader thumb na pixel pozici odpovídající MIDI hodnotě v (0–127). |
+| ⚠ `mF()` | **Odstraněno.** Drag path refaktorován → `scheduleFaderFrame()` + `flushFaderFrame()` + `applyInfoFaders()`. |
+| `connectInputs()` | Připojí MIDI vstup/výstup Feel Faderu, spustí connect sekvenci. |
+| `onMidiMsg(event)` | Zpracuje příchozí MIDI zprávy (CC → liveValues, SysEx → handleSysEx). |
+| `handleSysEx(data)` | Zpracuje příchozí SysEx. |
+| ⚠ `sysexWriteConfig(cfg)` | **Odstraněno.** Zápis teď `serialRequest('CMD_W', …)`, volané z `doSend`. |
+| ⚠ `sysexReadConfig()` | **Odstraněno.** Nahrazeno `serialReadConfig()`. |
+| `doSend()` | UI handler pro „send to device" — validuje, pak `serialRequest('CMD_W', …)`. |
+| `doStart()` | Welcome „Start": grant serial portu + `loadConfigFromDevice()` + transition. |
+| `loadConfigFromDevice()` | Sdílené: otevře port → `serialReadInfo` → `serialReadConfig` → `cfg` → `render()`. |
+| `onDeviceConnected()` | Po detekci zařízení: auto-vstup (port schválený) vs Start vs re-welcome. |
+| ⚠ `updateStatus()` | **Odstraněno.** Nahrazeno `renderConnState()`. |
+| `connectTransitionWelcome()` | Animovaný přechod welcome screenu při připojení zařízení. |
+| `hideWelcome()` | Spustí connect transition. Volá `connectTransitionWelcome()`. |
+| `skipWelcome()` | Okamžitě skryje welcome screen bez animace. |
+| `initWelcomeFaderOverlay()` | Zkopíruje PNG thumby z hlavního stage na welcome screen overlay. |
+| ⚠ `renderFaderVisual()` | **Odstraněno** (value bar zrušen — viz komentář u `setBar`). |
+| ⚠ `updateFaderVisual()` | **Odstraněno** (dtto). |
+| `toggleDark()` | Přepne dark/light mode + uloží do localStorage. |
+| `initDark()` | Načte preferenci dark mode při startu. |
+| `applyLang()` | Aplikuje překlady (data-i18n atributy). Aktuálně pouze EN. |
+| `validate()` | Validuje `cfg` — kontroluje duplicitní CC/kanál kombinace. |
+| `openIconPicker(bi, mode)` | Otevře overlay pro výběr ikony banku. |
+| `onImport(e)` | Importuje JSON konfiguraci ze souboru. |
+| `refreshJson()` | Aktualizuje JSON inspector. ⚠ **Pozor:** dle strukturního auditu 2026-07-20 (D-3) je tohle mrtvá cesta — viditelný JSON inspector byl odstraněn, ale `jsonOpen`/`refreshJson`/`toggleJson`/`copyJson` v kódu zůstaly. Aktuální stav ověř v `docs/feel-fader-structure-audit-2026-07-20.md`. |
+| `toast(t, m)` | Zobrazí dočasné notifikační hlášení (success/error/info). |
+| `cfgSave()` | Uloží `cfg` do localStorage. |
+| `cfgLoad()` | Načte `cfg` z localStorage, vrátí null pokud neexistuje. |
 
 ---
 
 ## 7. Fader Layout — Konstanty
 
-Definovány na řádku 2385:
+Definovány v `<script>` bloku appky, těsně před `layoutFaders()` (dohledatelné greppem po `const FLX`):
 
 ```js
 const FLX = 0.2289;  // X střed levého faderu (podíl šířky device image)
@@ -564,10 +565,10 @@ top = Math.round((1 - v/127) * (trackHeight - thumbHeight))
 
 ## 8. i18n
 
-Překlady jsou definovány v JS objektu `TRANSLATIONS` (řádek 3018; dřív dokumentováno jako `STRINGS`) a aplikovány přes `t(key)` (L3071) + `applyLang()` (L3076) na elementy s atributem `data-i18n="key"`. `currentLang` (L3069) je natvrdo `'en'`.
+Překlady jsou definovány v JS objektu `TRANSLATIONS` (řádek 3018; dřív dokumentováno jako `STRINGS`) a aplikovány přes `t(key)` + `applyLang()` na elementy s atributem `data-i18n="key"`. `currentLang` je natvrdo `'en'`.
 
 Aktuálně podporován pouze **anglický jazyk**. Česká lokalizace není implementována — appka je primárně pro mezinárodní uživatele.
 
 ---
 
-*Naposledy aktualizováno: 2026-07-14 (rychlejší onboarding, mobilní Send, 10× Undo, kontextová nápověda, drag/keyboard pořadí artikulací a konsolidované control primitivy)*
+*Naposledy aktualizováno: 2026-07-20 (doc-drift oprava dle strukturního auditu — §1 Transport/Serial popis srovnán s §5, čísla řádků odstraněna napříč dokumentem ve prospěch jmen funkcí, opraveny §2/§4/§6/§7 nepřesnosti — viz `docs/feel-fader-structure-audit-2026-07-20.md` DOC-001/003/004/007)*
