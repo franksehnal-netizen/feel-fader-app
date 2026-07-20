@@ -21,6 +21,7 @@ const PROBES = [
   'skip-welcome-send-btn-probe.mjs',
   'skip-welcome-send-entry-gap-probe.mjs',
   'send-btn-idle-state-probe.mjs',
+  'skip-welcome-demo-badge-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
