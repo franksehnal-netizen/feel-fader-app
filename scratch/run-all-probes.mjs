@@ -26,6 +26,7 @@ const PROBES = [
   'serial-disconnect-clears-stale-port-probe.mjs',
   'bank-fader-name-limits-match-firmware-probe.mjs',
   'touch-target-stepper-specificity-probe.mjs',
+  'vbar-aria-live-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
