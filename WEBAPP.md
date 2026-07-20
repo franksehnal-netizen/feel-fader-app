@@ -462,7 +462,7 @@ Konfliktní banner nepoužívá neurčité „Send mine“. Akce jsou explicitn�
 - **CC (0xB0):** porovná s `fader1/2.cc+channel` → `liveValues` + `scheduleFaderFrame`; encoder CC → artikulace/UACC.
 - **NoteOn (0x90) na `ks_channel`:** live keyswitch pozice (roller_mode `keyswitch`).
 - **Program Change (0xC0):** hardware bank switch → `liveBank`+`activeBank`.
-- **SysEx (0xF0):** `handleSysEx` — dekóduje `dec7()`, reaguje jen na příchozí `CMD_W` (config push) a `CMD_INFO`. Toto je jediné zbylé využití SysEx a je pouze **příjem**; app SysEx nikdy neposílá (viz 5.2).
+- **SysEx (0xF0):** `handleSysEx` — dekóduje `dec7()`, reaguje jen na příchozí `CMD_INFO`. Toto je jediné zbylé využití SysEx a je pouze **příjem**; app SysEx nikdy neposílá (viz 5.2). Příchozí `CMD_W` (config push) byl odstraněn (strukturní audit 2026-07-20, SEC-003/PR-001) — appka SysEx neměla jak ověřit původ zprávy (substring shoda jména MIDI portu není autentizace) a firmware ho stejně nikdy neposílal.
 
 ### 5.8 Formát konfigurace: app vs. device
 
