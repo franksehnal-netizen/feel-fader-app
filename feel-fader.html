@@ -922,9 +922,18 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 }
 
 /* ── CONNECTION STATUS IN HEADER ── */
+.h-status-wrap{position:relative;display:flex;align-items:center;flex:0 0 auto}
 .h-status{
-  display:flex;align-items:center;
+  appearance:none;display:flex;align-items:center;min-height:28px;padding:3px 7px;
+  border:1px solid transparent;border-radius:var(--r-pill);background:transparent;
+  color:inherit;font:inherit;cursor:pointer;
+  transition:background .22s,border-color .22s,box-shadow .22s;
 }
+.h-status:hover,.h-status[aria-expanded="true"]{
+  border-color:var(--glass-border);background:color-mix(in srgb,var(--bg-card) 58%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+}
+.h-status:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .h-status-dot{
   width:7px;height:7px;border-radius:50%;
   background:var(--t3);
@@ -948,6 +957,27 @@ html.dark .footer-logo{filter:grayscale(1) invert(1) !important}
 .h-status-dot.on ~ .h-status-text{max-width:20ch;overflow:hidden;white-space:nowrap;}
 .h-status-dot.on ~ .h-status-text.hidden{max-width:0;margin-left:0;}
 .h-status-text.hidden{opacity:0;}
+.connection-popover{
+  position:absolute;top:calc(100% + 9px);left:calc(100% + 8px);z-index:320;width:310px;padding:12px;
+  border:1px solid var(--glass-border);border-radius:18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg-card) 84%,transparent),color-mix(in srgb,var(--bg-input) 74%,transparent));
+  backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 18px 48px rgba(24,24,30,.18);
+  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-5px) scale(.985);transform-origin:top left;
+  transition:opacity .2s ease,transform .28s cubic-bezier(.16,1,.3,1),visibility 0s linear .28s;
+}
+.connection-popover.is-open{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition-delay:0s}
+.connection-popover-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}
+.connection-popover-title{font-size:12px;font-weight:700;color:var(--t1)}
+.connection-popover-close{width:26px;height:26px;padding:0;border:0;background:transparent;color:var(--t3);cursor:pointer;border-radius:50%}
+.connection-popover-close:hover{background:var(--hover);color:var(--t1)}
+.connection-popover-grid{display:grid;grid-template-columns:92px minmax(0,1fr)}
+.connection-popover-label,.connection-popover-value{padding:7px 0;border-bottom:1px solid var(--border);font-size:11px;line-height:1.3}
+.connection-popover-label{color:var(--t3)}
+.connection-popover-value{min-width:0;color:var(--t1);font-family:'IBM Plex Mono',monospace;overflow-wrap:anywhere}
+.connection-popover-value.is-warning{color:var(--amber)}
+.connection-popover-value.is-error{color:var(--danger)}
+.connection-popover-action{width:100%;min-height:32px;margin-top:9px;padding:5px 11px;color:var(--t1);font:600 11px 'Mulish',sans-serif}
 .h-div{width:1px;height:16px;background:var(--border);flex:0 0 auto;}
 
 
@@ -973,7 +1003,9 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
+  justify-content:flex-start;
+  padding-top:clamp(42px,7vh,80px);
+  box-sizing:border-box;
   overflow:hidden;
 }
 #welcome-screen.hidden{display:none !important;}
@@ -1009,40 +1041,17 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 }
 .welcome-wordmark-text{
   font:700 24px/1 'Mulish',sans-serif;letter-spacing:-.035em;white-space:nowrap;
-  color:transparent;background:linear-gradient(105deg,var(--t1) 0 38%,rgba(var(--highlight-rgb),.92) 48%,rgba(255,255,255,.94) 51%,var(--t1) 61% 100%);
-  background-size:250% 100%;background-position:112% 0;
-  -webkit-background-clip:text;background-clip:text;
+  color:var(--t1);
 }
-.welcome-wordmark.is-arming .welcome-wordmark-text{opacity:0;filter:blur(7px);transform:translate3d(0,2px,0) scale(.985)}
-.welcome-wordmark-scan{
-  position:absolute;top:15%;left:0;width:1px;height:70%;border-radius:var(--r-pill);
-  background:rgba(var(--highlight-rgb),.9);box-shadow:0 0 5px rgba(var(--highlight-rgb),.7),0 0 13px rgba(var(--highlight-rgb),.32);
-  opacity:0;transform:translate3d(-10px,0,0);
-}
-.welcome-wordmark.is-playing .welcome-wordmark-text{
-  animation:welcome-wordmark-focus 1.05s cubic-bezier(.16,1,.3,1) .06s both,
-    welcome-wordmark-glass 1.08s cubic-bezier(.22,.7,.2,1) .08s both;
-}
-.welcome-wordmark.is-playing .welcome-wordmark-scan{animation:welcome-wordmark-scan .82s cubic-bezier(.22,.7,.2,1) .08s both}
 #welcome-text-block.welcome-onboarding .welcome-wordmark{position:absolute;top:0;left:50%;transform:translateX(-50%);visibility:hidden}
 #welcome-text-block.welcome-onboarding.welcome-wordmark-beat .welcome-wordmark{visibility:visible}
 #welcome-text-block.welcome-onboarding.welcome-wordmark-beat .onb-beat-title{visibility:hidden}
-@keyframes welcome-wordmark-focus{
-  0%{opacity:0;filter:blur(7px);transform:translate3d(0,2px,0) scale(.985);letter-spacing:.015em}
-  42%{opacity:.72;filter:blur(2.2px)}
-  100%{opacity:1;filter:blur(0);transform:translate3d(0,0,0) scale(1);letter-spacing:-.035em}
-}
-@keyframes welcome-wordmark-glass{
-  0%{background-position:112% 0}
-  100%{background-position:-22% 0}
-}
-@keyframes welcome-wordmark-scan{
-  0%{opacity:0;transform:translate3d(-10px,0,0)}
-  16%{opacity:.94}
-  78%{opacity:.58}
-  100%{opacity:0;transform:translate3d(200px,0,0)}
-}
 .welcome-action-slot{display:flex;align-items:center;justify-content:center;width:100%;height:38px;margin:4px 0 2px}
+@media(min-width:601px){
+  .welcome-inner{gap:10px}
+  .welcome-copy-stage{height:38px;flex-basis:38px}
+  .welcome-action-slot{margin:2px 0 0}
+}
 .welcome-start{
   display:inline-block;margin:0;
   background:var(--red);color:#fff;border:none;border-radius:var(--r-pill);
@@ -1072,6 +1081,7 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 .onb-dot:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 .onb-beats-fade{opacity:0;}
 @media(max-width:600px){
+  #welcome-screen{justify-content:center;padding-top:0}
   /* Reserve three lines for every intro description so longer slide copy cannot
      push the dots down on narrow screens. */
   .onb-beat-sub{height:59px;min-height:59px;overflow:hidden;}
@@ -1130,8 +1140,6 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   100%{opacity:0;background-position:-45% 0}
 }
 @media(prefers-reduced-motion:reduce){
-  .welcome-wordmark.is-playing .welcome-wordmark-text{animation:none;background-position:-22% 0}
-  .welcome-wordmark.is-playing .welcome-wordmark-scan{animation:none;display:none}
   .device-wrap.connect-success::after,.device-wrap.connect-success .welcome-flash{animation:none}
   .device-wrap.connect-success .device-img{animation:welcome-device-glow .35s ease-out both}
 }
@@ -1250,6 +1258,35 @@ html.dark .lib-badge-sm{background:#555}
 .bank-section.is-open .section-chevron{transform:rotate(180deg)}
 .bank-section.is-collapsed .section-head{padding-bottom:0;margin-bottom:0;border-bottom-color:transparent}
 .section-collapse-body[hidden]{display:none}
+@media(min-width:601px){
+  .bank-card{overflow:clip}
+  .bank-section.is-open{
+    position:relative;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--bg-input) 46%,transparent),transparent 62%);
+    box-shadow:none;
+  }
+  .bank-section.is-open::before{
+    content:'';position:absolute;z-index:0;top:0;bottom:0;left:0;width:18px;pointer-events:none;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--t3) 16%,transparent),color-mix(in srgb,var(--t3) 5%,transparent) 36%,transparent 100%);
+    opacity:.72;
+  }
+  .bank-section.is-open>*{position:relative;z-index:1}
+  .bank-section.is-open>.section-head{z-index:18}
+  html.dark .bank-section.is-open::before{
+    background:linear-gradient(90deg,rgba(255,255,255,.10),rgba(255,255,255,.025) 38%,transparent 100%);
+    opacity:.58;
+  }
+  .bank-section.is-open>.section-head{
+    position:sticky;top:var(--section-sticky-top,42px);z-index:18;
+    background:transparent;box-shadow:none;
+    transition:background .18s ease,box-shadow .18s ease;
+  }
+  .bank-section.is-open>.section-head.is-stuck{
+    background:linear-gradient(180deg,color-mix(in srgb,var(--bg-card) 88%,transparent),color-mix(in srgb,var(--bg-input) 82%,transparent));
+    backdrop-filter:blur(18px) saturate(145%);-webkit-backdrop-filter:blur(18px) saturate(145%);
+    box-shadow:0 8px 16px -14px rgba(20,20,26,.45);
+  }
+}
 .cc-meaning{font-size:10px;color:var(--t2);min-height:12px;white-space:nowrap}
 .bank-section-divider{
   height:1px;
@@ -1530,9 +1567,21 @@ html.dark .val-bar{background:var(--t2);}
 <div class="top-sticky">
 <header>
   <div class="h-left">
-    <div class="h-status" id="h-status" role="status" aria-live="polite">
-      <div class="h-status-dot" id="h-status-dot" aria-hidden="true"></div>
-      <span class="h-status-text" id="h-status-text"></span>
+    <div class="h-status-wrap">
+      <button class="h-status" id="h-status" type="button" aria-live="polite" aria-expanded="false" aria-controls="connection-popover" onclick="toggleConnectionPopover()">
+        <span class="h-status-dot" id="h-status-dot" aria-hidden="true"></span>
+        <span class="h-status-text" id="h-status-text"></span>
+      </button>
+      <div class="connection-popover" id="connection-popover" role="dialog" aria-label="Device status" aria-hidden="true">
+        <div class="connection-popover-head"><span class="connection-popover-title">Device status</span><button type="button" class="connection-popover-close" aria-label="Close device status" onclick="toggleConnectionPopover(false)">×</button></div>
+        <div class="connection-popover-grid">
+          <span class="connection-popover-label">Hardware</span><span class="connection-popover-value" id="connection-device">—</span>
+          <span class="connection-popover-label">Live MIDI</span><span class="connection-popover-value" id="connection-midi">—</span>
+          <span class="connection-popover-label">Configuration</span><span class="connection-popover-value" id="connection-sync">—</span>
+          <span class="connection-popover-label">Last activity</span><span class="connection-popover-value" id="connection-last-event">—</span>
+        </div>
+        <button type="button" class="connection-popover-action ui-control ui-pill ui-glass" onclick="openConnectionDiagnostics()">Open diagnostics</button>
+      </div>
     </div>
     <span class="h-title">Feel Fader</span>
     <span class="h-div" aria-hidden="true"></span>
@@ -1784,9 +1833,8 @@ html.dark .val-bar{background:var(--t2);}
     <!-- Text block — fades out on connect -->
     <div id="welcome-text-block">
       <div class="welcome-copy-stage">
-        <div class="welcome-wordmark is-arming" id="welcome-wordmark" aria-label="Feel Fader">
+        <div class="welcome-wordmark" id="welcome-wordmark" aria-label="Feel Fader">
           <span class="welcome-wordmark-text" aria-hidden="true">Feel Fader</span>
-          <span class="welcome-wordmark-scan" aria-hidden="true"></span>
         </div>
         <div id="onb-beats" style="display:none">
           <div class="onb-beat-title" data-i18n="onb.beat1.title">Meet Feel Fader</div>
@@ -2132,7 +2180,6 @@ let _midiInputNames = [];
 let _lastMidiDiagnostic = null;
 let _ffConnected = false;   // true once Feel Fader input is live
 let _midiState = 'pending';   // 'pending'|'granted'|'denied'|'unsupported' — canonical MIDI health
-let _connTextTimer = null;    // auto-hide timer for the "connected" header text
 const cloneConfig = value => JSON.parse(JSON.stringify(value));
 const configSignature = value => JSON.stringify(value);
 let _syncedConfigSnapshot = cloneConfig(cfg);
@@ -2322,6 +2369,7 @@ function reflectDirty() {
   }
   updateChangeSummary();
   syncSendChangeNote();
+  renderConnectionPopover();
   if (typeof updateMobileSendDock === 'function') updateMobileSendDock();
   if (!dirty) closeChangePopover();
 }
@@ -2386,6 +2434,26 @@ function _updateTabsFade(el) {   // audit S9 — naznačit, že řada tabů pře
 
 
 let _lastRenderedBank = -1;
+let _stickySectionRaf = 0;
+function updateStickySectionHeads() {
+  if (_stickySectionRaf) return;
+  _stickySectionRaf = requestAnimationFrame(() => {
+    _stickySectionRaf = 0;
+    const desktop = window.matchMedia('(min-width:601px)').matches;
+    const appHeader = document.querySelector('.top-sticky');
+    const stickyTop = appHeader ? appHeader.getBoundingClientRect().bottom : 42;
+    document.documentElement.style.setProperty('--section-sticky-top',`${Math.ceil(stickyTop)}px`);
+    document.querySelectorAll('.bank-section.is-open').forEach(section => {
+      const heading = Array.from(section.children).find(child => child.classList.contains('section-head'));
+      if (!heading) return;
+      const sectionRect = section.getBoundingClientRect();
+      const headingRect = heading.getBoundingClientRect();
+      const stuck = desktop && sectionRect.top < stickyTop && headingRect.top <= stickyTop + 3
+        && sectionRect.bottom > stickyTop + headingRect.height;
+      heading.classList.toggle('is-stuck',stuck);
+    });
+  });
+}
 function renderPanels() {
   const b  = cfg.banks[activeBank];
   const bi = activeBank;
@@ -2457,6 +2525,7 @@ function renderPanels() {
   if ((b.roller_mode || 'cc') === 'keyswitch' && isBankSectionOpen(bi,'roller')) {
     requestAnimationFrame(() => ksRevealRange(bi, false));
   }
+  updateStickySectionHeads();
 }
 
 function faderPanel(key, ctrl, bi) {
@@ -3796,6 +3865,58 @@ function renderMidiDiagnostics() {
   setTxt('diag-left',d.left); setTxt('diag-right',d.right); setTxt('diag-roller',d.roller);
   setTxt('diag-last-event',d.lastEvent); setTxt('diag-device',d.device); setTxt('diag-hash',d.hash);
 }
+function connectionSyncLabel() {
+  if (dirty) {
+    const count = Math.max(configChangeItems().length, 1);
+    return `${count} unsent change${count === 1 ? '' : 's'}`;
+  }
+  if (!loaded) return 'Not loaded from device';
+  return _sendConfirmed ? 'Sent · in sync' : 'In sync';
+}
+function renderConnectionPopover() {
+  const device = document.getElementById('connection-device');
+  if (!device) return;
+  const midi = document.getElementById('connection-midi');
+  const sync = document.getElementById('connection-sync');
+  const last = document.getElementById('connection-last-event');
+  const linked = _ffConnected || !!_serialPort;
+  const state = connState();
+  device.textContent = linked ? `Feel Fader · ${DEVICE_INFO.firmware || 'firmware unknown'}` : 'Not connected';
+  midi.textContent = state === 'CONNECTED_LIVE' ? (_midiInputNames.join(', ') || 'Live feedback active')
+    : state === 'CONNECTED_BLIND' ? 'Unavailable · configuration still works'
+    : state === 'MIDI_BLOCKED' ? (_midiState === 'unsupported' ? 'Not supported by browser' : 'Permission denied')
+    : 'Waiting for device';
+  sync.textContent = connectionSyncLabel();
+  last.textContent = _lastMidiDiagnostic ? `${_lastMidiDiagnostic.text} · ${_lastMidiDiagnostic.time}` : 'No MIDI activity yet';
+  [device,midi,sync,last].forEach(el => el.classList.remove('is-warning','is-error'));
+  if (!linked) device.classList.add('is-warning');
+  if (state === 'CONNECTED_BLIND') midi.classList.add('is-warning');
+  if (state === 'MIDI_BLOCKED') midi.classList.add('is-error');
+  if (dirty) sync.classList.add('is-warning');
+}
+function toggleConnectionPopover(force) {
+  const popover = document.getElementById('connection-popover');
+  const trigger = document.getElementById('h-status');
+  if (!popover || !trigger) return;
+  const open = typeof force === 'boolean' ? force : !popover.classList.contains('is-open');
+  if (open) renderConnectionPopover();
+  popover.classList.toggle('is-open',open);
+  popover.setAttribute('aria-hidden',String(!open));
+  trigger.setAttribute('aria-expanded',String(open));
+}
+function openConnectionDiagnostics() {
+  toggleConnectionPopover(false);
+  const body = document.getElementById('device-settings-body');
+  if (body && body.style.display === 'none') toggleDeviceSettings();
+  const details = document.getElementById('midi-diagnostics');
+  if (!details) return;
+  details.open = true;
+  renderMidiDiagnostics();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    details.scrollIntoView({behavior:'smooth',block:'center'});
+    details.querySelector('summary')?.focus({preventScroll:true});
+  }));
+}
 function recordMidiDiagnostic(data) {
   const bytes = Array.from(data || []), status = bytes[0] || 0, type = status & 0xF0, ch = (status & 0x0F)+1;
   let text;
@@ -3807,6 +3928,7 @@ function recordMidiDiagnostic(data) {
   else text = `MIDI 0x${status.toString(16).toUpperCase().padStart(2,'0')} · ${bytes.slice(1).join(' ')}`;
   _lastMidiDiagnostic = {text,time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})};
   renderMidiDiagnostics();
+  renderConnectionPopover();
 }
 function copyMidiDiagnostics() {
   const d = midiDiagnosticsData();
@@ -4452,18 +4574,14 @@ function renderConnState(){
   if (s === 'CONNECTED_LIVE'){
     dot.className = 'h-status-dot on';
     txt.classList.remove('hidden'); txt.textContent = t('status.connected');
-    clearTimeout(_connTextTimer); _connTextTimer = setTimeout(() => txt.classList.add('hidden'), 3000);
   } else if (s === 'CONNECTED_BLIND'){
-    clearTimeout(_connTextTimer);
     dot.className = 'h-status-dot warn';
     txt.classList.remove('hidden'); txt.textContent = t('status.no_live_view');
   } else if (s === 'MIDI_BLOCKED'){
-    clearTimeout(_connTextTimer);
     dot.className = 'h-status-dot err';
     txt.classList.remove('hidden');
     txt.textContent = _midiState === 'unsupported' ? t('midi.unavailable') : t('midi.denied');
   } else { // DISCONNECTED
-    clearTimeout(_connTextTimer);
     dot.className = 'h-status-dot';
     txt.classList.remove('hidden'); txt.textContent = t('status.no_device');
   }
@@ -4480,6 +4598,7 @@ function renderConnState(){
   }
   renderLiveStrip();
   renderMidiDiagnostics();
+  renderConnectionPopover();
 }
 function setTxt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function setBar(id,v){} // value bar removed — value shown in section header
@@ -4684,19 +4803,6 @@ function applyDeviceDark(serial) {
 // WELCOME SCREEN
 // ════════════════════════════════════════════════════════════════
 function sharedController() { return document.getElementById('device-wrap'); }
-let _welcomeWordmarkPlayToken = 0;
-function playWelcomeWordmark() {
-  const wordmark = document.getElementById('welcome-wordmark');
-  if (!wordmark) return;
-  const token = ++_welcomeWordmarkPlayToken;
-  wordmark.classList.remove('is-playing');
-  wordmark.classList.add('is-arming');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (token !== _welcomeWordmarkPlayToken || !wordmark.isConnected) return;
-    wordmark.classList.remove('is-arming');
-    wordmark.classList.add('is-playing');
-  }));
-}
 function mountPrimaryActionInWelcome() {
   const button = document.getElementById('send-btn');
   const slot = document.getElementById('welcome-action-slot');
@@ -4767,7 +4873,6 @@ function showWelcome() {
     textBlock.style.removeProperty('animation');
     textBlock.classList.remove('welcome-onboarding','welcome-wordmark-beat');
   }
-  playWelcomeWordmark();
   mountControllerInWelcome();
   mountPrimaryActionInWelcome();
   // Reset to the normal welcome state first — beats may have hidden these in an
@@ -5409,8 +5514,10 @@ document.addEventListener('keydown', event => {
 });
 window.addEventListener('scroll', updateMobileSendDock, {passive:true});
 window.addEventListener('scroll', updateContextualLiveStrip, {passive:true});
+window.addEventListener('scroll', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', updateMobileSendDock, {passive:true});
 window.addEventListener('resize', updateContextualLiveStrip, {passive:true});
+window.addEventListener('resize', updateStickySectionHeads, {passive:true});
 
 function customPresetFromBank(bank) {
   const preset = { custom:true, saved_at:new Date().toISOString() };
@@ -5655,6 +5762,8 @@ window.selectIcon        = selectIcon;
 window.clearIcon         = clearIcon;
 window.toggleJson        = toggleJson;
 window.toggleDeviceSettings = toggleDeviceSettings;
+window.toggleConnectionPopover = toggleConnectionPopover;
+window.openConnectionDiagnostics = openConnectionDiagnostics;
 window.requestEnableHid = requestEnableHid;
 window.renderMidiDiagnostics = renderMidiDiagnostics;
 window.copyMidiDiagnostics = copyMidiDiagnostics;
@@ -5668,6 +5777,13 @@ window.doStart           = doStart;
 window.doReset           = doReset;
 window.copyJson          = copyJson;
 window.renderBankIndicator = typeof renderBankIndicator === 'function' ? renderBankIndicator : ()=>{};
+
+document.addEventListener('click', event => {
+  if (!event.target.closest('.h-status-wrap')) toggleConnectionPopover(false);
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') toggleConnectionPopover(false);
+});
 
 window.addEventListener('beforeunload', e => {   // audit S5 — druhá síť
   if (dirty) { e.preventDefault(); e.returnValue = ''; }
