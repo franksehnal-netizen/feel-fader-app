@@ -1990,7 +1990,7 @@ function sectionHeaderHtml(bi, key, cap, title, summary) {
     return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"
       onclick="if(!event.target.closest('input,button'))toggleBankSection(${bi},'${key}')">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
-        <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="32"
+        <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
           oninput="onFaderName(${bi},'${key}',this.value)"
           onblur="if(!this.value.trim()){this.value='${defaultFaderName(key)}';onFaderName(${bi},'${key}',this.value)}"
           onkeydown="if(event.key==='Enter')this.blur()" aria-label="${side} fader display name" />
@@ -2434,7 +2434,7 @@ function renderPanels() {
             : `<span class="bank-icon-empty"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>`}
         </button>
         <input class="bank-name-input" value="${escHtml(b.name || 'Bank '+(bi+1))}"
-          onchange="onBankRename(${bi}, this.value)"
+          onchange="onBankRename(${bi}, this.value)" maxlength="24"
           placeholder="Bank name..." aria-label="Bank ${bi+1} name" />
         <div class="bank-actions" aria-label="Bank actions">
           <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="left" data-bank-index="${bi}" onclick="moveBank(${bi},-1,'left')" title="Move bank left" aria-label="Move ${escHtml(b.name || 'Bank '+(bi+1))} left" ${bi===0?'disabled':''}>
@@ -2958,7 +2958,12 @@ function onCtrl(bi, key, field, val) {
 }
 function onFaderName(bi, key, value) {
   if (key !== 'fader1' && key !== 'fader2') return;
-  cfg.banks[bi][key].label = String(value ?? '').slice(0,32);
+  // 12, not 32: firmware's META_LABEL_MAX truncates on every write regardless
+  // of what the app lets you type (ff_config.py _meta_sanitize). The old
+  // maxlength=32 here let you type a name that silently lost its tail on
+  // the very next round-trip to the device — the same class of bug as C9's
+  // bank-name overflow (functional-audit finding 2026-07-20).
+  cfg.banks[bi][key].label = String(value ?? '').slice(0,12);
   dirty = true;
   reflectDirty();
   cfgAutosave();
@@ -3079,7 +3084,12 @@ window.addEventListener('blur', () => cancelKeyCapture());
 function selectBank(i){ activeBank=i; renderPanels(); renderUacc(); runValidation(); setActiveTab(i); }
 
 function onBankRename(bi, val) {
-  cfg.banks[bi].name = val.trim() || ('Bank ' + (bi+1));
+  // 24 chars: firmware's META_NAME_MAX truncates on every write regardless
+  // of what the app lets you type (ff_config.py _meta_sanitize) — the input
+  // had no maxlength at all before, so a longer name would silently lose
+  // its tail on the next round-trip to the device (functional-audit
+  // finding C9, 2026-07-20).
+  cfg.banks[bi].name = val.trim().slice(0,24) || ('Bank ' + (bi+1));
   dirty = true;
   renderBankTabs();
   runValidation();
