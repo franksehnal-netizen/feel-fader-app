@@ -28,6 +28,7 @@ const PROBES = [
   'touch-target-stepper-specificity-probe.mjs',
   'vbar-aria-live-probe.mjs',
   'safe-batch-2026-07-20-probe.mjs',
+  'help-deep-links-probe.mjs',
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
