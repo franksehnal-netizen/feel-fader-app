@@ -128,5 +128,57 @@ const afterSkipHidden = await p4.evaluate(() => document.getElementById('stage-c
 P('stage-collapse applies once welcome has actually closed', afterSkipHidden, String(afterSkipHidden));
 await p4.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
 
+// 6. Hit-test #send-btn's own on-screen paint position while welcome is up.
+//    This is the check that was missing when the button was silently trapped
+//    inside its ancestors' stacking contexts (.stage z-index:1, .send-callout
+//    z-index:10) and #welcome-screen (z-index:200) painted over it — every
+//    prior check here only asserted getComputedStyle/classList/custom-property
+//    bookkeeping, all of which stayed correct even while the button was
+//    invisible and unclickable. A real hit-test at the button's own center
+//    point is the only thing that would have caught it: correct bookkeeping,
+//    wrong on-screen paint.
+const p5 = await b.newPage();
+p5.on('pageerror', e => errs.push(String(e)));
+await p5.setViewport({ width: 1280, height: 900 });
+await p5.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+await new Promise(r => setTimeout(r, 200));
+const sendBtnHit = await p5.evaluate(() => {
+  const btn = document.getElementById('send-btn');
+  const r = btn.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const el = document.elementFromPoint(cx, cy);
+  return {
+    hitIsBtnOrDescendant: el === btn || btn.contains(el),
+    hitId: el?.id || null,
+    hitClass: el?.className || null,
+    hitClosestWelcome: !!el?.closest('#welcome-screen') && el !== btn && !btn.contains(el),
+  };
+});
+P('#send-btn is actually hit-testable at its own on-screen center while welcome is up (desktop)', sendBtnHit.hitIsBtnOrDescendant, JSON.stringify(sendBtnHit));
+await p5.close();
+
+// 7. Same hit-test at a mobile viewport — the floating position math
+//    (--welcome-float-top/left) and the ancestor stacking-context escape are
+//    both viewport-size-dependent, so desktop passing does not imply mobile does.
+const p6 = await b.newPage();
+p6.on('pageerror', e => errs.push(String(e)));
+await p6.setViewport({ width: 390, height: 844 });
+await p6.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+await new Promise(r => setTimeout(r, 200));
+const sendBtnHitMobile = await p6.evaluate(() => {
+  const btn = document.getElementById('send-btn');
+  const r = btn.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const el = document.elementFromPoint(cx, cy);
+  return {
+    hitIsBtnOrDescendant: el === btn || btn.contains(el),
+    hitId: el?.id || null,
+    hitClass: el?.className || null,
+    hitClosestWelcome: !!el?.closest('#welcome-screen') && el !== btn && !btn.contains(el),
+  };
+});
+P('#send-btn is actually hit-testable at its own on-screen center while welcome is up (mobile 390x844)', sendBtnHitMobile.hitIsBtnOrDescendant, JSON.stringify(sendBtnHitMobile));
+await p6.close();
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
