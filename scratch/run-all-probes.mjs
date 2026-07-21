@@ -23,6 +23,7 @@ const PROBES = [
   'send-btn-idle-state-probe.mjs',
   'skip-welcome-demo-badge-probe.mjs',
   'skip-welcome-preserves-saved-config-probe.mjs',
+  'welcome-blur-overlay-probe.mjs',
   'serial-disconnect-clears-stale-port-probe.mjs',
   'bank-fader-name-limits-match-firmware-probe.mjs',
   'touch-target-stepper-specificity-probe.mjs',
