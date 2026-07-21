@@ -1,14 +1,30 @@
 // Regression probe: hide-controller toggle (design 2026-07-20, revised
-// 2026-07-21 after Frank's live-demo feedback). A header toggle switch
-// (styled like the "Keyboard (HID)" switch, not a button) collapses
-// .stage (device image + faders) via a CSS grid 1fr<->0fr trick,
-// reclaiming vertical space for the bank config panels. The Send button
-// (#send-btn + its change popover) normally lives inside .device-wrap;
-// while the controller is hidden it reparents into a new sticky row
-// directly under the header (#send-sticky-row) instead of squeezing into
-// the header's own control row — kept sticky so it's still reachable
-// while scrolling through a long config. State persists in localStorage
-// across reloads.
+// 2026-07-21 after Frank's live-demo feedback, twice). A header toggle
+// switch (styled like the "Keyboard (HID)" switch, with the same
+// controller/fader icon used for the "active on device" bank-tab marker)
+// collapses .stage (device image + faders) via a CSS grid 1fr<->0fr trick,
+// reclaiming vertical space for the bank config panels. Switch ON = controller
+// VISIBLE (checked = visible, not hidden — inverted from the first cut per
+// Frank's second round of feedback). The Send button (#send-btn + its change
+// popover) normally lives inside .device-wrap; while the controller is hidden
+// it reparents into a new sticky row directly under the header
+// (#send-sticky-row) instead of squeezing into the header's own control row —
+// kept sticky so it's still reachable while scrolling through a long config.
+// State persists in localStorage across reloads.
+//
+// Root-cause bug fixed in the second revision: #send-btn is a single shared
+// element that handoffPrimaryActionToApp() moves from the welcome screen into
+// .device-wrap's .send-callout, but that function looks up the callout
+// SCOPED to .device-wrap (controller.querySelector(...)), not document-wide.
+// The first cut called the .send-anchor reparent at page load
+// (initControllerVisibility(), before the user has even left the welcome
+// screen) — if the saved preference was "hidden", it moved .send-anchor out
+// of .device-wrap before handoff ran, so handoff silently found no callout
+// and no-opped: Send was stranded on the welcome screen, and the sticky row
+// showed up empty. Fixed by splitting the effect in two: the stage-collapse
+// visual applies at load (safe — hidden behind the welcome overlay either
+// way), but the .send-anchor dock is deferred until handoffPrimaryActionToApp()
+// itself confirms the callout is in place inside .device-wrap.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -35,7 +51,7 @@ const before = await p.evaluate(() => {
 P('initially: controller visible with real height', before.wrapHeight > 100, String(before.wrapHeight));
 P('initially: Send button lives inside device-wrap', before.anchorInDeviceWrap, JSON.stringify(before));
 P('initially: sticky send row is hidden', before.rowHidden, JSON.stringify(before));
-P('initially: switch is unchecked', before.switchChecked === false, JSON.stringify(before));
+P('initially: switch is checked (ON = controller visible)', before.switchChecked === true, JSON.stringify(before));
 
 await p.click('#controller-toggle-input');
 await new Promise(r => setTimeout(r, 500));
@@ -49,14 +65,15 @@ const hidden = await p.evaluate(() => {
     anchorHasDockedClass: anchor.classList.contains('docked'),
     rowHidden: document.getElementById('send-sticky-row').hidden,
     sendBtnClickable: !!btn.offsetParent,
+    sendBtnSize: (r=>({w:r.width,h:r.height}))(btn.getBoundingClientRect()),
     switchChecked: document.getElementById('controller-toggle-input').checked,
   };
 });
 P('after hiding: stage collapses to 0 height (real space reclaimed)', hidden.wrapHeight === 0, String(hidden.wrapHeight));
 P('after hiding: Send button reparented into the sticky row', hidden.anchorInStickyRow && hidden.anchorHasDockedClass, JSON.stringify(hidden));
 P('after hiding: sticky row is shown', hidden.rowHidden === false, JSON.stringify(hidden));
-P('after hiding: Send button is still visible/clickable', hidden.sendBtnClickable, String(hidden.sendBtnClickable));
-P('after hiding: switch is checked', hidden.switchChecked === true, JSON.stringify(hidden));
+P('after hiding: Send button is still visible/clickable with real size', hidden.sendBtnClickable && hidden.sendBtnSize.w > 100 && hidden.sendBtnSize.h > 20, JSON.stringify(hidden));
+P('after hiding: switch is unchecked (OFF = controller hidden)', hidden.switchChecked === false, JSON.stringify(hidden));
 
 // Sticky behavior: the row should stay pinned right under the header while scrolling
 const stickyTop = await p.evaluate(async () => {
@@ -114,7 +131,7 @@ const afterReload = await p.evaluate(() => {
   const wrap = document.getElementById('stage-collapse');
   return { collapsed: wrap.classList.contains('is-collapsed'), height: wrap.getBoundingClientRect().height, switchChecked: document.getElementById('controller-toggle-input').checked };
 });
-P('hidden state persists across reload (localStorage)', afterReload.collapsed && afterReload.height === 0 && afterReload.switchChecked, JSON.stringify(afterReload));
+P('hidden state persists across reload (localStorage)', afterReload.collapsed && afterReload.height === 0 && afterReload.switchChecked === false, JSON.stringify(afterReload));
 
 // prefers-reduced-motion
 const p2 = await b.newPage();
@@ -125,6 +142,30 @@ await p2.evaluate(() => skipWelcome());
 const reducedMotion = await p2.evaluate(() => getComputedStyle(document.getElementById('stage-collapse')).transitionDuration);
 P('prefers-reduced-motion: transition is disabled', reducedMotion === '0s', reducedMotion);
 await p2.close();
+
+// The actual bug Frank hit: hidden preference saved from a PREVIOUS session,
+// loaded fresh (still on the welcome screen when initControllerVisibility()
+// runs), then the user skips welcome — Send must not be stranded there.
+const p3 = await b.newPage();
+p3.on('pageerror', e => errs.push(String(e)));
+await p3.setViewport({ width: 1280, height: 900 });
+await p3.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+await p3.evaluate(() => localStorage.setItem('ff-controller-hidden', '1'));
+await p3.reload({ waitUntil: 'networkidle0' });
+await p3.evaluate(() => skipWelcome());
+await new Promise(r => setTimeout(r, 300));
+const staleHiddenScenario = await p3.evaluate(() => {
+  const anchor = document.querySelector('.send-anchor');
+  const btn = document.getElementById('send-btn');
+  return {
+    anchorInStickyRow: anchor.parentElement.id === 'send-sticky-row',
+    sendBtnSize: (r=>({w:r.width,h:r.height}))(btn.getBoundingClientRect()),
+    rowHidden: document.getElementById('send-sticky-row').hidden,
+  };
+});
+P('bug repro: Send survives a fresh load with a previously-saved hidden preference', staleHiddenScenario.anchorInStickyRow && staleHiddenScenario.sendBtnSize.w > 100 && !staleHiddenScenario.rowHidden, JSON.stringify(staleHiddenScenario));
+await p3.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
+await p3.close();
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
