@@ -1,9 +1,12 @@
-// Regression probe: three status-pill polish requests from Frank
-// (2026-07-21):
-// 1. #h-status should be as translucent/frosted as the header (was fully
-//    transparent until hover) — now uses the same --control-glass-*
-//    tokens as the other header controls (dark-toggle etc.) for visual
-//    consistency.
+// Regression probe: status indicator polish requests from Frank
+// (2026-07-21, revised same day after a follow-up look).
+// 1. #h-status was first made a translucent frosted pill (matching the
+//    header) — then Frank asked for it to go the OTHER way: just a plain
+//    dot + text, not styled or behaving like a button at all, and NOT
+//    clickable (its old click-to-open popover duplicated info already in
+//    Device & Settings > MIDI diagnostics, so the popover was removed
+//    entirely). #h-status is now a bare <span>, no background, no
+//    backdrop-filter, no onclick, no #connection-popover in the DOM.
 // 2. The error-state dot (.h-status-dot.err) used var(--danger), a dark
 //    brick red in light mode (#b42318) that looked "too dark" next to
 //    the vivid fader red (#e45745) — switched to var(--red) so it always
@@ -26,12 +29,23 @@ await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0
 await p.evaluate(() => skipWelcome());
 await new Promise(r => setTimeout(r, 200));
 
-const pill = await p.evaluate(() => {
-  const cs = getComputedStyle(document.getElementById('h-status'));
-  return { backdropFilter: cs.backdropFilter || cs.webkitBackdropFilter, hasBackgroundImage: cs.backgroundImage !== 'none' };
+const status = await p.evaluate(() => {
+  const el = document.getElementById('h-status');
+  const cs = getComputedStyle(el);
+  return {
+    tag: el.tagName,
+    cursor: cs.cursor,
+    backdropFilter: cs.backdropFilter || cs.webkitBackdropFilter,
+    hasBackgroundImage: cs.backgroundImage !== 'none',
+    hasOnclick: !!el.onclick,
+    popoverExists: !!document.getElementById('connection-popover'),
+  };
 });
-P('#h-status has a frosted backdrop-filter like the header', /blur/.test(pill.backdropFilter), JSON.stringify(pill));
-P('#h-status has a translucent gradient background by default (not transparent)', pill.hasBackgroundImage, JSON.stringify(pill));
+P('#h-status is a plain span, not a button', status.tag === 'SPAN', JSON.stringify(status));
+P('#h-status has no click handler', status.hasOnclick === false, JSON.stringify(status));
+P('#h-status has no pointer cursor (not clickable-looking)', status.cursor !== 'pointer', JSON.stringify(status));
+P('#h-status has no pill background/backdrop-filter (plain dot+text, not a chip)', !/blur/.test(status.backdropFilter) && !status.hasBackgroundImage, JSON.stringify(status));
+P('the connection popover no longer exists in the DOM', status.popoverExists === false, JSON.stringify(status));
 
 const dotAndRed = await p.evaluate(() => {
   _midiState = 'denied'; _ffConnected = false; _serialPort = null;

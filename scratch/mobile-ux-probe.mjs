@@ -112,6 +112,8 @@ async function runDesktopFlow(browser, url) {
     const send = document.getElementById('send-btn').getBoundingClientRect();
     const panels = document.getElementById('panels-row').getBoundingClientRect();
     const style = getComputedStyle(stage);
+    const sectionHeading = document.querySelector('.bank-section.is-open > .section-head');
+    const sectionHeadingStyle = getComputedStyle(sectionHeading);
     return {
       stageTop: stage.getBoundingClientRect().top,
       stagePosition: style.position,
@@ -120,6 +122,10 @@ async function runDesktopFlow(browser, url) {
       sendTop: send.top,
       sendBottom: send.bottom,
       panelsTop: panels.top,
+      sectionHeadingStuck: sectionHeading.classList.contains('is-stuck'),
+      sectionHeadingShadow: sectionHeadingStyle.boxShadow,
+      sectionHeadingMarginTop: sectionHeadingStyle.marginTop,
+      sectionHeadingMarginInline: [sectionHeadingStyle.marginLeft, sectionHeadingStyle.marginRight],
     };
   });
   await page.screenshot({ path: path.join(outputDir, 'desktop-flow-initial.png') });
@@ -143,6 +149,53 @@ async function runDesktopFlow(browser, url) {
       height: rect.height,
     };
   });
+  // Connection status (2026-07-21): plain non-interactive dot + text, no popover —
+  // Frank removed the click-to-open overview since Device & Settings > MIDI
+  // diagnostics already shows the same info, and a clickable-looking status
+  // pill that opened a redundant popover was more chrome than the app needed.
+  await page.click('#h-status');
+  await settle(page, 80);
+  const connectionStatus = await page.evaluate(() => {
+    const trigger = document.getElementById('h-status');
+    const cs = getComputedStyle(trigger);
+    return {
+      tag: trigger.tagName,
+      cursor: cs.cursor,
+      hasOnclick: !!trigger.onclick,
+      popoverAbsent: !document.getElementById('connection-popover'),
+    };
+  });
+  await page.screenshot({ path: path.join(outputDir, 'desktop-connection-overview.png') });
+  await settle(page, 420);   // preserves the original settle budget before the next scroll/layout step below
+  await page.evaluate(() => {
+    cfg.banks[0].roller_mode = 'keyswitch';
+    cfg.banks[0].ks_notes = Array.from({length: 72}, (_, index) => index + 24);
+    _openBankSections.set(0, 'roller');
+    // Advanced keyswitch settings opened too: with the page's trailing empty
+    // space now gone (2026-07-20 footer-pin fix) and the dead .panel-wide
+    // flex:1 stretch removed (2026-07-21), the page is a few px too short for
+    // this section alone to scroll its heading past the sticky threshold at
+    // this viewport — this extra content restores enough scroll room.
+    _openRollerAdvanced.add(0);
+    renderPanels();
+    const section = document.querySelector('.bank-section-encoder');
+    window.scrollTo(0, section.getBoundingClientRect().top + window.scrollY + 90);
+  });
+  await settle(page, 180);
+  const stickySection = await page.evaluate(() => {
+    const section = document.querySelector('.bank-section-encoder');
+    const heading = section.querySelector(':scope > .section-head');
+    const headerBottom = document.querySelector('.top-sticky').getBoundingClientRect().bottom;
+    const rect = heading.getBoundingClientRect();
+    return {
+      open: section.classList.contains('is-open'),
+      position: getComputedStyle(heading).position,
+      stuck: heading.classList.contains('is-stuck'),
+      topGap: rect.top - headerBottom,
+      sectionBottom: section.getBoundingClientRect().bottom,
+    };
+  });
+  await page.screenshot({ path: path.join(outputDir, 'desktop-connection-and-sticky-section.png') });
   const targetScroll = await page.evaluate(() => {
     localStorage.removeItem('ff-library-setup-cue-seen');
     armLibrarySetupCue();
@@ -188,6 +241,11 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Desktop stage reserves the complete Send to device tail',
     initial.sendBottom <= initial.panelsTop + 1,
     `button ${initial.sendBottom.toFixed(1)} / panels ${initial.panelsTop.toFixed(1)} px`);
+  addCheck(checks, 'Open section heading stays visually integrated until it actually sticks',
+    !initial.sectionHeadingStuck && initial.sectionHeadingShadow === 'none'
+      && Number.parseFloat(initial.sectionHeadingMarginTop) === 0
+      && initial.sectionHeadingMarginInline.every(value => Number.parseFloat(value) === 0),
+    `stuck ${initial.sectionHeadingStuck} / shadow ${initial.sectionHeadingShadow} / top ${initial.sectionHeadingMarginTop} / inline ${initial.sectionHeadingMarginInline.join(', ')}`);
   addCheck(checks, 'First Library setup cue is subtle, automatic and one-time',
     scrolled.cueActive && scrolled.cueSeen && cueEnded,
     `active ${scrolled.cueActive} / stored ${scrolled.cueSeen} / ended ${cueEnded}`);
@@ -205,6 +263,12 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Hardware monitor stays visible with or without the controller in view',
     hudAtController.visible && hudAtController.ariaHidden === 'false' && scrolled.hudVisible,
     `at controller ${hudAtController.visible} / after scroll ${scrolled.hudVisible}`);
+  addCheck(checks, 'Header connection status is a plain non-interactive indicator (no popover)',
+    connectionStatus.tag === 'SPAN' && connectionStatus.cursor !== 'pointer' && !connectionStatus.hasOnclick && connectionStatus.popoverAbsent,
+    `${connectionStatus.tag} / cursor ${connectionStatus.cursor} / onclick ${connectionStatus.hasOnclick} / popover absent ${connectionStatus.popoverAbsent}`);
+  addCheck(checks, 'Long open configuration section keeps its heading below the app header',
+    stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
+    `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
   addCheck(checks, 'Desktop monitor morphs from the hardware square into a compact capsule',
     !hudAtController.compact && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
       && scrolled.hudCompact && Math.abs(scrolled.hudWidth - 202) <= 1 && Math.abs(scrolled.hudHeight - 46) <= 1,
@@ -230,6 +294,53 @@ async function runDesktopFlow(browser, url) {
   return { profile, checks, errors };
 }
 
+async function runDesktopTallHandoff(browser, url) {
+  const page = await browser.newPage();
+  const checks = [];
+  const errors = [];
+  const profile = { name: 'desktop-tall-handoff', viewport: { width: 1600, height: 1400 } };
+  page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) errors.push(`console.error: ${message.text()}`);
+  });
+  await page.setViewport(profile.viewport);
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('ff-onboarded', '1');
+    localStorage.setItem('ff-library-setup-cue-seen', '1');
+  });
+  await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
+  await settle(page, 120);
+  const welcomeTop = await page.evaluate(() => document.getElementById('device-img').getBoundingClientRect().top);
+  await page.evaluate(() => {
+    loadDefaultDemoConfig();
+    connectTransitionWelcome();
+  });
+  await settle(page, 1350);
+  const layout = await page.evaluate(() => {
+    const controller = document.getElementById('device-img').getBoundingClientRect();
+    const panels = document.getElementById('panels-row').getBoundingClientRect();
+    const header = document.querySelector('.top-sticky').getBoundingClientRect();
+    return {
+      controllerTop: controller.top,
+      controllerBottom: controller.bottom,
+      panelsTop: panels.top,
+      headerBottom: header.bottom,
+      welcomeHidden: document.getElementById('welcome-screen').classList.contains('hidden'),
+    };
+  });
+  addCheck(checks, 'Tall desktop welcome places the controller near the app header',
+    welcomeTop >= 40 && welcomeTop <= 100,
+    `${welcomeTop.toFixed(1)} px from viewport top`);
+  addCheck(checks, 'Tall desktop handoff remains pixel-seamless without preserving a large empty hero',
+    layout.welcomeHidden && Math.abs(layout.controllerTop - welcomeTop) <= 1
+      && layout.controllerTop - layout.headerBottom <= 70 && layout.panelsTop - layout.controllerBottom <= 150,
+    `handoff ${Math.abs(layout.controllerTop - welcomeTop).toFixed(1)} px / header gap ${(layout.controllerTop - layout.headerBottom).toFixed(1)} px / panel gap ${(layout.panelsTop - layout.controllerBottom).toFixed(1)} px`);
+  addCheck(checks, 'No tall desktop page or console errors', errors.length === 0, errors.join(' | ') || 'none');
+  await page.screenshot({ path: path.join(outputDir, 'desktop-tall-handoff.png') });
+  await page.close();
+  return { profile, checks, errors };
+}
+
 async function runProfile(browser, url, profile) {
   const page = await browser.newPage();
   const errors = [];
@@ -249,17 +360,8 @@ async function runProfile(browser, url, profile) {
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
   await page.evaluateOnNewDocument(() => {
     localStorage.removeItem('ff-onboarded');
-    window.__coldWordmarkStarts = [];
-    document.addEventListener('animationstart', event => {
-      if (event.animationName.startsWith('welcome-wordmark-')) window.__coldWordmarkStarts.push(event.animationName);
-    });
   });
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
-  const coldWordmark = await page.evaluate(() => ({
-    starts: [...new Set(window.__coldWordmarkStarts || [])],
-    armed: document.getElementById('welcome-wordmark')?.classList.contains('is-arming') || false,
-    playing: document.getElementById('welcome-wordmark')?.classList.contains('is-playing') || false,
-  }));
   await page.evaluate(async () => {
     if (document.fonts?.ready) await document.fonts.ready;
     localStorage.removeItem('ff-onboarded');
@@ -288,10 +390,10 @@ async function runProfile(browser, url, profile) {
       wordmarkTop: wordmarkRect.top,
       wordmarkBottom: wordmarkRect.bottom,
       wordmarkLabel: wordmark.getAttribute('aria-label'),
-      wordmarkAnimating: wordmark.getAnimations({ subtree: true }).length >= 2,
+      wordmarkAnimations: wordmark.getAnimations({ subtree: true }).length,
     };
   });
-  await settle(page, 950);
+  await settle(page, 300);
   const welcomeAfter = await page.evaluate(() => ({
     deviceTop: document.getElementById('device-img').getBoundingClientRect().top,
     wordmarkOpacity: Number.parseFloat(getComputedStyle(document.querySelector('.welcome-wordmark-text')).opacity),
@@ -323,18 +425,12 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Welcome controller stays still',
     Math.abs(welcomeAfter.deviceTop - welcomeBefore.deviceTop) <= 0.25,
     `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeAfter.deviceTop.toFixed(2)} px`);
-  addCheck(checks, 'Cold-load Feel Fader animation starts after welcome is mounted',
-    coldWordmark.starts.includes('welcome-wordmark-focus')
-      && coldWordmark.starts.includes('welcome-wordmark-glass')
-      && coldWordmark.starts.includes('welcome-wordmark-scan')
-      && !coldWordmark.armed && coldWordmark.playing,
-    `${coldWordmark.starts.join(', ') || 'no animation'} / armed ${coldWordmark.armed} / playing ${coldWordmark.playing}`);
-  addCheck(checks, 'Feel Fader wordmark animates once inside its reserved slot',
-    welcomeBefore.wordmarkAnimating && welcomeBefore.wordmarkLabel === 'Feel Fader'
+  addCheck(checks, 'Feel Fader wordmark stays static inside its reserved slot',
+    welcomeBefore.wordmarkAnimations === 0 && welcomeBefore.wordmarkLabel === 'Feel Fader'
       && welcomeBefore.wordmarkTop >= welcomeBefore.stageTop - 1
       && welcomeBefore.wordmarkBottom <= welcomeBefore.stageBottom + 1
-      && welcomeAfter.wordmarkOpacity >= .99 && welcomeAfter.wordmarkFilter === 'blur(0px)',
-    `${welcomeBefore.wordmarkLabel || 'missing'} / ${welcomeBefore.wordmarkAnimating ? 'animated' : 'static'} / ${welcomeAfter.wordmarkFilter}`);
+      && welcomeAfter.wordmarkOpacity >= .99 && welcomeAfter.wordmarkFilter === 'none',
+    `${welcomeBefore.wordmarkLabel || 'missing'} / ${welcomeBefore.wordmarkAnimations} animations / ${welcomeAfter.wordmarkFilter}`);
 
   await page.evaluate(() => {
     document.getElementById('welcome-text-block').classList.remove('welcome-onboarding');
@@ -364,7 +460,7 @@ async function runProfile(browser, url, profile) {
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
       && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Feel Fader', 'Connect & load', 'Continue without device']),
     compactWelcome.visibleText.join(' / '));
-  addCheck(checks, 'Animated wordmark keeps the primary action in place',
+  addCheck(checks, 'Static wordmark keeps the primary action in place',
     Math.abs(compactWelcome.actionGap - 70) <= 1,
     `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
@@ -504,13 +600,10 @@ async function runProfile(browser, url, profile) {
   // Was "...ignores stale browser configuration" (asserted skip always resets
   // to DEFAULT_CFG). Reversed 2026-07-20 (S10, functional-audit finding):
   // that behavior silently destroyed a returning user's saved config on
-  // every "Continue without device" click — confirmed as real, irreversible
+  // every "Continue without device" click, confirmed as real, irreversible
   // data loss. skipWelcome() now only resets to demo defaults when there is
-  // no saved config at all (_savedCfg null at module load); a genuinely
-  // fresh browser still gets the predictable demo defaults. Frank confirmed
-  // 2026-07-20 that saved-work preservation wins when the two conflict.
-  // See scratch/skip-welcome-preserves-saved-config-probe.mjs for dedicated
-  // fresh-vs-returning-user coverage.
+  // no saved config at all (_savedCfg null) — see scratch/skip-welcome-preserves-saved-config-probe.mjs
+  // for the dedicated fresh-vs-returning-user regression coverage.
   addCheck(checks, 'Continue without device preserves an existing saved configuration',
     appState.bankNames[0] === 'Bang go b',
     appState.bankNames.join(' / '));
@@ -753,7 +846,7 @@ try {
     pipe: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
-  const results = [await runDesktopFlow(browser, testUrl)];
+  const results = [await runDesktopFlow(browser, testUrl), await runDesktopTallHandoff(browser, testUrl)];
   for (const profile of profiles) results.push(await runProfile(browser, testUrl, profile));
   const report = { generatedAt: new Date().toISOString(), url: testUrl, results };
   fs.writeFileSync(path.join(outputDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
