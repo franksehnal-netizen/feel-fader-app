@@ -164,6 +164,36 @@ const staleHiddenScenario = await p3.evaluate(() => {
   };
 });
 P('bug repro: Send survives a fresh load with a previously-saved hidden preference', staleHiddenScenario.anchorInStickyRow && staleHiddenScenario.sendBtnSize.w > 100 && !staleHiddenScenario.rowHidden, JSON.stringify(staleHiddenScenario));
+
+// New with the 2026-07-21 blur-overlay redesign: a previously-hidden
+// preference must not hijack #send-btn.welcome-floating's position:fixed
+// containing block. .stage-collapse.is-collapsed>.stage gets a `transform`,
+// and any transformed ancestor becomes the containing block for `fixed`
+// descendants — so this state must stay deferred until welcome actually closes.
+const p5 = await b.newPage();
+p5.on('pageerror', e => errs.push(String(e)));
+await p5.setViewport({ width: 1280, height: 900 });
+await p5.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+await p5.evaluate(() => localStorage.setItem('ff-controller-hidden', '1'));
+await p5.reload({ waitUntil: 'networkidle0' });
+await new Promise(r => setTimeout(r, 200));
+const whileWelcome = await p5.evaluate(() => {
+  const wrap = document.getElementById('stage-collapse');
+  const stage = document.querySelector('.stage');
+  const btn = document.getElementById('send-btn');
+  const r = btn.getBoundingClientRect();
+  return {
+    isCollapsedDeferred: !wrap.classList.contains('is-collapsed'),
+    stageHasNoTransform: getComputedStyle(stage).transform === 'none',
+    btnCenterX: r.left + r.width / 2,
+    viewportCenterX: 640,
+  };
+});
+P('stage-collapse stays deferred while welcome is still showing', whileWelcome.isCollapsedDeferred, JSON.stringify(whileWelcome));
+P('#send-btn.welcome-floating centers on the true viewport, not a transformed ancestor', Math.abs(whileWelcome.btnCenterX - whileWelcome.viewportCenterX) <= 2, JSON.stringify(whileWelcome));
+await p5.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
+await p5.close();
+
 await p3.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
 await p3.close();
 

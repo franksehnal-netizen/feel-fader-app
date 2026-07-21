@@ -1,14 +1,10 @@
 // Regression probe: "Demo — no device" badge must sit with a real gap below
 // the sticky header after "Continue without device", not cramped against it
-// (Frank screenshot 2026-07-20, "moc nalepené nahoře"). Root cause:
-// skipWelcome() calls alignAppControllerToWelcome()/alignAppControllerToTarget()
-// to match .stage's position to where the device image sat on the welcome
-// screen (needed for the *animated* connect transition's seamless handoff),
-// but skipWelcome() has no animation to make seamless. The resulting large
-// negative --stage-entry-offset stayed applied, and #onb-demo-badge — a
-// direct .stage child that isn't independently re-corrected the way
-// #device-wrap is — inherited the shift and ended up under/against the
-// header instead of below it.
+// (Frank screenshot 2026-07-20, "moc nalepené nahoře"). Root cause was
+// skipWelcome() leaving a stale --stage-entry-offset applied to .stage, which
+// #onb-demo-badge (a direct .stage child) inherited. The single-mount
+// welcome/app redesign (2026-07-21) removed --stage-entry-offset entirely —
+// .stage's margin-top is a static 0 now, so this probe checks that directly.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -29,12 +25,12 @@ const state = await p.evaluate(() => {
   const badge = document.getElementById('onb-demo-badge').getBoundingClientRect();
   const header = document.querySelector('header').getBoundingClientRect();
   return {
-    stageOffsetVar: stage.style.getPropertyValue('--stage-entry-offset'),
+    stageMarginTop: parseFloat(getComputedStyle(stage).marginTop),
     gapFromHeader: badge.top - header.bottom,
     badgeVisible: getComputedStyle(document.getElementById('onb-demo-badge')).display === 'block',
   };
 });
-P('--stage-entry-offset reset to 0 after the instant skip swap', state.stageOffsetVar === '0px', state.stageOffsetVar);
+P('.stage has no top-margin offset (static CSS default, nothing to reset)', state.stageMarginTop === 0, `${state.stageMarginTop}px`);
 P('demo badge shown', state.badgeVisible, state.badgeVisible);
 P('demo badge sits with a real gap below the header (>=20px, <150px)', state.gapFromHeader >= 20 && state.gapFromHeader < 150, `${state.gapFromHeader.toFixed(1)}px`);
 

@@ -1,14 +1,12 @@
-// Regression probe: after "Continue without device" (skipWelcome()), the
-// stage padding around the device/Send-button/first-card must stay at the
-// small CSS default, not the value handoffPrimaryActionToApp() measures
-// for the animated hardware-connect transition. Before this fix,
-// skipWelcome() called handoffPrimaryActionToApp() (needed to fix the
-// missing-button bug — see skip-welcome-send-btn-probe.mjs) without
-// resetting --send-entry-gap, and the button/image weren't in a coherent
-// "before" layout at measurement time: it measured 162px instead of the
-// ~32px default, doubled by the CSS that consumes it into a ~350px empty
-// gap between the device and the button, and again below the button.
-// Reported by Frank via screenshot ("je tu strašně moc místa").
+// Regression probe: after "Continue without device" (skipWelcome()), .stage's
+// padding stays at its static CSS default. Historically this drifted because
+// handoffPrimaryActionToApp() measured a stale --send-entry-gap value at a bad
+// moment in the skip path (Frank screenshot 2026-07-20, "je tu strašně moc
+// místa"). The single-mount welcome/app redesign (2026-07-21, see
+// docs/superpowers/specs/2026-07-21-welcome-blur-overlay-design.md) removed
+// --send-entry-gap and --stage-entry-offset entirely — .stage's padding is a
+// fixed value now, so this probe checks the fixed value directly instead of
+// checking that a since-deleted CSS variable got reset.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -23,18 +21,16 @@ await new Promise(r => setTimeout(r, 400));
 
 const state = await p.evaluate(() => {
   const stage = document.querySelector('.stage');
-  const controller = document.getElementById('device-wrap');
   const image = document.getElementById('device-img');
   const btn = document.getElementById('send-btn');
   return {
-    controllerGapVar: controller?.style.getPropertyValue('--send-entry-gap'),
-    stageGapVar: stage?.style.getPropertyValue('--send-entry-gap'),
     stagePaddingBottom: stage ? parseFloat(getComputedStyle(stage).paddingBottom) : null,
+    stageMarginTop: stage ? parseFloat(getComputedStyle(stage).marginTop) : null,
     imageToButtonGap: btn && image ? btn.getBoundingClientRect().top - image.getBoundingClientRect().bottom : null,
   };
 });
-P('--send-entry-gap is not left set to a stale measured value', !state.controllerGapVar && !state.stageGapVar, JSON.stringify(state));
-P('.stage bottom padding stays at the small CSS default (<=150px)', state.stagePaddingBottom <= 150, `${state.stagePaddingBottom}px`);
+P('.stage bottom padding stays at the fixed CSS default (<=150px)', state.stagePaddingBottom <= 150, `${state.stagePaddingBottom}px`);
+P('.stage has no leftover top margin', state.stageMarginTop === 0, `${state.stageMarginTop}px`);
 P('device image and Send button stay visually close (<=100px gap)', state.imageToButtonGap <= 100, `${state.imageToButtonGap?.toFixed(1)}px`);
 
 P('no page errors', errs.length===0, errs.join(' | '));

@@ -99,8 +99,7 @@ async function runDesktopFlow(browser, url) {
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
   await page.evaluate(() => {
     loadDefaultDemoConfig();
-    handoffPrimaryActionToApp();
-    mountControllerInApp();
+    finalizeWelcomeExit();
     document.getElementById('welcome-screen').classList.add('hidden');
     render();
     window.scrollTo(0, 0);
@@ -659,7 +658,6 @@ async function runProfile(browser, url, profile) {
     const controller = document.getElementById('device-wrap');
     const rect = document.getElementById('device-img').getBoundingClientRect();
     const primaryAction = document.getElementById('send-btn');
-    const ctaRect = primaryAction.getBoundingClientRect();
     window.__sharedControllerRef = controller;
     window.__sharedActionRef = primaryAction;
     connectTransitionWelcome();
@@ -671,7 +669,6 @@ async function runProfile(browser, url, profile) {
       parentId: controller.parentElement?.id || '',
       top: rect.top,
       width: rect.width,
-      cta: { top: ctaRect.top, width: ctaRect.width, height: ctaRect.height },
     };
   });
   await settle(page, 800);
@@ -690,39 +687,38 @@ async function runProfile(browser, url, profile) {
   await settle(page, 350);
   const transitionEnd = await page.evaluate(() => {
     const rect = document.getElementById('device-img').getBoundingClientRect();
-    const sendRect = document.getElementById('send-btn').getBoundingClientRect();
+    const btn = document.getElementById('send-btn');
     return {
       sameNode: window.__sharedControllerRef === document.getElementById('device-wrap'),
-      sameActionNode: window.__sharedActionRef === document.getElementById('send-btn'),
+      sameActionNode: window.__sharedActionRef === btn,
       parentId: document.getElementById('device-wrap').parentElement?.id || '',
       welcomeHidden: document.getElementById('welcome-screen').classList.contains('hidden'),
       top: rect.top,
       width: rect.width,
-      send: { top: sendRect.top, width: sendRect.width, height: sendRect.height },
+      btnHasFloating: btn.classList.contains('welcome-floating'),
+      btnPosition: getComputedStyle(btn).position,
       introCardAbsent: !document.getElementById('onb-intro-card'),
     };
   });
   transitionEnd.topGap = Math.abs(transitionEnd.top - transitionStart.top);
   const transitionWidthGap = Math.abs(transitionEnd.width - transitionStart.width);
-  addCheck(checks, 'Welcome uses one shared controller and fader pair',
+  addCheck(checks, 'Welcome uses one shared controller and fader pair, already mounted in the app',
     transitionStart.controllerCount === 1 && transitionStart.imageCount === 1 && transitionStart.faderCount === 2
-      && transitionStart.parentId === 'welcome-controller-slot',
-    `${transitionStart.controllerCount} controller / ${transitionStart.imageCount} image / ${transitionStart.faderCount} faders`);
+      && transitionStart.parentId === 'device-home',
+    `${transitionStart.controllerCount} controller / ${transitionStart.imageCount} image / ${transitionStart.faderCount} faders / parent ${transitionStart.parentId}`);
   addCheck(checks, 'Welcome faders settle onto the hardware snapshot before dissolve',
     transitionSettled.leftGap <= 1.5 && transitionSettled.rightGap <= 1.5,
     `left ${transitionSettled.leftGap.toFixed(2)} px / right ${transitionSettled.rightGap.toFixed(2)} px`);
   addCheck(checks, 'Welcome and app use one shared primary action',
     transitionStart.actionCount === 1 && transitionEnd.sameActionNode,
     `${transitionStart.actionCount} button / same ${transitionEnd.sameActionNode}`);
-  addCheck(checks, 'The same controller is handed to the app without moving',
+  addCheck(checks, 'The device image never moves — it was never reparented in the first place',
     transitionEnd.sameNode && transitionEnd.parentId === 'device-home' && transitionEnd.welcomeHidden
-      && transitionEnd.topGap <= 1 && transitionWidthGap <= 1,
+      && transitionEnd.topGap <= 0.5 && transitionWidthGap <= 0.5,
     `same ${transitionEnd.sameNode} / top ${transitionEnd.topGap.toFixed(2)} px / width ${transitionWidthGap.toFixed(2)} px`);
-  addCheck(checks, 'Send to device replaces Connect & load on the same pixels',
-    Math.abs(transitionEnd.send.top - transitionStart.cta.top) <= 1
-      && Math.abs(transitionEnd.send.width - transitionStart.cta.width) <= 1
-      && Math.abs(transitionEnd.send.height - transitionStart.cta.height) <= 1,
-    `top ${Math.abs(transitionEnd.send.top - transitionStart.cta.top).toFixed(2)} px / width ${Math.abs(transitionEnd.send.width - transitionStart.cta.width).toFixed(2)} px / height ${Math.abs(transitionEnd.send.height - transitionStart.cta.height).toFixed(2)} px`);
+  addCheck(checks, 'Send button sheds its welcome-floating escape once the app is revealed',
+    !transitionEnd.btnHasFloating && transitionEnd.btnPosition !== 'fixed',
+    `floating ${transitionEnd.btnHasFloating} / position ${transitionEnd.btnPosition}`);
   addCheck(checks, 'Shared action handoff adds no second onboarding card',
     transitionEnd.introCardAbsent,
     String(transitionEnd.introCardAbsent));
