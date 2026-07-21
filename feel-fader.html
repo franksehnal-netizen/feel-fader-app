@@ -874,7 +874,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 
 @media(max-width:600px){
   header{padding:5px 16px}main{width:100%;}
-  .stage{position:static;top:auto;animation:none;margin-top:0;padding-bottom:96px;}
+  .stage{position:relative;top:auto;animation:none;margin-top:0;padding-bottom:96px;}
   .send-callout{justify-content:center}
   .send-btn{width:166px}
   .send-callout.is-mobile-docked{
@@ -1036,7 +1036,12 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
 .onb-dot:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 .onb-beats-fade{opacity:0;}
 @media(max-width:600px){
-  #welcome-screen{justify-content:center;padding-top:0}
+  /* The single-mount redesign stopped reparenting the device controller into this
+     column (it now stays put in .stage and shows through the blur), so nothing here
+     reserves its height any more. Centering the text alone (ignoring where the real
+     device sits) is what let the primary action overlap the device image — anchor
+     to the device's real measured position instead (positionWelcomeMobileAnchor()). */
+  #welcome-screen{justify-content:flex-start;padding-top:var(--welcome-mobile-top,0px)}
   /* Reserve three lines for every intro description so longer slide copy cannot
      push the dots down on narrow screens. */
   .onb-beat-sub{height:59px;min-height:59px;overflow:hidden;}
@@ -4291,6 +4296,14 @@ function showStartBtn() {
   const msg = document.getElementById('welcome-start-msg');
   if (msg) { msg.textContent = ''; msg.removeAttribute('title'); }
   updateWelcomeSkip();
+  // Re-measure the floating position now, synchronously — any DOM mutation that
+  // changes #welcome-action-slot's geometry (e.g. leaving/entering onboarding's
+  // taller copy stage) always happens before this call in every call site, and
+  // getBoundingClientRect() forces a layout flush, so this reflects the current
+  // state immediately. Without this, the button's cached --welcome-float-top/left
+  // (set once via requestAnimationFrame at the tail of showWelcome()) go stale the
+  // moment the slot's layout changes afterward — reproduced 2026-07-21.
+  positionWelcomeFloatingButton();
 }
 
 // Welcome "Start" — the one user gesture that grants the serial port, loads the
@@ -4845,7 +4858,7 @@ function finalizeWelcomeExit() {
       thumb.style.removeProperty('transition');
     });
   }
-  document.getElementById('send-btn')?.classList.remove('welcome-floating');
+  document.getElementById('send-btn')?.classList.remove('welcome-floating','show');
   document.body.classList.remove('welcome-connecting');
   applyStageCollapse(_controllerHidden, false);
   applySendAnchorDock(_controllerHidden);
@@ -4860,10 +4873,27 @@ function positionWelcomeFloatingButton() {
   btn.style.setProperty('--welcome-float-top', (r.top + r.height / 2) + 'px');
   btn.style.setProperty('--welcome-float-left', (r.left + r.width / 2) + 'px');
 }
+// Below 600px, #welcome-screen's text column anchors to a measured offset (see the
+// @media(max-width:600px) #welcome-screen rule) instead of centering blind — the
+// single-mount redesign stopped reparenting the device controller in here (it now
+// stays mounted in .stage and only shows through the blur), so nothing in this
+// column's own layout reserves the device's height any more. Reproduce the ~16px
+// gap the old reparented layout gave for free by measuring the real device-home
+// and writing its bottom edge into --welcome-mobile-top. No-op above 600px, where
+// #welcome-screen keeps its static padding-top.
+function positionWelcomeMobileAnchor() {
+  const ws = document.getElementById('welcome-screen');
+  const device = document.getElementById('device-home');
+  if (!ws || !device) return;
+  if (window.innerWidth > 600) { ws.style.removeProperty('--welcome-mobile-top'); return; }
+  const gap = 16; // matches .welcome-inner's flex gap, the spacing the reparented device used to have
+  ws.style.setProperty('--welcome-mobile-top', (device.getBoundingClientRect().bottom + gap) + 'px');
+}
 function showWelcome() {
   resetAppScrollTop();
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden','connecting');
+  positionWelcomeMobileAnchor();
   document.body.classList.remove('welcome-connecting');
   const controller = sharedController();
   controller?.classList.remove('connect-success');
@@ -5515,6 +5545,7 @@ window.addEventListener('scroll', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', updateMobileSendDock, {passive:true});
 window.addEventListener('resize', updateContextualLiveStrip, {passive:true});
 window.addEventListener('resize', updateStickySectionHeads, {passive:true});
+window.addEventListener('resize', positionWelcomeMobileAnchor, {passive:true});
 
 function customPresetFromBank(bank) {
   const preset = { custom:true, saved_at:new Date().toISOString() };
