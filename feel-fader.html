@@ -1061,6 +1061,24 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
   transform:translate(-50%,-50%);
   z-index:220;
 }
+/* #send-btn's ancestor chain has two elements with an explicit z-index — .stage
+   (z-index:1) and .send-callout (z-index:10) — and each one is its own stacking
+   context, which traps #send-btn's z-index:220 *inside* it. #welcome-screen
+   (z-index:200) then only has to beat .stage's "1" (in their shared parent
+   context) to paint the whole welcome card over #send-btn, even though the
+   button is position:fixed — invisible "Connect & load" button, caught by
+   visual verification 2026-07-21 (Task 3), not by any automated probe (none
+   hit-test the button's own on-screen position). Raising .stage's z-index
+   instead of dropping it would drag the whole device/fader visual along with
+   it, right on top of the blur — wrong; the device/fader subtree (z-index 0-3)
+   must stay under #welcome-screen. Dropping both ancestors' z-index to auto
+   removes their stacking contexts (position:relative alone doesn't create one),
+   so the low-z-index device/fader content still paints under #welcome-screen on
+   its own merits while #send-btn's own 220 now competes directly against
+   #welcome-screen's 200 and wins. Scoped to only while the button is actually
+   floating; the normal in-app z-index (1 / 10) is untouched at every other time. */
+.stage:has(#send-btn.welcome-floating),
+.send-callout:has(>#send-btn.welcome-floating){z-index:auto}
 body.welcome-connecting #send-btn.welcome-floating{
   animation:welcome-screen-out .34s ease .72s forwards;
 }
@@ -4870,7 +4888,25 @@ function positionWelcomeFloatingButton() {
   const slot = document.getElementById('welcome-action-slot');
   if (!btn || !slot || !btn.classList.contains('welcome-floating')) return;
   const r = slot.getBoundingClientRect();
-  btn.style.setProperty('--welcome-float-top', (r.top + r.height / 2) + 'px');
+  let top = r.top + r.height / 2;
+  // On mobile, "Continue without device" is pinned to the bottom of the
+  // viewport (position:fixed, see #welcome-text-block .welcome-skip in the
+  // max-width:600px block) independent of document flow. On a short viewport
+  // with the first-run onboarding intro showing (title+subtitle+dots adds
+  // ~137px), the reserved action slot can get pushed down far enough to
+  // collide with that pinned link — and since the button now correctly
+  // paints above the whole welcome overlay (stacking-context fix above), it
+  // would sit on top of and swallow clicks meant for the skip link. Clamp so
+  // the button never drops below a safe distance from wherever the skip link
+  // actually is. Reproduced 2026-07-21 (Task 3 visual verification, 390x700,
+  // fresh onboarding). No-op whenever there's no collision to avoid (desktop,
+  // taller phones, skip link hidden because a device is already detected).
+  const skip = document.querySelector('.welcome-skip');
+  if (skip && getComputedStyle(skip).display !== 'none' && getComputedStyle(skip).position === 'fixed') {
+    const maxTop = skip.getBoundingClientRect().top - 8 - r.height / 2;
+    if (top > maxTop) top = maxTop;
+  }
+  btn.style.setProperty('--welcome-float-top', top + 'px');
   btn.style.setProperty('--welcome-float-left', (r.left + r.width / 2) + 'px');
 }
 // Below 600px, #welcome-screen's text column anchors to a measured offset (see the
