@@ -459,8 +459,14 @@ async function runProfile(browser, url, profile) {
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent
       && JSON.stringify(compactWelcome.visibleText) === JSON.stringify(['Feel Fader', 'Connect & load', 'Continue without device']),
     compactWelcome.visibleText.join(' / '));
+  // Frank, 2026-07-21: the button must sit at its real app position, not an
+  // independently-reproduced welcome-only gap — 32px is .stage's own real
+  // padding-top (the same value the app uses everywhere else), not a magic
+  // number picked for this screen. This replaced the pre-instruction 70px
+  // expectation, which encoded the now-removed positionWelcomeMobileAnchor()'s
+  // own 16px-gap approximation.
   addCheck(checks, 'Static wordmark keeps the primary action in place',
-    Math.abs(compactWelcome.actionGap - 70) <= 1,
+    Math.abs(compactWelcome.actionGap - 32) <= 1,
     `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
     compactWelcome.continueBottomGap >= 7 && compactWelcome.continueBottomGap <= 9,
