@@ -5,7 +5,11 @@
 // #send-btn stayed parented inside the now-hidden #welcome-screen — 0x0,
 // invisible, while the neighboring "N unsaved changes" note (a different,
 // correctly-relocated element) rendered fine. Reported by Frank via
-// screenshot: text visible, button missing.
+// screenshot: text visible, button missing. The single-mount welcome/app
+// redesign (2026-07-21) replaced handoffPrimaryActionToApp() with
+// finalizeWelcomeExit(), which skipWelcome() now calls instead — #send-btn
+// was always inside .send-callout immediately after skipWelcome() either
+// way, so these assertions hold unchanged under the new architecture.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
