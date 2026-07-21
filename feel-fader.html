@@ -4876,7 +4876,7 @@ function finalizeWelcomeExit() {
       thumb.style.removeProperty('transition');
     });
   }
-  document.getElementById('send-btn')?.classList.remove('welcome-floating','show');
+  document.getElementById('send-btn')?.classList.remove('welcome-floating','welcome-start','show');
   document.body.classList.remove('welcome-connecting');
   applyStageCollapse(_controllerHidden, false);
   applySendAnchorDock(_controllerHidden);
@@ -4941,7 +4941,7 @@ function showWelcome() {
   }
   const btn = document.getElementById('send-btn');
   btn?.classList.remove('sent','review');
-  btn?.classList.add('welcome-floating');
+  btn?.classList.add('welcome-floating','welcome-start');
   // Reset to the normal welcome state first — beats may have hidden these in an
   // earlier first-run this session, and a later reconnect must show normal copy.
   const beats = document.getElementById('onb-beats');
