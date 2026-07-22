@@ -5415,7 +5415,6 @@ var iconPickerMode = 'icon'; // 'icon' | 'library'
 
 var ICON_ONLY_SECTIONS = [
   {
-    label: 'Instrument category',
     icons: [
       {icon:'🎻', label:'Strings'},
       {icon:'🎺', label:'Brass'},
@@ -5464,7 +5463,7 @@ function openIconPicker(bi, mode = 'icon') {
 
   let out = '';
   for (const section of sections) {
-    out += `<div class="icon-section-label">${section.label}</div>`;
+    if (section.label) out += `<div class="icon-section-label">${section.label}</div>`;
     if (section.icons) {
       out += `<div class="icon-section-row">`;
       out += section.icons.map(({icon, label}) => `
