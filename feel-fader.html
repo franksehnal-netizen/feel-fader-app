@@ -456,7 +456,14 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
 .ks-bound-stepper .ks-stepval{min-width:66px;height:24px;padding:0 8px;display:flex;align-items:center;justify-content:center;border:1px solid var(--control-glass-border);border-radius:var(--r-pill);background:var(--control-glass-bg);color:var(--t1);box-shadow:var(--control-glass-shadow);transition:background-color .18s ease,box-shadow .18s ease}
 .ks-convention-stepper .step-btn{width:auto;min-width:44px;padding:0 9px;white-space:nowrap}
 .ks-convention-stepper .step-btn.active,.ks-convention-stepper .step-btn.active:hover{background:var(--control-glass-bg);border:1px solid var(--control-glass-border);color:var(--t1);box-shadow:var(--control-glass-shadow)}
-.ks-preset-sel{border:1px solid var(--border-s);border-radius:var(--r-sm);background:var(--bg-input);color:var(--t2);font-family:'Mulish',sans-serif;font-size:12px;padding:5px 8px;cursor:pointer;outline:none}
+/* Custom listbox for RANGE PRESET (UX audit 2026-07-22, V-4) — same pattern as
+   the Library setup picker's .quick-setup-menu/.quick-setup-option, just
+   without the search input: KEYSWITCH_PRESETS only has 2 static entries. */
+.ks-preset-picker{position:relative;flex:0 0 auto}
+.ks-preset-trigger{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t2)}
+.ks-preset-chevron{font-size:9px;color:var(--t3);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.ks-preset-trigger[aria-expanded="true"] .ks-preset-chevron{transform:rotate(180deg)}
+.quick-setup-menu.ks-preset-menu{left:0;width:max(180px,100%);max-height:none}
 .ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:66px;text-align:center;color:var(--t1)}
 
 /* TWO-ROW FIELD (label + controls stacked) */
@@ -864,7 +871,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
   .btn-remove-bank,.bank-action-btn{width:44px;height:44px}
   .icon-picker-trigger{min-width:44px;min-height:44px}
   .dark-toggle{width:44px;height:44px}
-  .dark-toggle,.bank-block-tab,.bank-block-tab-add,.send-btn,.btn{min-height:44px}
+  .dark-toggle,.bank-block-tab,.bank-block-tab-add,.send-btn,.btn,.ks-preset-trigger{min-height:44px}
   .uacc-tag button{min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
   .tx{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .ks-keyboard-shell{grid-template-columns:44px minmax(0,1fr) 44px}
@@ -2734,7 +2741,7 @@ function keyswitchBody(bi) {
   const ksN = b.ks_notes || [];
   const lo = ksN.length ? Math.min(...ksN) : 0;
   const hi = ksN.length ? Math.max(...ksN) : 0;
-  const presetOpts = KEYSWITCH_PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+  const presetOpts = KEYSWITCH_PRESETS.map((p, i) => `<button class="quick-setup-option" type="button" role="option" data-idx="${i}" onclick="applyKsPreset(${bi},this.dataset.idx);closeKsPresetMenu(${bi},true)" onkeydown="ksPresetOptionKey(event,${bi})">${escHtml(p.name)}</button>`).join('');
   return `
   <div class="enc-unified-body">
     <div class="ks-basic-actions" style="margin-top:10px">
@@ -2749,9 +2756,14 @@ function keyswitchBody(bi) {
       </div>
       <div class="field-block">
         <span class="field-label">RANGE PRESET</span>
-        <select class="ks-preset-sel" onchange="applyKsPreset(${bi},this.value);this.selectedIndex=0" aria-label="Keyswitch range preset">
-          <option value="">Choose range…</option>${presetOpts}
-        </select>
+        <div class="ks-preset-picker" id="ks-preset-picker-${bi}">
+          <button type="button" class="ks-preset-trigger ui-control ui-pill ui-glass" id="ks-preset-trigger-${bi}"
+            aria-haspopup="listbox" aria-expanded="false" aria-controls="ks-preset-menu-${bi}"
+            aria-label="Keyswitch range preset" onclick="toggleKsPresetMenu(${bi})">
+            <span>Choose range…</span><span class="ks-preset-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="quick-setup-menu ks-preset-menu" id="ks-preset-menu-${bi}" role="listbox" aria-label="Keyswitch range presets" hidden>${presetOpts}</div>
+        </div>
       </div>
       <button class="step-btn" style="width:auto;padding:0 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)" onclick="resetKs(${bi})">Reset range</button>
     </div>
@@ -3678,6 +3690,42 @@ function applyKsPreset(bi, idx) {
   if (!p) return;
   cfg.banks[bi].ks_notes = p.notes ? p.notes.slice() : ksRange(p.lo, p.hi);
   dirty = true; ksLiveRefresh(bi, true, true); runValidation();
+}
+function toggleKsPresetMenu(bi) {
+  const menu = document.getElementById(`ks-preset-menu-${bi}`);
+  if (!menu) return;
+  if (menu.hidden) openKsPresetMenu(bi); else closeKsPresetMenu(bi);
+}
+function openKsPresetMenu(bi) {
+  const menu = document.getElementById(`ks-preset-menu-${bi}`);
+  const trigger = document.getElementById(`ks-preset-trigger-${bi}`);
+  if (!menu || !trigger) return;
+  menu.hidden = false;
+  trigger.setAttribute('aria-expanded','true');
+  refreshBankMenuLayer();
+  requestAnimationFrame(() => menu.querySelector('.quick-setup-option')?.focus());
+}
+function closeKsPresetMenu(bi, returnFocus = false) {
+  const menu = document.getElementById(`ks-preset-menu-${bi}`);
+  const trigger = document.getElementById(`ks-preset-trigger-${bi}`);
+  if (menu) menu.hidden = true;
+  if (trigger) {
+    trigger.setAttribute('aria-expanded','false');
+    if (returnFocus) trigger.focus();
+  }
+  refreshBankMenuLayer();
+}
+function ksPresetOptionKey(event, bi) {
+  const options = [...event.currentTarget.closest('.ks-preset-menu').querySelectorAll('.quick-setup-option')];
+  const index = options.indexOf(event.currentTarget);
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeKsPresetMenu(bi, true);
+  } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length-1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+    options[next]?.focus();
+  }
 }
 
 function resetKs(bi) {
@@ -5727,6 +5775,9 @@ function refreshLibraryPresetOptions() {
 document.addEventListener('pointerdown', event => {
   document.querySelectorAll('.quick-setup-picker').forEach(picker => {
     if (!picker.contains(event.target)) closeQuickSetupMenu(Number(picker.id.split('-').pop()));
+  });
+  document.querySelectorAll('.ks-preset-picker').forEach(picker => {
+    if (!picker.contains(event.target)) closeKsPresetMenu(Number(picker.id.split('-').pop()));
   });
   if (!event.target.closest('.send-callout')) closeChangePopover();
 });
