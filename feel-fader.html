@@ -4668,7 +4668,6 @@ function updateNvmDegradedNotice() {
   const connected = s === 'CONNECTED_LIVE' || s === 'CONNECTED_BLIND';
   el.hidden = !(connected && DEVICE_INFO.config_source === 'file');
 }
-let _statusCollapseTimer = null;
 let _lastConnState = null;
 function renderConnState(){
   const status = document.getElementById('h-status');
@@ -4679,15 +4678,10 @@ function renderConnState(){
   const s = connState();
   const entering = s !== _lastConnState;
   _lastConnState = s;
-  if (entering) { clearTimeout(_statusCollapseTimer); _statusCollapseTimer = null; }
   if (s === 'CONNECTED_LIVE'){
     dot.className = 'h-status-dot on';
-    // Give the "connected" text a moment to register, then collapse it back to
-    // just the dot so the header row has room (Frank 2026-07-21) — only on the
-    // DISCONNECTED->LIVE transition, not on every re-render while already live.
     if (entering) {
       txt.classList.remove('hidden'); txt.textContent = t('status.connected');
-      _statusCollapseTimer = setTimeout(() => txt.classList.add('hidden'), 3000);
     }
   } else if (s === 'CONNECTED_BLIND'){
     dot.className = 'h-status-dot warn';

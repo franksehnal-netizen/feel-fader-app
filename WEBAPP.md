@@ -186,7 +186,7 @@ se v demo režimu nepoužívá.
 - Červený bod + „MIDI unavailable/blocked" → jediná viditelná informace o nedostupném Web MIDI; duplicitní obsahový banner byl odstraněn, podrobnost zůstává v tooltipu a MIDI diagnostics
 - Na mobilu zůstává v liště pouze barevný bod. Text stavu je vizuálně skrytý, ale zachovaný pro čtečky obrazovky přes `aria-label` a pro tooltip; hlavička se proto nikdy nezalomí kvůli „MIDI unavailable".
 
-Na desktopu je stav připojení trvale čitelný a funguje jako tlačítko. Otevírá kompaktní liquid-glass přehled **Hardware / Live MIDI / Configuration / Last activity**, který rozlišuje nepřipojený hardware, blokované nebo nedostupné live MIDI a neodeslané změny. Akce **Open diagnostics** rozbalí Device & Settings, otevře MIDI diagnostics a plynule k nim posune stránku. Stav se tedy dá ověřit bez hledání v dolní části dlouhé konfigurace.
+Na desktopu je stav připojení trvale čitelný text vedle bodu — jakmile se jednou zobrazí „Connected", zůstává viditelný, dokud se stav nezmění (dřív se po 3 s automaticky sbalil zpět na holý bod bez popisku; tohle chování bylo odstraněno). Stav nefunguje jako tlačítko a neotevírá žádný popover — jde o prostý statický text.
 
 **Banky na mobilu:** Aktivní bank zachová svůj název, neaktivní banky se zkomprimují na minimalistické indexy `2`, `3` atd. Výchozí banky 1–3 tak zůstávají současně viditelné bez horizontálního posunu lišty.
 
