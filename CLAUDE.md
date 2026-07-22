@@ -12,6 +12,14 @@ Před úpravou kterékoli strany načti a zohledni druhou stranu:
 
 Nikdy needituj jen jednu stranu „naslepo" — rozbiješ round-trip config sync.
 
+## Produktový kontext — appka je desktop-first
+
+Feel Fader web app dává smysl **jen na desktopu s fyzicky připojeným controllerem** (Web Serial + reálné zařízení). Mobil není produktový scénář.
+
+- UI/UX návrhy a audity **prioritizuj pro desktop s připojeným HW**.
+- Mobil držet jen regresně funkční a nerozbitý — **neoptimalizovat** ho jako samostatný pracovní workflow.
+- Konkrétně: mobilní překryv status baru není problém k řešení (Frank 2026-07-14).
+
 ## Vývoj přes MCP (Chrome DevTools + Playwright)
 
 Tři vrstvy, jasně oddělené role. **MCP zkoumá živě, probe je důkaz.**
