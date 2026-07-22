@@ -1073,6 +1073,26 @@ html.dark .dark-toggle .theme-icon-moon{opacity:1;transform:rotate(0) scale(1)}
    floating; the normal in-app z-index (1 / 10) is untouched at every other time. */
 .stage:has(#send-btn.welcome-floating),
 .send-callout:has(>#send-btn.welcome-floating){z-index:auto}
+/* Same trap, different trigger: .change-popover (z-index:30) is a direct
+   child of .send-callout (z-index:10) inside .stage (z-index:1) — both
+   explicit stacking contexts confine the popover's own z-index to *inside*
+   .send-callout, so it can never out-rank .panels-row's .bank-card
+   (isolation:isolate) one level up. Undo/Restore last sent buttons were
+   unclickable underneath the bank card (UX audit 2026-07-22, I-1). Drop
+   both ancestors to z-index:auto only while the popover is open, exactly
+   like the welcome-floating case above. */
+.stage:has(.change-popover.is-open),
+.send-callout:has(>.change-popover.is-open){z-index:auto}
+/* z-index alone isn't enough: .stage-collapse>.stage{overflow:hidden}
+   (line 201, permanent — used for the bank-switch collapse animation) clips
+   .change-popover's box regardless of stacking order, since the popover is
+   position:absolute (not :fixed like the welcome-floating case) and its
+   dropdown extends below .stage's own border-box. Scope it off the same way,
+   only while the popover is open. Trade-off: if a bank-switch collapse
+   transition happens to run at the exact same moment the popover is open,
+   .stage briefly won't clip it — rare, cosmetic-only overlap, not a
+   functional break. */
+.stage-collapse:has(.change-popover.is-open)>.stage{overflow:visible}
 body.welcome-connecting #send-btn.welcome-floating{
   /* .send-btn's own base rule declares `transition:...,opacity .28s ease,...`
      — a transition on the SAME property the animation below drives fights it
