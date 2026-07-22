@@ -1,4 +1,4 @@
-// onb-probe4: Phase 2 — no-HW decorative demo + display-only invariant.
+// onb-probe4: clean no-HW state, stable faders, and stable welcome CTA layout.
 // Run: node scratch/onb-probe4.mjs
 import { createRequire } from 'module';
 import path from 'path';
@@ -16,38 +16,31 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
     const page = await browser.newPage();
     page.on('pageerror', e => pageErrors.push('pageerror: ' + e.message));
     page.on('console', m => { if (m.type() === 'error') pageErrors.push('console.error: ' + m.text()); });
-    // Headless Chrome reports prefers-reduced-motion:reduce by default, which would
-    // make onbDemoStart() take the badge-only (no interval) branch and the "moves a
-    // fader thumb" check would fail for every run regardless of implementation.
-    // Force no-preference so this probe exercises the actual motion path.
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
     await page.goto(fileUrl, { waitUntil: 'networkidle0', timeout: 15000 });
 
     const run = await page.evaluate(async () => {
       localStorage.removeItem('ff-onboarded');
       _ffConnected = false; _serialPort = null; _midiState = 'pending';
-      _onbConfigStarted = false; _onbDone = false;
-      const badgeShown = () => { const b = document.getElementById('onb-demo-badge'); return b && getComputedStyle(b).display !== 'none'; };
-      const badge0 = badgeShown();
-      skipWelcome(); render(); onbMaybeStartConfig();
-      // pF() moves thumbs via a CSS transform (translate3d), not `top` — read the
-      // property it actually mutates.
+      const badge0 = document.getElementById('onb-demo-badge');
+      showWelcome(); onbStartWelcome();
+      await new Promise(requestAnimationFrame);
+      const ctaBeforeSkip = document.getElementById('send-btn')?.getBoundingClientRect().top;
+      onbBeatGo(2, true);
+      await new Promise(requestAnimationFrame);
+      const ctaAfterSkip = document.getElementById('send-btn')?.getBoundingClientRect().top;
+      skipWelcome(); render();
       const before = document.getElementById('thumb-l')?.style.transform;
       await new Promise(r => setTimeout(r, 900));
       const after = document.getElementById('thumb-l')?.style.transform;
-      // INVARIANT: the demo tick must never reach a MIDI output — assert its source
-      // contains no send() call (display-only). This inspects the real function body,
-      // so it fails loudly if a future edit wires MIDI into the decorative animation.
-      const noSend = !/\bsend\s*\(/.test(onbDemoTick.toString());
-      onbDemoStop();
-      const badgeAfterStop = badgeShown();
-      return { badge0, moved: before !== after, badgeAfterStop, noSend };
+      const demoCodeRemoved = typeof window.onbDemoStart === 'undefined' && typeof window.onbDemoStop === 'undefined';
+      return { badge0, stable: before === after, demoCodeRemoved, ctaShift: Math.abs(ctaAfterSkip - ctaBeforeSkip) };
     });
     const checks = [
-      ['no demo badge before start', run.badge0 === false],
-      ['no-HW demo moves a fader thumb', run.moved === true],
-      ['onbDemoStop hides badge', run.badgeAfterStop === false],
-      ['INVARIANT: onbDemoTick source contains no send() call', run.noSend === true],
+      ['demo badge is absent from the DOM', run.badge0 === null],
+      ['no-HW demo keeps fader thumbs stable', run.stable === true],
+      ['Final intro beat keeps the welcome CTA fixed', run.ctaShift < 0.5],
+      ['obsolete demo badge code is removed', run.demoCodeRemoved === true],
       ['no pageerror / console.error', pageErrors.length === 0],
     ];
     let ok = true; console.log('\nChecks:');

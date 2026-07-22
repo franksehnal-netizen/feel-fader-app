@@ -55,7 +55,7 @@ Zbylých 15 nálezů (P2/P3) je čistá diagnostika — žádný kód neměněn,
 | F-02 | Interakce & flow | P2 | ✅ opraveno (částečně A9) | S | |
 | F-03 | Interakce & flow | P3 | ✅ opraveno | S | |
 | A2 | Firmware UX | P3 | ✅ opraveno | S ⚠️ | |
-| B1/V10 | Vizuální jazyk / Stavy | P3 | diagnostika | S | |
+| B1/V10 | Vizuální jazyk / Stavy | P3 | ✅ opraveno 2026-07-22 | S | |
 | B3 | Vizuální jazyk | P3 | ✅ opraveno | S | |
 | B4 | Vizuální jazyk | P3 | ✅ opraveno | S | |
 
@@ -134,7 +134,7 @@ Zbylých 15 nálezů (P2/P3) je čistá diagnostika — žádný kód neměněn,
 - **P3.** `.h-title` nemá `flex-shrink:0` mimo mobile media query — průsečík dvou samostatně otestovaných featur (inline header + 8-bank overflow). **Kde:** `.h-title`.
 
 #### V10/B1 — Mrtvé footer odkazy + Cloudflare e-mail artefakt
-- **P3**, stále otevřeno z 07-03 beze změny. Privacy/Terms/sociální ikony `href="#"`, e-mail přes `/cdn-cgi/l/email-protection` (nefunkční mimo Cloudflare hosting). **Kde:** footer HTML.
+- **P3, opraveno 2026-07-22.** Cloudflare e-mail nahrazen přímým `mailto:support@acoustic-empire.cz`; neexistující Privacy/Terms a sociální `href="#"` odkazy odstraněny, dokud nebudou mít reálné cíle. Footer zároveň uvádí aktuální rok/verzi a oba požadované browser transporty.
 
 ### Firmware UX
 

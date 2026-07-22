@@ -18,7 +18,7 @@ const r = await p.evaluate(() => {
 const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
 r.ids.forEach(([id,ok])=>P(`#${id} exists`,ok));
 P('#help-control REMOVED', r.control===false);
-P('.help-hint present (>=2)', r.hints>=2, String(r.hints));
+P('inline .help-hint controls remain removed', r.hints===0, String(r.hints));
 P('openHelpAt is function', r.hasOpen);
 // openHelpAt rozbalí Help + necrashne
 const ok = await p.evaluate(()=>{ try{ openHelpAt('help-macro'); return document.getElementById('help-body').style.display!=='none'; }catch(e){ return 'ERR:'+e.message; } });

@@ -42,11 +42,7 @@ const PROBES = [
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
   'mobile-ux-probe.mjs',
-  'onb-probe1.mjs',
-  'onb-probe2.mjs',
-  'onb-probe3.mjs',
   'onb-probe4.mjs',
-  'onb-probe5.mjs',
 ];
 
 function startServer() {

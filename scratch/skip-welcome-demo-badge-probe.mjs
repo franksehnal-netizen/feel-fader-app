@@ -1,10 +1,5 @@
-// Regression probe: "Demo — no device" badge must sit with a real gap below
-// the sticky header after "Continue without device", not cramped against it
-// (Frank screenshot 2026-07-20, "moc nalepené nahoře"). Root cause was
-// skipWelcome() leaving a stale --stage-entry-offset applied to .stage, which
-// #onb-demo-badge (a direct .stage child) inherited. The single-mount
-// welcome/app redesign (2026-07-21) removed --stage-entry-offset entirely —
-// .stage's margin-top is a static 0 now, so this probe checks that directly.
+// Regression probe: continuing without hardware opens the normal app state
+// without the obsolete demo badge or a stale stage offset.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -22,17 +17,15 @@ await new Promise(r => setTimeout(r, 800));
 
 const state = await p.evaluate(() => {
   const stage = document.querySelector('.stage');
-  const badge = document.getElementById('onb-demo-badge').getBoundingClientRect();
-  const header = document.querySelector('header').getBoundingClientRect();
   return {
     stageMarginTop: parseFloat(getComputedStyle(stage).marginTop),
-    gapFromHeader: badge.top - header.bottom,
-    badgeVisible: getComputedStyle(document.getElementById('onb-demo-badge')).display === 'block',
+    badgeAbsent: document.getElementById('onb-demo-badge') === null,
+    statusText: document.getElementById('h-status-text')?.textContent.trim(),
   };
 });
 P('.stage has no top-margin offset (static CSS default, nothing to reset)', state.stageMarginTop === 0, `${state.stageMarginTop}px`);
-P('demo badge shown', state.badgeVisible, state.badgeVisible);
-P('demo badge sits with a real gap below the header (>=20px, <150px)', state.gapFromHeader >= 20 && state.gapFromHeader < 150, `${state.gapFromHeader.toFixed(1)}px`);
+P('obsolete demo badge is absent', state.badgeAbsent, state.badgeAbsent);
+P('normal connection status remains available', Boolean(state.statusText), state.statusText);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

@@ -5,30 +5,34 @@ const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrom
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
 await p.evaluate(()=>{ try{skipWelcome&&skipWelcome()}catch(e){}; try{render&&render()}catch(e){}; });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+let failed = false;
+const P=(l,ok,x='')=>{ console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' — '+x:''}`); if(!ok) failed=true; };
 
-// LIVE state: _midiState granted + device connected → f1-val should NOT be .live-placeholder
-// and should pick up the green-tinted background from .section-live-val:not(.live-placeholder)
-const live = await p.evaluate(()=>{
-  _midiState='granted'; _ffConnected=true; render(); renderConnState();
-  const el = document.getElementById('f1-val');
-  const cs = getComputedStyle(el);
-  return { hasPlaceholder: el.classList.contains('live-placeholder'), bg: cs.backgroundColor, color: cs.color, className: el.className };
+const live = await p.evaluate(async ()=>{
+  _midiState='granted'; _ffConnected=true; liveValues.f1=73; liveSeen.f1=true; renderConnState();
+  await new Promise(resolve => setTimeout(resolve, 240));
+  const strip = document.getElementById('live-strip');
+  const item = document.getElementById('live-f1-value').closest('.live-hud-item');
+  return {
+    state: strip.dataset.state,
+    value: document.getElementById('live-f1-value').textContent,
+    opacity: getComputedStyle(strip).opacity,
+    visibility: getComputedStyle(strip).visibility,
+    stateMarkers: strip.querySelectorAll('.live-hud-dot, .live-hud-state, #live-strip-state-label').length
+  };
 });
-P('live: f1-val has NO .live-placeholder', live.hasPlaceholder===false, JSON.stringify(live));
-P('live: background is green-tinted (not base --bg-input)', /52,\s*199,\s*89/.test(live.bg) || live.bg !== 'rgb(0, 0, 0)', live.bg);
+P('live strip exposes received hardware value', live.state==='CONNECTED_LIVE' && live.value==='73', JSON.stringify(live));
+P('live HUD is visible without duplicate state markers', Number(live.opacity)>.85 && live.visibility==='visible' && live.stateMarkers===0, JSON.stringify(live));
 
-// NOT-LIVE state: MIDI not granted → f1-val should carry .live-placeholder and use base (dim) styling
-const notLive = await p.evaluate(()=>{
-  _midiState='denied'; _ffConnected=false; render(); renderConnState();
-  const el = document.getElementById('f1-val');
-  const cs = getComputedStyle(el);
-  return { hasPlaceholder: el.classList.contains('live-placeholder'), bg: cs.backgroundColor, opacity: cs.opacity, className: el.className };
+const notLive = await p.evaluate(async ()=>{
+  _midiState='denied'; _ffConnected=false; renderConnState();
+  await new Promise(resolve => setTimeout(resolve, 340));
+  const strip = document.getElementById('live-strip');
+  return {state:strip.dataset.state,value:document.getElementById('live-f1-value').textContent,opacity:getComputedStyle(strip).opacity,visibility:getComputedStyle(strip).visibility};
 });
-P('not-live: f1-val HAS .live-placeholder', notLive.hasPlaceholder===true, JSON.stringify(notLive));
-P('not-live: opacity reflects .live-placeholder dimming', notLive.opacity==='0.45' || Number(notLive.opacity) < 1, notLive.opacity);
-P('background differs between live and not-live (green tint applies)', live.bg !== notLive.bg, `live=${live.bg} notLive=${notLive.bg}`);
+P('not-live strip hides stale hardware value', notLive.state!=='CONNECTED_LIVE' && notLive.value==='—', JSON.stringify(notLive));
+P('not-live HUD remains visible but subdued', Number(notLive.opacity)>.5 && Number(notLive.opacity)<.8 && notLive.visibility==='visible', JSON.stringify(notLive));
 P('no page errors', errs.length===0, errs.join(' | '));
 
-console.log('RAW:', JSON.stringify({ live, notLive }, null, 2));
 await b.close();
+if(failed) process.exitCode=1;

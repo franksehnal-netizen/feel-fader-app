@@ -520,7 +520,7 @@ App drží **web formát** (`cfg` — per-control, viz §4), device posílá **i
 | `validate()` | Validuje `cfg` — kontroluje duplicitní CC/kanál kombinace. |
 | `openIconPicker(bi, mode)` | Otevře overlay pro výběr ikony banku. |
 | `onImport(e)` | Importuje JSON konfiguraci ze souboru. |
-| `refreshJson()` | Aktualizuje JSON inspector. ⚠ **Pozor:** dle strukturního auditu 2026-07-20 (D-3) je tohle mrtvá cesta — viditelný JSON inspector byl odstraněn, ale `jsonOpen`/`refreshJson`/`toggleJson`/`copyJson` v kódu zůstaly. Aktuální stav ověř v `docs/feel-fader-structure-audit-2026-07-20.md`. |
+| `toggleHelp()` / `openHelpAt(id)` | Otevře Help & Guide, případně konkrétní sekci. Starý JSON inspector a jeho mrtvé helpery byly odstraněny. |
 | `toast(t, m)` | Zobrazí dočasné notifikační hlášení (success/error/info). |
 | `cfgSave()` | Uloží `cfg` do localStorage. |
 | `cfgLoad()` | Načte `cfg` z localStorage, vrátí null pokud neexistuje. |

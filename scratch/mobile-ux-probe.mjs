@@ -268,9 +268,9 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Long open configuration section keeps its heading below the app header',
     stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
     `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
-  addCheck(checks, 'Desktop monitor morphs from the hardware square into a compact capsule',
-    !hudAtController.compact && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
-      && scrolled.hudCompact && Math.abs(scrolled.hudWidth - 202) <= 1 && Math.abs(scrolled.hudHeight - 46) <= 1,
+  addCheck(checks, 'Desktop monitor stays a consistent horizontal capsule',
+    hudAtController.compact && Math.abs(hudAtController.width - 252) <= 1 && Math.abs(hudAtController.height - 46) <= 1
+      && scrolled.hudCompact && Math.abs(scrolled.hudWidth - 252) <= 1 && Math.abs(scrolled.hudHeight - 46) <= 1,
     `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
   addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
     scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
@@ -385,7 +385,9 @@ async function runProfile(browser, url, profile) {
       stageHeight: stage.height,
       stageTop: stage.top,
       stageBottom: stage.bottom,
+      stageCenter: stage.top + stage.height / 2,
       deviceTop: device.top,
+      deviceCenter: device.top + device.height / 2,
       wordmarkTop: wordmarkRect.top,
       wordmarkBottom: wordmarkRect.bottom,
       wordmarkLabel: wordmark.getAttribute('aria-label'),
@@ -420,7 +422,9 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Primary CTA stays fixed across all three slides', introCtaShift <= 1, `${introCtaShift.toFixed(2)} px`);
   addCheck(checks, 'Redundant Skip intro action is absent',
     await page.$('.onb-skip') === null, 'absent');
-  addCheck(checks, 'Welcome copy uses a stable mobile slot', Math.abs(welcomeBefore.stageHeight - 142) <= 1, `${welcomeBefore.stageHeight.toFixed(2)} px`);
+  addCheck(checks, 'Welcome copy is centered over the controller',
+    Math.abs(welcomeBefore.stageCenter - welcomeBefore.deviceCenter) <= 1,
+    `${welcomeBefore.stageCenter.toFixed(2)} / ${welcomeBefore.deviceCenter.toFixed(2)} px`);
   addCheck(checks, 'Welcome controller stays still',
     Math.abs(welcomeAfter.deviceTop - welcomeBefore.deviceTop) <= 0.25,
     `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeAfter.deviceTop.toFixed(2)} px`);
@@ -469,7 +473,7 @@ async function runProfile(browser, url, profile) {
     Math.abs(compactWelcome.actionGap - 32) <= 1,
     `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
-    compactWelcome.continueBottomGap >= 7 && compactWelcome.continueBottomGap <= 9,
+    compactWelcome.continueBottomGap >= 9 && compactWelcome.continueBottomGap <= 11,
     `${compactWelcome.continueBottomGap.toFixed(2)} px`);
 
   const feedbackState = await page.evaluate(async () => {
@@ -586,7 +590,7 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'No-device faders remain stable for 1.65 s',
     fadersBefore.left === appState.faders.left && fadersBefore.right === appState.faders.right,
     `${fadersBefore.left} / ${fadersBefore.right}`);
-  addCheck(checks, 'No-device state is identified as a demo', appState.demoBadgeVisible, String(appState.demoBadgeVisible));
+  addCheck(checks, 'No-device state has no obsolete demo badge', !appState.demoBadgeVisible, String(appState.demoBadgeVisible));
   addCheck(checks, 'Layout has no horizontal overflow',
     Math.max(appState.rootScrollWidth, appState.bodyScrollWidth) <= appState.viewportWidth + 1,
     `${Math.max(appState.rootScrollWidth, appState.bodyScrollWidth)} / ${appState.viewportWidth} px`);
@@ -733,7 +737,7 @@ async function runProfile(browser, url, profile) {
     _ffConnected = true;
     liveValues = { f1: 23, f2: 108 };
     liveSeen = { f1: true, f2: true };
-    encLiveVal = 32;
+    encLiveVal = 44;
     dirty = false;
     renderConnState();
     window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
@@ -778,10 +782,10 @@ async function runProfile(browser, url, profile) {
     mobileStrip.visible && mobileStrip.opacity === '1' && mobileStrip.controllerBottom < 0,
     `controller ${mobileStrip.controllerBottom.toFixed(1)} px / visible ${mobileStrip.visible} / opacity ${mobileStrip.opacity}`);
   addCheck(checks, 'Scrolled mobile monitor becomes a compact L, R and ART capsule',
-    mobileStrip.compact && Math.abs(mobileStrip.width - 190) <= 1 && Math.abs(mobileStrip.height - 44) <= 1
+    mobileStrip.compact && Math.abs(mobileStrip.width - 228) <= 1 && Math.abs(mobileStrip.height - 44) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped
       && mobileStrip.meterRects.every(rect => rect.width === 0 && rect.height === 0)
-      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Harmonics'
+      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Snap Pizzicato'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
   addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',
@@ -823,11 +827,10 @@ async function runProfile(browser, url, profile) {
       meters,
     };
   });
-  addCheck(checks, 'Hardware monitor expands back into the symmetric square with the controller',
-    stripBackAtController.visible && !stripBackAtController.compact && stripBackAtController.opacity === '1'
-      && Math.abs(stripBackAtController.width - 96) <= 1 && Math.abs(stripBackAtController.height - 96) <= 1
-      && stripBackAtController.meters[0].height >= stripBackAtController.meters[0].width * 4
-      && stripBackAtController.meters[1].height >= stripBackAtController.meters[1].width * 4,
+  addCheck(checks, 'Hardware monitor remains the same capsule beside the controller',
+    stripBackAtController.visible && stripBackAtController.compact && stripBackAtController.opacity === '1'
+      && Math.abs(stripBackAtController.width - 228) <= 1 && Math.abs(stripBackAtController.height - 44) <= 1
+      && stripBackAtController.meters.every(meter => meter.width === 0 && meter.height === 0),
     `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / compact ${stripBackAtController.compact} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });

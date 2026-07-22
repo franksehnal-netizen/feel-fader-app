@@ -8,9 +8,167 @@ const out = (label, ok, extra='') => console.log(`${ok?'PASS':'FAIL'}  ${label}$
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args:['--no-sandbox'] });
 const p = await b.newPage();
+await p.emulateMediaFeatures([{ name:'prefers-reduced-motion', value:'no-preference' }]);
 const errs = [];
 p.on('pageerror', e => errs.push(String(e)));
 await p.goto(URL, { waitUntil:'networkidle0' });
+await new Promise(resolve=>setTimeout(resolve,700));
+
+const welcomeShadow = await p.evaluate(() => {
+  const img=document.getElementById('device-img');
+  const light=getComputedStyle(img).boxShadow;
+  document.documentElement.classList.add('dark');
+  const dark=getComputedStyle(img).boxShadow;
+  document.documentElement.classList.remove('dark');
+  return {light,dark};
+});
+const shadowIsInvisible = value => value === 'none' || [...value.matchAll(/rgba\(\s*\d+,\s*\d+,\s*\d+,\s*([\d.]+)\s*\)/g)].every(match => Number(match[1]) === 0);
+out('welcome device has no visible resting shadow in light mode', shadowIsInvisible(welcomeShadow.light), welcomeShadow.light);
+out('welcome device has no visible resting shadow in dark mode', shadowIsInvisible(welcomeShadow.dark), welcomeShadow.dark);
+
+// Welcome -> app transition settles on the device snapshot with the same mapping
+// as the persistent stage, instead of moving both faders to a hardcoded midpoint.
+const welcome = await p.evaluate(async () => {
+  applyInfoFaders({faders:[110,15]});
+  window.scrollTo(0, document.documentElement.scrollHeight);
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const scrollBefore = window.scrollY;
+  const deviceImg = document.getElementById('device-img');
+  const welcomeRect = deviceImg.getBoundingClientRect();
+  const sample = (thumbId, railId, value) => {
+    const thumb=document.getElementById(thumbId), rail=document.getElementById(railId);
+    const img=thumb.querySelector('img');
+    const travel=rail.getBoundingClientRect().height-img.getBoundingClientRect().height;
+    return { thumb, rail, expected:Math.round((1-value/127)*travel) };
+  };
+  const l=sample('thumb-l','track-l',110);
+  const r=sample('thumb-r','track-r',15);
+  const beforeL=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
+  const beforeR=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
+  connectTransitionWelcome();
+  const alignedRect = document.getElementById('device-img').getBoundingClientRect();
+  const scrollAfterStart = window.scrollY;
+  const frozenL=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
+  const frozenR=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
+  await new Promise(resolve=>setTimeout(resolve,100));
+  const welcomeDevice=document.getElementById('device-wrap');
+  const successAnimationNames = [
+    getComputedStyle(document.getElementById('device-img')).animationName,
+    getComputedStyle(document.getElementById('welcome-flash')).animationName,
+    getComputedStyle(welcomeDevice,'::after').animationName
+  ];
+  const glowAnimation = document.getElementById('device-img').getAnimations()
+    .find(animation=>animation.animationName==='welcome-device-glow');
+  const glowShadows = glowAnimation ? glowAnimation.effect.getKeyframes().map(frame=>frame.boxShadow||'') : [];
+  await new Promise(resolve=>setTimeout(resolve,700));
+  const settledLeft=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
+  const settledRight=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
+  await new Promise(resolve=>setTimeout(resolve,650));
+  const finalRect = document.getElementById('device-img').getBoundingClientRect();
+  return {
+    scrollBefore,scrollAfterStart,scrollFinal:window.scrollY,
+    welcomeRect:{top:welcomeRect.top,left:welcomeRect.left,width:welcomeRect.width},
+    alignedRect:{top:alignedRect.top,left:alignedRect.left,width:alignedRect.width},
+    finalRect:{top:finalRect.top,left:finalRect.left,width:finalRect.width},
+    freezeDeltaLeft:Math.abs(frozenL-beforeL),
+    freezeDeltaRight:Math.abs(frozenR-beforeR),
+    left:settledLeft,
+    leftExpected:l.expected,
+    right:settledRight,
+    rightExpected:r.expected,
+    leftTransition:getComputedStyle(l.thumb).transitionProperty,
+    rightTransition:getComputedStyle(r.thumb).transitionProperty,
+    sameDeviceNode:deviceImg===document.getElementById('device-img'),
+    successAnimationNames,
+    glowShadows
+  };
+});
+out('welcome animation freezes without a first-frame jump',
+  welcome.freezeDeltaLeft<1 && welcome.freezeDeltaRight<1,
+  `ΔL ${welcome.freezeDeltaLeft.toFixed(2)}px, ΔR ${welcome.freezeDeltaRight.toFixed(2)}px`);
+out('welcome left settles on device snapshot', Math.abs(welcome.left-welcome.leftExpected)<1.5,
+  `${welcome.left.toFixed(1)}px / ${welcome.leftExpected}px`);
+out('welcome right settles on device snapshot', Math.abs(welcome.right-welcome.rightExpected)<1.5,
+  `${welcome.right.toFixed(1)}px / ${welcome.rightExpected}px`);
+out('welcome settle stays on transform compositor path',
+  welcome.leftTransition.startsWith('transform') && welcome.rightTransition.startsWith('transform'));
+out('connect confirmation uses the restrained halo, outline and shimmer treatment',
+  ['welcome-device-glow','welcome-device-halo','welcome-device-shimmer'].every(name=>welcome.successAnimationNames.includes(name)) &&
+  welcome.glowShadows.every(shadow=>!shadow.includes('160px')&&!shadow.includes('90px')),
+  welcome.successAnimationNames.join(', '));
+out('welcome transition always resets a previously scrolled app to top',
+  welcome.scrollBefore>0 && welcome.scrollAfterStart===0 && welcome.scrollFinal===0,
+  `${welcome.scrollBefore} → ${welcome.scrollAfterStart} → ${welcome.scrollFinal}`);
+out('single controller persists while the app resets to its canonical top position',
+  welcome.sameDeviceNode && Math.abs(welcome.alignedRect.left-welcome.finalRect.left)<1 &&
+  Math.abs(welcome.alignedRect.width-welcome.finalRect.width)<1 && Math.abs(welcome.alignedRect.top-welcome.finalRect.top)<1,
+  JSON.stringify({welcome:welcome.welcomeRect,aligned:welcome.alignedRect,final:welcome.finalRect}));
+
+const linkPage = await b.newPage();
+await linkPage.goto(URL,{waitUntil:'networkidle0'});
+const linkedHighlight = await linkPage.evaluate(async () => {
+  skipWelcome();
+  render();
+  const read = async () => {
+    hoverFaderLink('fader1',true);
+    hoverFaderLink('roller',true);
+    const sectionEl=document.querySelector('.bank-section[data-fader="fader1"]');
+    const sectionClassOn=sectionEl.className;
+    await new Promise(resolve=>setTimeout(resolve,400));
+    const sectionStyle=getComputedStyle(sectionEl);
+    const section=sectionStyle.backgroundColor;
+    const track=getComputedStyle(document.getElementById('track-l'),'::before').backgroundColor;
+    const zoneStyle=getComputedStyle(document.getElementById('zone-roller'));
+    const zone=zoneStyle.backgroundColor;
+    const zoneOutline=zoneStyle.outlineColor;
+    hoverFaderLink('fader1',false);
+    hoverFaderLink('roller',false);
+    return {section,track,zone,zoneOutline,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
+  };
+  const light=await read();
+  document.documentElement.classList.add('dark');
+  const dark=await read();
+  document.documentElement.classList.remove('dark');
+  return {light,dark};
+});
+await linkPage.close();
+const linkedHighlightOk = theme => {
+  const rgba = value => (value.match(/[\d.]+/g)||[]).map(Number);
+  const section=rgba(theme.section),track=rgba(theme.track),zone=rgba(theme.zone),outline=rgba(theme.zoneOutline);
+  return section.slice(0,3).join(',')===track.slice(0,3).join(',') &&
+    track.slice(0,3).join(',')===outline.slice(0,3).join(',') &&
+    track[3]>section[3] && zone[3]===0 && outline[3]>.4;
+};
+out('roller highlight keeps its surface untinted while sharing the linked hue',
+  linkedHighlightOk(linkedHighlight.light) && linkedHighlightOk(linkedHighlight.dark),
+  JSON.stringify(linkedHighlight));
+
+for (const viewport of [{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}]) {
+  const vp = await b.newPage();
+  await vp.setViewport({width:viewport.width,height:viewport.height});
+  await vp.goto(URL,{waitUntil:'networkidle0'});
+  const rects = await vp.evaluate(async () => {
+    window.scrollTo(0,document.documentElement.scrollHeight);
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    const device=document.getElementById('device-img');
+    const welcome=device.getBoundingClientRect();
+    connectTransitionWelcome();
+    await new Promise(resolve=>setTimeout(resolve,1450));
+    const app=document.getElementById('device-img').getBoundingClientRect();
+    return {
+      scrollY:window.scrollY,
+      sameNode:device===document.getElementById('device-img'),
+      welcome:{top:welcome.top,left:welcome.left,width:welcome.width},
+      app:{top:app.top,left:app.left,width:app.width}
+    };
+  });
+  const identical = rects.sameNode && rects.app.top>=0 &&
+    Math.abs(rects.app.left-rects.welcome.left)<1 &&
+    Math.abs(rects.app.width-rects.welcome.width)<1;
+  out(`${viewport.name} transition resets to top without replacing the controller`,
+    rects.scrollY===0 && identical,JSON.stringify(rects));
+  await vp.close();
+}
 
 // skip welcome + render device UI
 await p.evaluate(() => { try{ skipWelcome && skipWelcome(); }catch(e){}; try{ render && render(); }catch(e){}; });

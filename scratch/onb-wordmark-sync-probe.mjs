@@ -34,27 +34,28 @@ async function sampleTransition(triggerExpr) {
 }
 
 function worstDesync(samples) {
-  let worst = 0;
+  let worst = 0, frame = null;
   for (const f of samples) {
-    worst = Math.max(worst, Math.abs(f.w - f.t), Math.abs(f.w - f.s), Math.abs(f.t - f.s));
+    const delta = Math.max(Math.abs(f.w - f.t), Math.abs(f.w - f.s), Math.abs(f.t - f.s));
+    if (delta > worst) { worst = delta; frame = f; }
   }
-  return worst;
+  return { worst, frame };
 }
 
 await p.evaluate(() => { onbStartWelcome(); });
 let samples = await sampleTransition('onbBeatGo(1)');
-let worst = worstDesync(samples);
-P('beat0->beat1 (wordmark hides, title shows): opacity stays synced every frame', worst < 0.01, `worst per-frame diff ${worst.toFixed(4)}`);
+let detail = worstDesync(samples);
+P('beat0->beat1 (wordmark hides, title shows): opacity stays synced every frame', detail.worst < 0.01, `worst per-frame diff ${detail.worst.toFixed(4)} at ${JSON.stringify(detail.frame)}`);
 
 await new Promise(r => setTimeout(r, 600));
 samples = await sampleTransition('onbBeatGo(0)');
-worst = worstDesync(samples);
-P('beat1->beat0 (wordmark shows, title hides): opacity stays synced every frame', worst < 0.01, `worst per-frame diff ${worst.toFixed(4)}`);
+detail = worstDesync(samples);
+P('beat1->beat0 (wordmark shows, title hides): opacity stays synced every frame', detail.worst < 0.01, `worst per-frame diff ${detail.worst.toFixed(4)} at ${JSON.stringify(detail.frame)}`);
 
 await new Promise(r => setTimeout(r, 600));
 samples = await sampleTransition('onbBeatGo(1); onbBeatGo(2)');
-worst = worstDesync(samples);
-P('rapid double-advance settles without desync', worst < 0.01, `worst per-frame diff ${worst.toFixed(4)}`);
+detail = worstDesync(samples);
+P('rapid double-advance settles without desync', detail.worst < 0.01, `worst per-frame diff ${detail.worst.toFixed(4)} at ${JSON.stringify(detail.frame)}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

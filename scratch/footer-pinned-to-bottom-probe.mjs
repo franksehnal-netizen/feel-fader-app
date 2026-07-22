@@ -37,5 +37,12 @@ P('footer sits flush at the bottom when content is shorter than the viewport', M
 const tallContentGap = await gapAt(900);  // viewport shorter than content (normal scroll case)
 P('footer still sits flush at the true end of the page when content overflows', Math.abs(tallContentGap) < 1, String(tallContentGap));
 
+const links = await p.evaluate(() => ({
+  placeholders: [...document.querySelectorAll('.site-footer a')].filter(a => a.getAttribute('href') === '#').length,
+  support: document.querySelector('.site-footer a[href^="mailto:"]')?.getAttribute('href'),
+}));
+P('footer contains no placeholder links', links.placeholders === 0, JSON.stringify(links));
+P('footer exposes a direct support email link', links.support === 'mailto:support@acoustic-empire.cz', links.support || 'missing');
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
