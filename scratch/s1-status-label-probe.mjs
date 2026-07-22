@@ -17,7 +17,7 @@ await new Promise(r => setTimeout(r, 3500)); // past the old 3000ms collapse win
 
 const r = await p.evaluate(() => {
   const txt = document.getElementById('h-status-text');
-  return { hidden: txt.classList.contains('hidden'), text: txt.textContent, visible: getComputedStyle(txt).opacity !== '0' };
+  return { hidden: txt.classList.contains('hidden'), text: txt.textContent, visible: txt.getBoundingClientRect().width > 0 };
 });
 P('Desktop "Connected" text is still visible 3.5s after connecting', !r.hidden && r.visible, JSON.stringify(r));
 
