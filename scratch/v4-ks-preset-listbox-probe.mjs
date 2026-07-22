@@ -33,5 +33,16 @@ await p.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown
 const closedByOutsideClick = await p.evaluate(() => document.getElementById('ks-preset-menu-0').hidden);
 P('Outside click closes the menu', closedByOutsideClick === true, closedByOutsideClick);
 
+// Regression: saving/deleting a custom Library preset (persistCustomPresets -> refreshLibraryPresetOptions)
+// must not corrupt the RANGE PRESET listbox, which shares the .quick-setup-menu class.
+await p.evaluate(() => { cfg.banks[0].roller_mode = 'keyswitch'; render(); });
+const afterPersist = await p.evaluate(() => {
+  persistCustomPresets();
+  const menu = document.getElementById('ks-preset-menu-0');
+  const options = [...menu.querySelectorAll('.quick-setup-option[role="option"]')];
+  return { count: options.length, idxs: options.map(o => o.dataset.idx) };
+});
+P('persistCustomPresets() does not overwrite the RANGE PRESET listbox', afterPersist.count === 2 && afterPersist.idxs[0] === '0' && afterPersist.idxs[1] === '1', JSON.stringify(afterPersist));
+
 await p.close();
 await b.close();

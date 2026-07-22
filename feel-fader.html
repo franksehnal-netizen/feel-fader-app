@@ -461,7 +461,7 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
    without the search input: KEYSWITCH_PRESETS only has 2 static entries. */
 .ks-preset-picker{position:relative;flex:0 0 auto}
 .ks-preset-trigger{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t2)}
-.ks-preset-chevron{font-size:9px;color:var(--t3);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.ks-preset-chevron{font-size:10px;color:var(--t3);transition:transform .2s cubic-bezier(.16,1,.3,1)}
 .ks-preset-trigger[aria-expanded="true"] .ks-preset-chevron{transform:rotate(180deg)}
 .quick-setup-menu.ks-preset-menu{left:0;width:max(180px,100%);max-height:none}
 .ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:66px;text-align:center;color:var(--t1)}
@@ -5765,7 +5765,7 @@ function quickSetupOptionKey(event) {
   }
 }
 function refreshLibraryPresetOptions() {
-  document.querySelectorAll('.quick-setup-menu').forEach(menu => {
+  document.querySelectorAll('.quick-setup-menu:not(.ks-preset-menu)').forEach(menu => {
     const bi = Number(menu.id.split('-').pop());
     const input = document.getElementById(`quick-setup-input-${bi}`);
     menu.innerHTML = quickSetupMenuHtml(input?.value || '');
