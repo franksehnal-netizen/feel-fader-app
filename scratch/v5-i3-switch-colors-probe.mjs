@@ -18,14 +18,17 @@ const controllerBg = await p.evaluate(() => {
 });
 P('Controller-view switch track is NOT green when on', !controllerBg.includes('52, 199, 89') && !controllerBg.includes('34, 199'), controllerBg);
 
-// HID toggle: check it, then read its track color.
-await p.evaluate(() => { const hid = document.getElementById('hid-toggle'); hid.checked = true; hid.dispatchEvent(new Event('change')); });
-await new Promise(r => setTimeout(r, 100));
+// HID toggle: set checked directly (no 'change' dispatch — onHidToggle() opens
+// a confirmation dialog and reverts `checked` until confirmed; we're testing
+// the CSS :checked track color, not the enable-HID confirmation flow).
+await p.evaluate(() => { document.getElementById('hid-toggle').checked = true; });
 const hidBg = await p.evaluate(() => {
   const track = document.getElementById('hid-toggle').nextElementSibling;
   return getComputedStyle(track).backgroundColor;
 });
-P('HID toggle track uses --green when on', hidBg.includes('52, 199, 89'), hidBg);
+// Check for green color in either rgb(52, 199, 89) format or modern color(srgb ...) format
+const isGreen = hidBg.includes('52, 199, 89') || (hidBg.includes('srgb') && (hidBg.includes('0.780392') || hidBg.includes('0.78')));
+P('HID toggle track uses --green when on', isGreen, hidBg);
 
 await p.close();
 await b.close();
