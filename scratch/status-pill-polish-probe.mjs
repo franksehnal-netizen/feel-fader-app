@@ -11,13 +11,15 @@
 //    brick red in light mode (#b42318) that looked "too dark" next to
 //    the vivid fader red (#e45745) — switched to var(--red) so it always
 //    matches the fader color in both themes (--red has no dark override).
-// 3. The "device connected" text auto-collapse-after-3s feature
-//    (documented in the project history as already shipped 2026-07-13)
-//    had no actual trigger in the code — CSS supported .hidden but
-//    nothing ever added the class. renderConnState() now starts a 3s
-//    timer on the DISCONNECTED->LIVE transition only (not on every
-//    re-render while already live), and clears it on any other
-//    transition so a stale timeout can't hide an unrelated later state.
+// 3. UPDATED 2026-07-22 (UX audit finding S-1): the "device connected"
+//    text auto-collapse-after-3s feature added here on 2026-07-21 turned
+//    out to leave desktop with only a bare 7px dot and no label — the
+//    audit's own WEBAPP.md-described "clickable overview" fallback never
+//    existed in code either. renderConnState() no longer starts any
+//    collapse timer; the text stays visible on desktop for as long as the
+//    device stays connected. (Mobile is unaffected either way — a
+//    separate, unconditional CSS rule keeps #h-status-text visually
+//    hidden there regardless of this JS.)
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -66,23 +68,23 @@ const liveSeq = await p.evaluate(async () => {
   return { immediately, after3s };
 });
 P('"device connected" text is visible right when it becomes live', liveSeq.immediately === false, JSON.stringify(liveSeq));
-P('"device connected" text auto-collapses after ~3s', liveSeq.after3s === true, JSON.stringify(liveSeq));
+P('"device connected" text stays visible past 3s (no auto-collapse, per S-1)', liveSeq.after3s === false, JSON.stringify(liveSeq));
 
-// No-regression: re-rendering while still live must not keep resetting/re-triggering the timer weirdly
+// No-regression: re-rendering while still live must not hide the text
 const stability = await p.evaluate(async () => {
   const txt = document.getElementById('h-status-text');
   renderConnState(); renderConnState();   // still CONNECTED_LIVE, no transition
   return txt.classList.contains('hidden');
 });
-P('repeated renders while already live keep the text collapsed (no re-open)', stability === true, String(stability));
+P('repeated renders while already live keep the text visible', stability === false, String(stability));
 
-// Leaving live state clears any pending timer and un-hides immediately
+// Leaving live state keeps the text visible (nothing to un-hide anymore)
 const disconnectSeq = await p.evaluate(async () => {
   _midiState = 'granted'; _ffConnected = false; _serialPort = null;
   renderConnState();
   return document.getElementById('h-status-text').classList.contains('hidden');
 });
-P('leaving the live state immediately un-hides the text', disconnectSeq === false, String(disconnectSeq));
+P('leaving the live state leaves the text visible', disconnectSeq === false, String(disconnectSeq));
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
