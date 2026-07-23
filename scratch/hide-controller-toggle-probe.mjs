@@ -90,7 +90,11 @@ P('sticky send row stays pinned under the header while scrolling', stickyTop >= 
 await p.evaluate(() => window.scrollTo(0, 0));
 
 await p.click('#controller-toggle-input');
-await new Promise(r => setTimeout(r, 500));
+// 2026-07-23: Send now waits out the box-growth phase (delayed 500ms) before
+// reparenting back into device-wrap, so it arrives in sync with the content
+// fade-in instead of jumping ahead of it — needs headroom past that 500ms
+// delay's own transition, not just the delay itself.
+await new Promise(r => setTimeout(r, 1000));
 
 const restored = await p.evaluate(() => {
   const anchor = document.querySelector('.send-anchor');
