@@ -934,13 +934,18 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
   font-size:11px;color:var(--t3);
   letter-spacing:.02em;
   margin-left:4px;
-  transition:opacity .4s,max-width .4s ease,margin-left .4s ease;
+  max-width:20ch;overflow:hidden;white-space:nowrap;
+  transition:opacity .4s,margin-left .4s ease;
 }
-/* Only the LIVE state auto-hides; give its (short) text a concrete max-width so the
-   collapse animates smoothly. Error/disconnected texts stay unconstrained (no clip). */
-.h-status-dot.on ~ .h-status-text{max-width:20ch;overflow:hidden;white-space:nowrap;}
-.h-status-dot.on ~ .h-status-text.hidden{max-width:0;margin-left:0;}
-.h-status-text.hidden{opacity:0;}
+/* CONNECTED_LIVE/CONNECTED_BLIND only (`.reveal-on-interact`, set in renderConnState()):
+   text stays collapsed to the dot until hover, keyboard focus, or a click/tap
+   (`.is-revealed`, toggled by toggleStatusReveal()). MIDI_BLOCKED/DISCONNECTED never
+   get `.reveal-on-interact` — their text stays permanently visible; readability over
+   compactness for the rarer error states (Frank 2026-07-23). */
+.h-status.reveal-on-interact .h-status-text{max-width:0;opacity:0;margin-left:0;}
+.h-status.reveal-on-interact:hover .h-status-text,
+.h-status.reveal-on-interact:focus-visible .h-status-text,
+.h-status.reveal-on-interact.is-revealed .h-status-text{max-width:20ch;opacity:1;margin-left:4px;}
 .h-div{width:1px;height:16px;background:var(--border);flex:0 0 auto;}
 
 
@@ -1626,7 +1631,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <header>
   <div class="h-left">
     <div class="h-status-wrap">
-      <span class="h-status" id="h-status" aria-live="polite">
+      <span class="h-status" id="h-status" aria-live="polite" tabindex="0" onclick="toggleStatusReveal(event)">
         <span class="h-status-dot" id="h-status-dot" aria-hidden="true"></span>
         <span class="h-status-text" id="h-status-text"></span>
       </span>
@@ -4738,23 +4743,25 @@ function renderConnState(){
   const note = document.getElementById('live-note');
   if (!dot || !txt) return;
   const s = connState();
-  const entering = s !== _lastConnState;
   _lastConnState = s;
+  const revealOnInteract = (s === 'CONNECTED_LIVE' || s === 'CONNECTED_BLIND');
   if (s === 'CONNECTED_LIVE'){
     dot.className = 'h-status-dot on';
-    if (entering) {
-      txt.classList.remove('hidden'); txt.textContent = t('status.connected');
-    }
+    txt.textContent = t('status.connected');
   } else if (s === 'CONNECTED_BLIND'){
     dot.className = 'h-status-dot warn';
-    txt.classList.remove('hidden'); txt.textContent = t('status.no_live_view');
+    txt.textContent = t('status.no_live_view');
   } else if (s === 'MIDI_BLOCKED'){
     dot.className = 'h-status-dot err';
-    txt.classList.remove('hidden');
     txt.textContent = _midiState === 'unsupported' ? t('midi.unavailable') : t('midi.denied');
   } else { // DISCONNECTED
     dot.className = 'h-status-dot';
-    txt.classList.remove('hidden'); txt.textContent = t('status.no_device');
+    txt.textContent = t('status.no_device');
+  }
+  if (status) {
+    status.classList.toggle('reveal-on-interact', revealOnInteract);
+    if (revealOnInteract) status.setAttribute('aria-expanded', status.classList.contains('is-revealed') ? 'true' : 'false');
+    else { status.removeAttribute('aria-expanded'); status.classList.remove('is-revealed'); }
   }
   if (note) {
     note.hidden = (s !== 'CONNECTED_BLIND');
@@ -4770,6 +4777,13 @@ function renderConnState(){
   renderLiveStrip();
   renderMidiDiagnostics();
   updateNvmDegradedNotice();
+}
+function toggleStatusReveal(event) {
+  const status = document.getElementById('h-status');
+  if (!status || !status.classList.contains('reveal-on-interact')) return;
+  event.stopPropagation();
+  const revealed = status.classList.toggle('is-revealed');
+  status.setAttribute('aria-expanded', revealed ? 'true' : 'false');
 }
 function setTxt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function toast(t,m,action=null){
@@ -5827,6 +5841,11 @@ document.addEventListener('pointerdown', event => {
     if (!picker.contains(event.target)) closeKsPresetMenu(Number(picker.id.split('-').pop()));
   });
   if (!event.target.closest('.send-callout')) closeChangePopover();
+  const statusEl = document.getElementById('h-status');
+  if (statusEl && !statusEl.contains(event.target) && statusEl.classList.contains('is-revealed')) {
+    statusEl.classList.remove('is-revealed');
+    statusEl.setAttribute('aria-expanded', 'false');
+  }
 });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && document.getElementById('change-popover')?.classList.contains('is-open')) closeChangePopover();
