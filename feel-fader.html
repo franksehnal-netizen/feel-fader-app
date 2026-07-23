@@ -1666,7 +1666,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 </header>
 <div class="send-sticky-row" id="send-sticky-row" hidden></div>
 </div>
-<div class="live-hud is-compact" id="live-strip" data-state="DISCONNECTED" data-side="left" role="group" tabindex="0" aria-label="Live device values. Drag left or right to reposition." aria-hidden="true">
+<div class="live-hud" id="live-strip" data-state="DISCONNECTED" data-side="left" role="group" tabindex="0" aria-label="Live device values. Drag left or right to reposition." aria-hidden="true">
   <div class="live-hud-bank" id="live-hud-bank">B1 · Bank 1</div>
   <div class="live-hud-inner">
     <div class="live-hud-item">
@@ -4670,7 +4670,6 @@ function updateContextualLiveStrip(){
   strip.style.top = `${Math.round(headerBottom + 12)}px`;
   strip.classList.toggle('is-contextual-visible',visible);
   strip.classList.toggle('is-idle',!live);
-  strip.classList.add('is-compact');
   strip.setAttribute('aria-hidden',String(!visible));
 }
 function renderLiveStrip(){
