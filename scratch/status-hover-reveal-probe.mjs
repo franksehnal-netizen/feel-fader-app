@@ -13,6 +13,7 @@ await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 
 // CONNECTED_LIVE: text collapsed by default, has reveal-on-interact.
 await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); });
+await new Promise(r => setTimeout(r, 450)); // Wait for 0.4s transition to settle
 const liveState = await p.evaluate(() => {
   const status = document.getElementById('h-status');
   const txt = document.getElementById('h-status-text');
@@ -22,6 +23,7 @@ P('CONNECTED_LIVE gets reveal-on-interact, text collapsed by default', liveState
 
 // Click reveals it.
 await p.evaluate(() => document.getElementById('h-status').click());
+await new Promise(r => setTimeout(r, 450)); // Wait for 0.4s transition to settle
 const afterClick = await p.evaluate(() => {
   const txt = document.getElementById('h-status-text');
   return { maxWidth: getComputedStyle(txt).maxWidth, ariaExpanded: document.getElementById('h-status').getAttribute('aria-expanded') };
@@ -30,11 +32,13 @@ P('Click reveals the text', afterClick.maxWidth === '132px' && afterClick.ariaEx
 
 // Outside click closes it again.
 await p.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true})));
+await new Promise(r => setTimeout(r, 450)); // Wait for 0.4s transition to settle
 const afterOutside = await p.evaluate(() => getComputedStyle(document.getElementById('h-status-text')).maxWidth);
 P('Outside click collapses it back', afterOutside === '0px', afterOutside);
 
 // DISCONNECTED: no reveal-on-interact, text always visible.
 await p.evaluate(() => { _ffConnected=false; _serialPort=null; connState(); renderConnState(); });
+await new Promise(r => setTimeout(r, 450)); // Wait for 0.4s transition to settle
 const disconnectedState = await p.evaluate(() => {
   const status = document.getElementById('h-status');
   const txt = document.getElementById('h-status-text');
