@@ -12,10 +12,12 @@ await p.goto(URL, { waitUntil: 'networkidle0' });
 await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); });
 
-// Hide the controller and let the .9s collapse transition finish (Task 6 slows this
-// to 900ms — wait long enough to cover either the old 420ms or the new 900ms value).
+// Hide the controller and let the .9s collapse transition finish, plus the
+// send-anchor's own settle cleanup glide on top (2026-07-23: up to .3s for
+// larger gaps, since revealing the sticky row itself reflows the page) —
+// wait long enough to clear the full chain, not just the box collapse.
 await p.evaluate(() => toggleControllerVisibility(false));
-await new Promise(r => setTimeout(r, 1000));
+await new Promise(r => setTimeout(r, 1300));
 
 const gaps = await p.evaluate(() => {
   const header = document.querySelector('header');
