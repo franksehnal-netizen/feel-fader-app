@@ -1,5 +1,11 @@
-// Regression probe for the unified live-status capsule: it shares the
-// header glass surface, hides obsolete meters and fits the longest name.
+// Regression probe for the unified live-status HUD: it shares the header
+// glass surface, shows its meter bars, and truncates the longest name
+// gracefully instead of overflowing the card.
+// UPDATED 2026-07-23: Task 4 of Frank's UX polish plan replaced the
+// horizontal is-compact capsule with a permanent 112x112 square (see
+// scratch/live-hud-square-probe.mjs) — meter bars are no longer hidden,
+// and long articulation names truncate via CSS ellipsis instead of
+// always fitting untruncated.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -26,18 +32,19 @@ const r = await p.evaluate(async () => {
   const hr = hud.getBoundingClientRect();
   const mr = meter.getBoundingClientRect();
   hud.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  const cardRect = hud.getBoundingClientRect();
   return {
-    capsule: hud.classList.contains('is-compact') && Math.abs(hr.width-252) <= 1 && Math.abs(hr.height-46) <= 1,
-    meterHidden: mr.width === 0 && mr.height === 0,
-    valueFits: value.scrollWidth <= value.clientWidth + 1 && value.textContent === 'Short — Snap Pizzicato',
+    square: !hud.classList.contains('is-compact') && Math.abs(hr.width-112) <= 1 && Math.abs(hr.height-112) <= 1,
+    meterVisible: mr.width > 0 && mr.height > 0,
+    valueOverflowsCard: value.getBoundingClientRect().right > cardRect.right + 1,
     sharedGlass: hs.background === ls.background && hs.backdropFilter === ls.backdropFilter && hs.boxShadow === ls.boxShadow,
     keyboardSnap: hud.dataset.side === 'right' && localStorage.getItem('ff_live_hud_side') === 'right',
   };
 });
 
-P('desktop status uses one horizontal capsule', r.capsule, r.capsule);
-P('obsolete meter bars are hidden', r.meterHidden, r.meterHidden);
-P('longest articulation fits without clipping', r.valueFits, r.valueFits);
+P('desktop status is the permanent 112x112 square (not a compact capsule)', r.square, r.square);
+P('fader meter bars are visible in the square layout', r.meterVisible, r.meterVisible);
+P('longest articulation truncates gracefully without overflowing the card', !r.valueOverflowsCard, r.valueOverflowsCard);
 P('status capsule and header share the same glass surface', r.sharedGlass, r.sharedGlass);
 P('keyboard repositioning snaps and persists', r.keyboardSnap, r.keyboardSnap);
 P('no page errors', errs.length===0, errs.join(' | '));

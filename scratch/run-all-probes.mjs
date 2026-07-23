@@ -43,6 +43,12 @@ const PROBES = [
   'livecolor-probe.mjs',
   'mobile-ux-probe.mjs',
   'onb-probe4.mjs',
+  'welcome-no-box-probe.mjs',
+  'status-hover-reveal-probe.mjs',
+  'bank-glyph-neutral-probe.mjs',
+  'live-hud-square-probe.mjs',
+  'send-dock-gap-symmetry-probe.mjs',
+  'controller-toggle-speed-probe.mjs',
 ];
 
 function startServer() {

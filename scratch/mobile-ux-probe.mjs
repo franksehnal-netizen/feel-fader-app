@@ -142,7 +142,7 @@ async function runDesktopFlow(browser, url) {
     const rect = hud.getBoundingClientRect();
     return {
       visible: hud.classList.contains('is-contextual-visible'),
-      compact: hud.classList.contains('is-compact'),
+      square: !hud.classList.contains('is-compact'),
       ariaHidden: hud.getAttribute('aria-hidden'),
       width: rect.width,
       height: rect.height,
@@ -152,6 +152,9 @@ async function runDesktopFlow(browser, url) {
   // Frank removed the click-to-open overview since Device & Settings > MIDI
   // diagnostics already shows the same info, and a clickable-looking status
   // pill that opened a redundant popover was more chrome than the app needed.
+  // UPDATED 2026-07-23: Task 2 of the UX polish plan added a click handler
+  // back, this time for hover/click-to-reveal of the status text — still no
+  // popover, still not styled as a button.
   await page.click('#h-status');
   await settle(page, 80);
   const connectionStatus = await page.evaluate(() => {
@@ -221,7 +224,7 @@ async function runDesktopFlow(browser, url) {
       quickBottom: quick.bottom,
       overlap,
       hudVisible: hud.classList.contains('is-contextual-visible'),
-      hudCompact: hud.classList.contains('is-compact'),
+      hudSquare: !hud.classList.contains('is-compact'),
       hudWidth: hudRect.width,
       hudHeight: hudRect.height,
       hudTech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id)?.textContent || ''),
@@ -262,15 +265,15 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Hardware monitor stays visible with or without the controller in view',
     hudAtController.visible && hudAtController.ariaHidden === 'false' && scrolled.hudVisible,
     `at controller ${hudAtController.visible} / after scroll ${scrolled.hudVisible}`);
-  addCheck(checks, 'Header connection status is a plain non-interactive indicator (no popover)',
-    connectionStatus.tag === 'SPAN' && connectionStatus.cursor !== 'pointer' && !connectionStatus.hasOnclick && connectionStatus.popoverAbsent,
+  addCheck(checks, 'Header connection status is click/tap-to-reveal, still with no popover',
+    connectionStatus.tag === 'SPAN' && connectionStatus.cursor !== 'pointer' && connectionStatus.hasOnclick && connectionStatus.popoverAbsent,
     `${connectionStatus.tag} / cursor ${connectionStatus.cursor} / onclick ${connectionStatus.hasOnclick} / popover absent ${connectionStatus.popoverAbsent}`);
   addCheck(checks, 'Long open configuration section keeps its heading below the app header',
     stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
     `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
-  addCheck(checks, 'Desktop monitor stays a consistent horizontal capsule',
-    hudAtController.compact && Math.abs(hudAtController.width - 252) <= 1 && Math.abs(hudAtController.height - 46) <= 1
-      && scrolled.hudCompact && Math.abs(scrolled.hudWidth - 252) <= 1 && Math.abs(scrolled.hudHeight - 46) <= 1,
+  addCheck(checks, 'Desktop monitor stays a consistent 112x112 square',
+    hudAtController.square && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
+      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 112) <= 1 && Math.abs(scrolled.hudHeight - 112) <= 1,
     `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
   addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
     scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
@@ -749,7 +752,7 @@ async function runProfile(browser, url, profile) {
     const controller = document.getElementById('device-img').getBoundingClientRect();
     return {
       visible: hud.classList.contains('is-contextual-visible'),
-      compact: hud.classList.contains('is-compact'),
+      square: !hud.classList.contains('is-compact'),
       opacity: getComputedStyle(hud).opacity,
       topGap: rect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
       leftGap: rect.left,
@@ -758,10 +761,14 @@ async function runProfile(browser, url, profile) {
       controllerBottom: controller.bottom,
       values: ['live-f1-value','live-f2-value','live-roller-value'].map(id => document.getElementById(id).textContent),
       tech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id).textContent),
-      valuesUnclipped: ['live-f1-value','live-f2-value','live-roller-value'].every(id => {
+      valuesUnclipped: ['live-f1-value','live-f2-value'].every(id => {
         const value = document.getElementById(id);
         return value.scrollWidth <= value.clientWidth + 1;
       }),
+      rollerOverflowsCard: (() => {
+        const value = document.getElementById('live-roller-value');
+        return value.getBoundingClientRect().right > rect.right + 1;
+      })(),
       techUnclipped: ['live-f1-tech','live-f2-tech','live-roller-tech'].every(id => {
         const value = document.getElementById(id);
         return value.scrollWidth <= value.clientWidth + 1;
@@ -781,10 +788,10 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Mobile hardware monitor remains visible while the controller scrolls away',
     mobileStrip.visible && mobileStrip.opacity === '1' && mobileStrip.controllerBottom < 0,
     `controller ${mobileStrip.controllerBottom.toFixed(1)} px / visible ${mobileStrip.visible} / opacity ${mobileStrip.opacity}`);
-  addCheck(checks, 'Scrolled mobile monitor becomes a compact L, R and ART capsule',
-    mobileStrip.compact && Math.abs(mobileStrip.width - 228) <= 1 && Math.abs(mobileStrip.height - 44) <= 1
-      && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped
-      && mobileStrip.meterRects.every(rect => rect.width === 0 && rect.height === 0)
+  addCheck(checks, 'Scrolled mobile monitor becomes the permanent 96x96 square with L, R and ART',
+    mobileStrip.square && Math.abs(mobileStrip.width - 96) <= 1 && Math.abs(mobileStrip.height - 96) <= 1
+      && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
+      && mobileStrip.meterRects.every(rect => rect.width > 0 && rect.height > 0)
       && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Snap Pizzicato'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
@@ -820,18 +827,18 @@ async function runProfile(browser, url, profile) {
     });
     return {
       visible: hud.classList.contains('is-contextual-visible'),
-      compact: hud.classList.contains('is-compact'),
+      square: !hud.classList.contains('is-compact'),
       opacity: getComputedStyle(hud).opacity,
       width: rect.width,
       height: rect.height,
       meters,
     };
   });
-  addCheck(checks, 'Hardware monitor remains the same capsule beside the controller',
-    stripBackAtController.visible && stripBackAtController.compact && stripBackAtController.opacity === '1'
-      && Math.abs(stripBackAtController.width - 228) <= 1 && Math.abs(stripBackAtController.height - 44) <= 1
-      && stripBackAtController.meters.every(meter => meter.width === 0 && meter.height === 0),
-    `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / compact ${stripBackAtController.compact} / opacity ${stripBackAtController.opacity}`);
+  addCheck(checks, 'Hardware monitor remains the same 96x96 square beside the controller',
+    stripBackAtController.visible && stripBackAtController.square && stripBackAtController.opacity === '1'
+      && Math.abs(stripBackAtController.width - 96) <= 1 && Math.abs(stripBackAtController.height - 96) <= 1
+      && stripBackAtController.meters.every(meter => meter.width > 0 && meter.height > 0),
+    `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / square ${stripBackAtController.square} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();

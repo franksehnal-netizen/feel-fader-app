@@ -20,6 +20,12 @@
 //    device stays connected. (Mobile is unaffected either way — a
 //    separate, unconditional CSS rule keeps #h-status-text visually
 //    hidden there regardless of this JS.)
+// 4. UPDATED 2026-07-23: Frank's UX polish plan (Task 2) deliberately
+//    reversed point 1's "NOT clickable" — #h-status now carries
+//    onclick="toggleStatusReveal(event)" for hover/click-to-reveal text
+//    (see .reveal-on-interact in the CSS). It is still not styled as a
+//    button (no background, no backdrop-filter, no pointer cursor, no
+//    #connection-popover), so those checks are unchanged.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -44,7 +50,7 @@ const status = await p.evaluate(() => {
   };
 });
 P('#h-status is a plain span, not a button', status.tag === 'SPAN', JSON.stringify(status));
-P('#h-status has no click handler', status.hasOnclick === false, JSON.stringify(status));
+P('#h-status has a click handler (click/tap-to-reveal text, added 2026-07-23)', status.hasOnclick === true, JSON.stringify(status));
 P('#h-status has no pointer cursor (not clickable-looking)', status.cursor !== 'pointer', JSON.stringify(status));
 P('#h-status has no pill background/backdrop-filter (plain dot+text, not a chip)', !/blur/.test(status.backdropFilter) && !status.hasBackgroundImage, JSON.stringify(status));
 P('the connection popover no longer exists in the DOM', status.popoverExists === false, JSON.stringify(status));
