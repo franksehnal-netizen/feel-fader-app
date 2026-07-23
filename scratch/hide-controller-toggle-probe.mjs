@@ -54,7 +54,12 @@ P('initially: sticky send row is hidden', before.rowHidden, JSON.stringify(befor
 P('initially: switch is checked (ON = controller visible)', before.switchChecked === true, JSON.stringify(before));
 
 await p.click('#controller-toggle-input');
-await new Promise(r => setTimeout(r, 500));
+// 2026-07-23: the collapse now runs as two sequential phases (content fades
+// .4s, THEN the box collapses .5s, delayed until the fade finishes) instead
+// of one .9s transition — 900ms total either way, but the box doesn't reach
+// 0 height until closer to the full duration, so this wait needs headroom
+// past 900ms rather than the old 500ms half-way sample.
+await new Promise(r => setTimeout(r, 1000));
 
 const hidden = await p.evaluate(() => {
   const anchor = document.querySelector('.send-anchor');
