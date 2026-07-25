@@ -66,7 +66,7 @@ const hidden = await p.evaluate(() => {
   const btn = document.getElementById('send-btn');
   return {
     wrapHeight: document.getElementById('stage-collapse').getBoundingClientRect().height,
-    anchorInStickyRow: anchor.parentElement.id === 'send-sticky-row',
+    anchorInStickyRow: anchor.parentElement.id === 'send-sticky-row-inner',
     anchorHasDockedClass: anchor.classList.contains('docked'),
     rowHidden: document.getElementById('send-sticky-row').hidden,
     sendBtnClickable: !!btn.offsetParent,
@@ -167,7 +167,7 @@ const staleHiddenScenario = await p3.evaluate(() => {
   const anchor = document.querySelector('.send-anchor');
   const btn = document.getElementById('send-btn');
   return {
-    anchorInStickyRow: anchor.parentElement.id === 'send-sticky-row',
+    anchorInStickyRow: anchor.parentElement.id === 'send-sticky-row-inner',
     sendBtnSize: (r=>({w:r.width,h:r.height}))(btn.getBoundingClientRect()),
     rowHidden: document.getElementById('send-sticky-row').hidden,
   };
