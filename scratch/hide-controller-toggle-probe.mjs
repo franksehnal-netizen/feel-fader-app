@@ -121,16 +121,22 @@ const dirtyNote = await p.evaluate(() => {
 });
 P('unsaved-changes note is visible alongside Send in the sticky row', dirtyNote.visible && /unsaved/i.test(dirtyNote.text), JSON.stringify(dirtyNote));
 
-// Panels below must not stretch to fill the reclaimed space (regression:
-// a stray .panel-wide{flex:1} rule from an unused .blk-wide layout used
-// to make Device & Settings / Help & Guide balloon in height once the
-// stage collapsed and .center-col had real leftover space to distribute).
+// Panels below must not stretch to fill the reclaimed space. .panel carries
+// flex:1 (for equal widths inside .panels-row); the standalone wide panels
+// (Device & Settings, Help & Guide) are direct children of .center-col, a
+// flex COLUMN, where flex:1 makes them GROW vertically and balloon into the
+// space freed by hiding the controller. This only shows on a TALL window
+// (lots of leftover space), so measure at 1900px — at 900px they barely grow
+// and the regression slips through (Frank 2026-07-26). Fixed by
+// .center-col>.panel-wide{flex:0 0 auto}.
+await p.setViewport({ width: 1280, height: 1900 });
+await new Promise(r => setTimeout(r, 100));
 const panelHeights = await p.evaluate(() => {
-  return [...document.querySelectorAll('.panel.panel-wide')]
-    .filter(el => !el.closest('.bank-card'))
-    .map(el => el.getBoundingClientRect().height);
+  return [...document.querySelectorAll('.center-col > .panel.panel-wide')]
+    .map(el => Math.round(el.getBoundingClientRect().height));
 });
-P('Device & Settings / Help & Guide panels stay compact when collapsed (not stretched)', panelHeights.every(h => h < 100), JSON.stringify(panelHeights));
+P('Device & Settings / Help & Guide keep their natural height on a tall window (no balloon)', panelHeights.every(h => h < 100), JSON.stringify(panelHeights));
+await p.setViewport({ width: 1280, height: 900 });
 
 // localStorage persistence across reload
 p.on('dialog', d => d.accept());   // the dirty-state beforeunload confirm from the note above
