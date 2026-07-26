@@ -180,6 +180,25 @@ const staleHiddenScenario = await p3.evaluate(() => {
 });
 P('bug repro: Send survives a fresh load with a previously-saved hidden preference', staleHiddenScenario.anchorInStickyRow && staleHiddenScenario.sendBtnSize.w > 100 && !staleHiddenScenario.rowHidden, JSON.stringify(staleHiddenScenario));
 
+// 2026-07-26: showing the controller for the FIRST time from a hidden LOAD
+// must glide Send smoothly to its home, NOT park it mid-controller for the
+// whole expansion and jump to the bottom at the end. That happened because
+// the home position was captured while the stage was collapsed (garbage
+// ~mid-screen value); now those metrics are only captured at full height, so
+// this first show tracks the live device slot. Guard: sample the pill near
+// the end of the show and at rest — a park-then-jump shows a big late delta.
+const firstShowGlide = await p3.evaluate(async () => {
+  const btn = document.getElementById('send-btn');
+  document.getElementById('controller-toggle-input').click(); // first show from a hidden load
+  await new Promise(r => setTimeout(r, 470));   // ~85% through the .55s expansion
+  const nearEnd = btn.getBoundingClientRect().top;
+  await new Promise(r => setTimeout(r, 400));    // settled
+  const rest = btn.getBoundingClientRect().top;
+  const dev = document.querySelector('.device-img').getBoundingClientRect();
+  return { nearEnd: Math.round(nearEnd), rest: Math.round(rest), lateJump: Math.round(Math.abs(rest - nearEnd)), belowDevice: rest > dev.top + dev.height * 0.6 };
+});
+P('first show from a hidden load glides Send home smoothly (no mid-controller park + late jump)', firstShowGlide.lateJump < 40 && firstShowGlide.belowDevice, JSON.stringify(firstShowGlide));
+
 // New with the 2026-07-21 blur-overlay redesign: a previously-hidden
 // preference must not hijack #send-btn.welcome-floating's position:fixed
 // containing block. .stage-collapse.is-collapsed>.stage gets a `transform`,
