@@ -287,8 +287,11 @@ async function runDesktopFlow(browser, url) {
     const hud = document.getElementById('live-strip');
     return { visible: hud.classList.contains('is-contextual-visible'), opacity: getComputedStyle(hud).opacity };
   });
-  addCheck(checks, 'Hardware monitor remains visible but subdued without live feedback',
-    hudOffline.visible && Math.abs(Number.parseFloat(hudOffline.opacity) - .68) <= .01,
+  // 2026-07-26: idle dimming removed — the HUD's glass matches the header at
+  // full opacity; not-live is shown by the content ("—"), not by fading the
+  // panel (Frank).
+  addCheck(checks, 'Hardware monitor stays visible at full opacity without live feedback (matches header)',
+    hudOffline.visible && Math.abs(Number.parseFloat(hudOffline.opacity) - 1) <= .01,
     `${hudOffline.visible} / opacity ${hudOffline.opacity}`);
   addCheck(checks, 'No desktop page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, 'desktop-flow.png') });

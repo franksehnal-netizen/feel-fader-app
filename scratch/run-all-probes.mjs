@@ -47,6 +47,7 @@ const PROBES = [
   'status-hover-reveal-probe.mjs',
   'bank-glyph-neutral-probe.mjs',
   'live-hud-square-probe.mjs',
+  'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
   'controller-toggle-speed-probe.mjs',
 ];

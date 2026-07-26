@@ -31,7 +31,10 @@ const notLive = await p.evaluate(async ()=>{
   return {state:strip.dataset.state,value:document.getElementById('live-f1-value').textContent,opacity:getComputedStyle(strip).opacity,visibility:getComputedStyle(strip).visibility};
 });
 P('not-live strip hides stale hardware value', notLive.state!=='CONNECTED_LIVE' && notLive.value==='—', JSON.stringify(notLive));
-P('not-live HUD remains visible but subdued', Number(notLive.opacity)>.5 && Number(notLive.opacity)<.8 && notLive.visibility==='visible', JSON.stringify(notLive));
+// 2026-07-26: idle dimming removed — the HUD's glass now matches the header
+// exactly (full opacity), and not-live is conveyed by the content ("—"), not
+// by fading the whole panel (Frank).
+P('not-live HUD stays visible at full opacity (matches header, "—" shows it is idle)', Math.abs(Number(notLive.opacity)-1)<0.01 && notLive.visibility==='visible', JSON.stringify(notLive));
 P('no page errors', errs.length===0, errs.join(' | '));
 
 await b.close();

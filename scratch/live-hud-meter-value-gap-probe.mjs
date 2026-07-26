@@ -31,14 +31,19 @@ const r = await p.evaluate(async () => {
   const ls = getComputedStyle(hud);
   const hr = hud.getBoundingClientRect();
   const mr = meter.getBoundingClientRect();
-  hud.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  // 2026-07-26: keyboard arrows now NUDGE to a free position (Frank + Sláv's
+  // free-manipulation feature), not snap to a left/right side. From the
+  // default position ArrowRight sets an inline left and a custom position
+  // persisted under the new ff_live_hud_pos key.
+  hud.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
   const cardRect = hud.getBoundingClientRect();
+  const savedPos = JSON.parse(localStorage.getItem('ff_live_hud_pos') || 'null');
   return {
     square: !hud.classList.contains('is-compact') && Math.abs(hr.width-112) <= 1 && Math.abs(hr.height-112) <= 1,
     meterVisible: mr.width > 0 && mr.height > 0,
     valueOverflowsCard: value.getBoundingClientRect().right > cardRect.right + 1,
     sharedGlass: hs.background === ls.background && hs.backdropFilter === ls.backdropFilter && hs.boxShadow === ls.boxShadow,
-    keyboardSnap: hud.dataset.side === 'right' && localStorage.getItem('ff_live_hud_side') === 'right',
+    keyboardNudge: !!hud.style.left && !!savedPos && Number.isFinite(savedPos.x),
   };
 });
 
@@ -46,6 +51,6 @@ P('desktop status is the permanent 112x112 square (not a compact capsule)', r.sq
 P('fader meter bars are visible in the square layout', r.meterVisible, r.meterVisible);
 P('longest articulation truncates gracefully without overflowing the card', !r.valueOverflowsCard, r.valueOverflowsCard);
 P('status capsule and header share the same glass surface', r.sharedGlass, r.sharedGlass);
-P('keyboard repositioning snaps and persists', r.keyboardSnap, r.keyboardSnap);
+P('keyboard arrow nudges to a free position and persists (ff_live_hud_pos)', r.keyboardNudge, JSON.stringify(r.keyboardNudge));
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
