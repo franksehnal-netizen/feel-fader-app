@@ -195,11 +195,14 @@ const whileWelcome = await p5.evaluate(() => {
     isCollapsedDeferred: !wrap.classList.contains('is-collapsed'),
     stageHasNoTransform: getComputedStyle(stage).transform === 'none',
     btnCenterX: r.left + r.width / 2,
-    viewportCenterX: 640,
+    viewportCenterX: window.innerWidth / 2,
   };
 });
 P('stage-collapse stays deferred while welcome is still showing', whileWelcome.isCollapsedDeferred, JSON.stringify(whileWelcome));
-P('#send-btn.welcome-floating centers on the true viewport, not a transformed ancestor', Math.abs(whileWelcome.btnCenterX - whileWelcome.viewportCenterX) <= 2, JSON.stringify(whileWelcome));
+// Tolerance covers the ~3px offset from html's scrollbar-gutter:stable
+// (2026-07-26); a transformed-ancestor hijack (guarded by stageHasNoTransform
+// above) would shift it far more.
+P('#send-btn.welcome-floating centers on the true viewport, not a transformed ancestor', Math.abs(whileWelcome.btnCenterX - whileWelcome.viewportCenterX) <= 8, JSON.stringify(whileWelcome));
 await p5.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
 await p5.close();
 

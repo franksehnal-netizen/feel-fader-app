@@ -116,12 +116,15 @@ const whileWelcome = await p4.evaluate(() => {
     isCollapsedDeferred: !wrap.classList.contains('is-collapsed'),
     stageHasNoTransform: getComputedStyle(stage).transform === 'none',
     btnCenterX: r.left + r.width / 2,
-    viewportCenterX: 1280 / 2,
+    viewportCenterX: window.innerWidth / 2,
   };
 });
 P('stage-collapse is deferred while welcome is still showing', whileWelcome.isCollapsedDeferred, JSON.stringify(whileWelcome));
 P('.stage has no active transform while welcome is showing (would hijack position:fixed)', whileWelcome.stageHasNoTransform, JSON.stringify(whileWelcome));
-P('#send-btn.welcome-floating is centered on the true viewport, not a transformed ancestor', Math.abs(whileWelcome.btnCenterX - whileWelcome.viewportCenterX) <= 2, JSON.stringify(whileWelcome));
+// Tolerance covers the ~3px offset from html's scrollbar-gutter:stable
+// (2026-07-26); a real transformed-ancestor hijack (guarded directly by the
+// stageHasNoTransform check above) would shift it by far more.
+P('#send-btn.welcome-floating is centered on the true viewport, not a transformed ancestor', Math.abs(whileWelcome.btnCenterX - whileWelcome.viewportCenterX) <= 8, JSON.stringify(whileWelcome));
 await p4.evaluate(() => skipWelcome());
 await new Promise(r => setTimeout(r, 200));
 const afterSkipHidden = await p4.evaluate(() => document.getElementById('stage-collapse').classList.contains('is-collapsed'));
