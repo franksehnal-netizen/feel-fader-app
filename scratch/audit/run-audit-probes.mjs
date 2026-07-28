@@ -16,6 +16,7 @@ const PORT = 8100;
 const AUDIT_PROBES = [
   'p1-xss-config-import.mjs',
   'p1-proto-pollution.mjs',
+  'p1-macro-nav-xss.mjs',
   'p2-malformed-import.mjs',
   'p2-storage-failure.mjs',
   'p2-serial-robustness.mjs',
