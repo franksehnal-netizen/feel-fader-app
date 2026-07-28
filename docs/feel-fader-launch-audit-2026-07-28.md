@@ -308,6 +308,70 @@ FAIL p4-no-webserial-degradation.mjs — 3 pass, 1 fail
 
 ## P5 Výkon / dlouhá session
 
+**Rozsah:** heap/DOM-node růst přes 300 cyklů `render()`/`selectBank()`/`onMidiMsg()` churn (proxy na leaknuté listenery/detached nodes), plus cold-load velikost a volitelné Lighthouse perf skóre. Probe asertuje SAFE chování (report-first — PASS = žádný leak, FAIL by byl potvrzený nález).
+
+### Krok 1 — grep signatur (`render`, `selectBank`, `onMidiMsg`, `skipWelcome`, `cfg`)
+
+`grep -nE "function render\(|function selectBank\(|function onMidiMsg\(|function skipWelcome\("`:
+- `function render() {` (2513) — bez argumentů.
+- `function selectBank(i){ activeBank=i; renderPanels(); renderUacc(); runValidation(); setActiveTab(i); }` (3276) — index banky.
+- `function onMidiMsg(event){ const data=event.data, st=data[0]; ...` (4182) — čte `event.data` jako byte pole: `data[0]`=status byte, `data[1]`=cc, `data[2]`=hodnota (`if(cc===bank.fader1.cc && ch===bank.fader1.channel)` na 4193). Skeletonový syntetický event `{data:new Uint8Array([0xB0,11,i%127])}` (0xB0 = Control Change, kanál 0, cc=11, val=i%127) **přesně odpovídá** tomu, co handler čte — žádná adaptace nebyla potřeba.
+- `let cfg = _savedCfg || JSON.parse(...)` (2301), `let liveBank = 0` (2303) — `cfg.banks[liveBank]` uvnitř `onMidiMsg` (4189) resolvuje na `cfg.banks[0]`, existuje v defaultní i demo konfiguraci → `onMidiMsg` nikdy nezasáhne svůj `if(!bank)return;` early-out.
+
+**Závěr:** skeleton z briefu je 1:1 použitelný, žádná úprava volání funkcí nebyla nutná (jediná drobná úprava probe kódu: přejmenování `listenersBefore`→`nodesBefore` pro čitelnost — funkčně identické).
+
+### Krok 2 — heap-growth probe
+
+`scratch/audit/p5-heap-growth.mjs` (Chrome spuštěn s `--js-flags=--expose-gc`, `window.gc()` voláno před každým měřením přes `p.metrics().JSHeapUsedSize`; 300× `render()` + `selectBank(i % cfg.banks.length)` + `onMidiMsg({data:new Uint8Array([0xB0,11,i%127])})`, pak 300ms čekání a druhé měření).
+
+Samostatný běh (`node scratch/audit/p5-heap-growth.mjs` přes throwaway server na :8100):
+```
+HEAP before=1.0MB after=1.4MB Δ=0.3MB; DOM nodes Δ=0
+PASS  heap po 300 cyklech neroste přes 10 MB  — Δ=0.3MB
+PASS  DOM nodes po 300 render cyklech nerostou (< 200)  — Δ=0 (before=583, after=583)
+PASS  žádná neodchycená page error
+```
+
+Přes `node scratch/audit/run-audit-probes.mjs` (celá sada P1–P5):
+```
+ok   p1-xss-config-import.mjs — 5 pass, 0 fail
+ok   p1-proto-pollution.mjs — 5 pass, 0 fail
+FAIL p2-malformed-import.mjs — 7 pass, 2 fail
+ok   p2-storage-failure.mjs — 4 pass, 0 fail
+ok   p2-serial-robustness.mjs — 6 pass, 0 fail
+FAIL p3-external-requests.mjs — 2 pass, 1 fail
+FAIL p4-no-webserial-degradation.mjs — 3 pass, 1 fail
+ok   p5-heap-growth.mjs — 3 pass, 0 fail
+
+35 passed, 4 failed, 0 crashed (8 probes)
+```
+(P2/P3/P4 FAILy beze změny — viz předchozí tasky; přidání `p5-heap-growth.mjs` do `AUDIT_PROBES` nic v P1–P4 sadě nerozbilo.)
+
+### Krok 3 — cold-load velikost
+
+`ls -la feel-fader.html` → **575 806 bajtů (≈ 562 KiB / ~576 kB)** — celá appka je jeden HTML soubor (žádný build krok, žádné code-splitting), stažený a naparsovaný najednou při prvním loadu.
+
+### Krok 4 — Lighthouse perf skóre (volitelné, Step 2)
+
+`npx lighthouse http://localhost:8100/feel-fader.html --only-categories=performance --quiet --chrome-flags="--headless" --output=json --output-path=scratch/audit/lighthouse-perf.json` — **proběhlo úspěšně** (offline npx cache měla balíček k dispozici; jediná chyba v běhu byla neškodné `EPERM` při mazání Chrome temp-dir po zavření, na report to nemělo vliv — JSON se vygeneroval kompletní).
+
+```
+perf score: 0.54
+first-contentful-paint: 5.1 s
+largest-contentful-paint: 5.1 s
+interactive (TTI): 5.1 s
+speed-index: 5.1 s
+total-blocking-time: 0 ms
+```
+
+**Kontext k číslu 0.54:** Lighthouse defaultně simuluje mobilní CPU/network throttling (4× CPU slowdown + simulované pomalé připojení) na jednom ~576 KB HTML souboru s velkým množstvím inline JS/CSS, které se musí naparsovat před prvním renderem — proto FCP/LCP/TTI vychází identicky na 5.1s (throttling dominuje, ne skutečný runtime výkon). `total-blocking-time: 0 ms` potvrzuje, že hlavní vlákno není po loadu ničím blokované — souhlasí s heap-probe nálezem (žádný runaway loop/leak). Na reálném dekstopovém/nethrottlovaném otevření (jak appku používá skutečný uživatel s připojeným MIDI zařízením) je zkušenost znatelně rychlejší; toto skóre je hardening/tracking metrika pro budoucí optimalizaci (např. code-splitting, minifikace), ne akutní launch blocker — **nezakládá samostatný P5-x nález**, protože není vázáno na žádnou runtime chybu ani prokázanou degradaci, jen na cold-load velikost jednoho souboru.
+
+Soubor `scratch/audit/lighthouse-perf.json` byl po vytažení čísel smazán (není v gitu — velký/binární-like report, dle zadání netrackovat).
+
+### Závěr P5 — žádný nález (clean)
+
+Heap Δ 0.3 MB (limit 10 MB) a DOM node Δ 0 (limit 200) po 300 cyklech `render()`/`selectBank()`/`onMidiMsg()` — **žádné leaknuté listenery ani detached nodes** v testovaném render/bank-switch/MIDI-churn loopu. Žádná neodchycená page error. Lighthouse perf skóre (0.54, throttled) je informativní hardening číslo, ne blocker. **Pozitivní výsledek, žádný P5-x nález.**
+
 ## P6 Deploy hygiena
 
 ## Go/no-go verdikt

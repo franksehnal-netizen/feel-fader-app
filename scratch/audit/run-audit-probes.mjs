@@ -21,7 +21,8 @@ const AUDIT_PROBES = [
   'p2-serial-robustness.mjs',
   'p3-external-requests.mjs',
   'p4-no-webserial-degradation.mjs',
-  /* filled by Tasks 7–8 */
+  'p5-heap-growth.mjs',
+  /* filled by Task 8 */
 ];
 
 function startServer() {
