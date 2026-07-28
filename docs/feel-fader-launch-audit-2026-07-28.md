@@ -10,6 +10,7 @@ Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: <DEMO_URL>
 | P1-1 | Security | Medium | Chybí Content-Security-Policy `<meta>` hlavička | p1-xss-config-import.mjs (kontext) | Open |
 | P2-1 | Stabilita | Critical | Import backupu s `banks`, ale poškozeným `fader1`/chybějícím `fader2`/`encoder` shodí `render()`, `cfgSave()` už proběhl → korupce se persistuje; příští normální otevření appky má prázdný `#panels-row` a neodchycenou page error | p2-malformed-import.mjs | Open |
 | P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Open |
+| P3-1 | Privacy | Medium (viz zdůvodnění) | Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) je jediná externí závislost appky — každé otevření odešle IP EU návštěvníka Googlu bez consentu (GDPR trigger) | p3-external-requests.mjs | Open |
 
 ## P1 Security
 
@@ -190,6 +191,68 @@ PASS  žádná neodchycená page error
 - **Serial:** `ERR:` rámec, cizí/stale `rid` (zahozen, čeká na korektní rámec), a úplné ticho (timeout `_readReply`, `feel-fader.html:4419`) — všechny tři cesty korektně `reject()`ují svůj `serialRequest()` promise a **`_txnChain` (`feel-fader.html:4272`, `.catch(()=>{})` na řádku 4410) zůstává funkční** — ověřeno kontrolním requestem hned po každém fault-case, který proběhl normálně. Žádná akce nutná.
 
 ## P3 Privacy/GDPR
+
+**Rozsah:** network trace všech requestů na cizí hosty (mimo `localhost`/`data:`) přes welcome flow i `skipWelcome()` cestu, plus statická kontrola `localStorage` klíčů proti PII. Probe asertuje ideál (report-first — PASS = čisto, FAIL = potvrzený nález).
+
+### Krok 1 — network trace probe
+
+`scratch/audit/p3-external-requests.mjs`: request interception (`page.on('request', ...)`) sbírá `host` každého requestu, který není `localhost(:port)` ani `data:` URI; stránka se otevře, projde `skipWelcome()`, počká 500 ms na doběhnutí async requestů.
+
+**Zjištěné externí hosty:**
+```
+EXTERNAL HOSTS: ["fonts.googleapis.com","fonts.gstatic.com"]
+```
+
+Detailní PASS/FAIL výstup:
+```
+EXTERNAL HOSTS: ["fonts.googleapis.com","fonts.gstatic.com"]
+PASS  žádné neočekávané externí hosty (jen fonts.* pokud vůbec)  — ["fonts.googleapis.com","fonts.gstatic.com"]
+FAIL  zcela bez externích requestů (ideál po self-hostu fontů)  — ["fonts.googleapis.com","fonts.gstatic.com"]
+PASS  žádná neodchycená page error  — []
+```
+
+Přes `run-audit-probes.mjs` (spolu s P1/P2 sadou):
+```
+ok   p1-xss-config-import.mjs — 5 pass, 0 fail
+ok   p1-proto-pollution.mjs — 5 pass, 0 fail
+FAIL p2-malformed-import.mjs — 7 pass, 2 fail
+ok   p2-storage-failure.mjs — 4 pass, 0 fail
+ok   p2-serial-robustness.mjs — 6 pass, 0 fail
+FAIL p3-external-requests.mjs — 2 pass, 1 fail
+
+29 passed, 3 failed, 0 crashed (6 probes)
+```
+(P2 FAILy jsou beze změny — viz Task 5 brief, tento probe se soustředí jen na P3; potvrzeno, že přidání `p3-external-requests.mjs` do `AUDIT_PROBES` nic v P1/P2 sadě nerozbilo.)
+
+**Žádné jiné externí hosty nalezeny** — žádná analytika, telemetrie, CDN skript ani třetí strana mimo Google Fonts. Aplikace komunikuje s hardwarem výhradně přes Web Serial (lokální USB), žádný síťový request tam nesměřuje.
+
+### Krok 2 — statická kontrola `localStorage` proti PII
+
+`grep -nE "localStorage\.setItem" feel-fader.html` — všechny klíče:
+
+| Řádek | Klíč | Obsah |
+|---|---|---|
+| 2214 | `ff_note_convention` | preference (note-naming convention) |
+| 2278 | `LS_CFG_KEY` = `ff-cfg` (řádek 2265) | fader/encoder konfigurace (device backup) |
+| 4464, 4486 | `LS_SERIAL_PID_KEY` = `ff-serial-pid` (řádek 2266) | USB product ID zařízení |
+| 4489, 4597 | `LS_HASH_KEY` = `ff-last-hash` (řádek 4273) | hash konfigurace potvrzený zařízením |
+| 4726 | `LIVE_HUD_POS_KEY` = `ff_live_hud_pos` (řádek 4700) | pozice HUD prvku v UI |
+| 5455 | `ff-controller-hidden` | UI preference (zobrazit/skrýt panel) |
+| 5503, 5507, 5523 | `ff-dark`, `ff-dark-${serial}` | dark-mode preference (per-zařízení) |
+| 5954 | `ff-library-setup-cue-seen` | one-time onboarding cue flag |
+| 5964 | `ff-onboarded` | onboarding-dokončeno flag |
+| 6180 | `CUSTOM_PRESETS_STORAGE_KEY` = `ff-custom-library-presets-v1` (řádek 6156) | uživatelem uložené presety (fader configy) |
+| 6191 | `QUICK_RECENT_STORAGE_KEY` = `ff-recent-quick-setups-v1` (řádek 6157) | naposledy použité quick-setup presety |
+
+**Závěr:** všech 15 zápisových míst používá klíče s prefixem `ff-`/`ff_` (config/preference/onboarding stav zařízení). Žádný klíč neobsahuje e-mail, jméno, IP adresu ani jiný přímý identifikátor osoby — `serial` v `ff-dark-${serial}` je sériové číslo/USB identifikátor MIDI zařízení (hardware), ne uživatele. **Pozitivní nález: žádné PII v `localStorage`.**
+
+### Nález P3-1 — Google Fonts jako jediná externí závislost (GDPR consent trigger)
+
+- **Zdroj:** `p3-external-requests.mjs`, `EXTERNAL HOSTS: ["fonts.googleapis.com","fonts.gstatic.com"]`.
+- **Mechanismus:** appka natahuje webfonty přímo z Google (`fonts.googleapis.com` pro CSS, `fonts.gstatic.com` pro binární font soubory) — standardní `<link>`/`@import` na Google Fonts CDN. Každé načtení stránky odešle požadavek na Google servery s IP adresou návštěvníka (a dalšími HTTP hlavičkami — user-agent, referrer) ještě před jakoukoli interakcí s consent bannerem (appka žádný consent banner nemá).
+- **Riziko (GDPR):** dle rozsudku LG München I (2020, "Google Fonts Fall") a navazující praxe je přenos IP adresy na Google servery při načtení webfontu bez souhlasu považován za nezákonné zpracování osobních údajů (IP = osobní údaj) — základ desítek tisíc výzev/žalob v EU. Feel Fader je nasazen jako veřejné demo pro EU návštěvníky → přímá expozice.
+- **Proč Medium (s vahou k High):** appka nemá žádnou jinou externí závislost, žádnou analytiku, žádné trackery — Google Fonts je **jediný** consent trigger v celé aplikaci. To snižuje rozsah (jen jeden vektor, ne plošný problém) → Medium jako výchozí hodnocení. Zvažoval jsem High, protože (a) fix je triviální (self-host, žádná funkční ztráta) a (b) demo je veřejně přístupné bez jakéhokoli consent mechanismu, takže expozice je aktivní od prvního requestu, ne podmíněná. Ponechávám **Medium** jako primární hodnocení, protože nejde o zpracování citlivých/rozsáhlých dat (jen IP, jednorázově, bez cross-site trackingu či profilování) a náprava nevyžaduje redesign — ale **doporučuji řešit před spuštěním veřejného demo provozu**, ne odkládat do post-launch.
+- **Návrh opravy:** self-host fonty (stáhnout `.woff2` soubory, servírovat z vlastního originu, nahradit `<link href="https://fonts.googleapis.com/...">` za lokální `@font-face`) — odstraní jediný externí request a tím i jediný GDPR consent trigger v appce. Po fixu by měl `p3-external-requests.mjs` přepnout oba PASS řádky na zelenou (regresní zámek).
 
 ## P4 Browser kompatibilita
 

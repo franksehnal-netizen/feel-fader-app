@@ -19,7 +19,8 @@ const AUDIT_PROBES = [
   'p2-malformed-import.mjs',
   'p2-storage-failure.mjs',
   'p2-serial-robustness.mjs',
-  /* filled by Tasks 5–8 */
+  'p3-external-requests.mjs',
+  /* filled by Tasks 6–8 */
 ];
 
 function startServer() {
