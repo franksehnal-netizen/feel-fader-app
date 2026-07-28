@@ -30,6 +30,14 @@ Launch **blokuje**:
 
 Zbytek (Medium/Low, a High v ostatních pilířích) se **dokumentuje a vědomě akceptuje** ve verdiktu reportu.
 
+## Metoda
+
+- **Základ:** expert manuální review (grep-driven static pass nad `feel-fader.html`) + živé ověření přes Chrome DevTools / Playwright MCP + committed `.mjs` probes jako důkaz.
+- **Security pilíř navíc:** Codex second-opinion cross-check nálezů (XSS, injection, prototype pollution) — nezávislé oči tam, kde chyba nejvíc bolí. V souladu s globálním pravidlem „Codex review před nasazením business-critical kódu".
+- **Výkon:** Lighthouse jako rychlé objektivní číslo, ne celý scanner aparát.
+
+**MCP/HW invariant:** Automatizace **NIKDY** nesahá na reálný Feel Fader hardware. Live testy běží **výhradně přes interní-stav-poke vzor** — poke interno stav appky přes `evaluate` volání (`skipWelcome(); _ffConnected=true; _serialPort={}; DEVICE_INFO.*; renderConnState();` apod.) — nikdy nemož `navigator.serial.requestPort()` + SysEx ani autentické MIDI. Každý audit probe je sandbox a neinteraktivní s reálným zařízením. Operátor sledující tenhle blueprint vidí tuto bezpečnostní hranici explicitně a nezkusí jít dál.
+
 ---
 
 ### P1 — Security
@@ -106,7 +114,7 @@ Probe suite pokrývající každou malformovanou cestu. Spusť: `node scratch/au
 
 **Network trace probe:**
 ```bash
-scratch/audit/p3-external-requests.mjs
+node scratch/audit/p3-external-requests.mjs
 ```
 (Zapne request interception, projde cold load + welcome + skip cestu, sběr všech cizích hostů mimo `localhost`.)
 
@@ -133,7 +141,7 @@ HAR/network trace z probu + seznam externích hostů. Spusť: `node scratch/audi
 
 **Degradation probe:**
 ```bash
-scratch/audit/p4-no-webserial-degradation.mjs
+node scratch/audit/p4-no-webserial-degradation.mjs
 ```
 (Smaž `navigator.serial` i `navigator.requestMIDIAccess` PŘED loadem, asertuj čistou hlášku o nepodporovaném prohlížeči.)
 
@@ -154,7 +162,7 @@ Probe smaže `navigator.serial` / `navigator.requestMIDIAccess` a ověří čite
 
 **Heap-growth probe:**
 ```bash
-scratch/audit/p5-heap-growth.mjs
+node scratch/audit/p5-heap-growth.mjs
 ```
 (Měř JS heap, prožeň 300 render/bank-switch cyklů + MIDI churn, znovu měř. Asertuj heap < 10 MB delta, DOM nodes < 200 delta.)
 
@@ -170,7 +178,7 @@ Lighthouse report + heap-delta čísla z probu (before/after); MIDI churn pod ko
 
 ---
 
-### P6 — Deploy hygiena / co je opravdu ventu
+### P6 — Deploy hygiena / co je opravdu venku
 
 #### Co kontrolovat
 
@@ -183,7 +191,7 @@ Lighthouse report + heap-delta čísla z probu (before/after); MIDI churn pod ko
 
 **Deploy-hygiene probe:**
 ```bash
-scratch/audit/p6-deploy-hygiene.mjs
+node scratch/audit/p6-deploy-hygiene.mjs
 ```
 (Fetchni demo URL, ověř headers, zkus citlivé cesty (`.git/`, `/.superpowers/`, `/scratch/`, `/docs/`, `/node_modules/`, `/package.json`) — musí vrátit 404/403.)
 
