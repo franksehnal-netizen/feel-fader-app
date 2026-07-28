@@ -4286,28 +4286,38 @@ function clampHidList(arr) { return Array.isArray(arr) ? arr.map(v => Number(v))
 
 function normalizeFwConfig(p) {
   if (!p.banks) return p;
+  if (!Array.isArray(p.banks)) p.banks = []; // malformed banks (non-array) -> render safely with zero banks
   dropLegacyBankTags(p);   // old browser exports / firmware m.t migrate silently
   if (p.banks[0] && p.banks[0].fader1) {
-    p.banks.forEach(bank => {
+    const ctrlDefaultCc = { fader1: 11, fader2: 1, encoder: 32 };
+    p.banks.forEach((bank, i) => {
+      if (!bank || typeof bank !== 'object' || Array.isArray(bank)) bank = {};
+      p.banks[i] = bank;
+      // Always rebuild fader1/fader2/encoder as well-formed {cc,channel} objects —
+      // a malformed/missing source value (string, null, absent key) must never
+      // leave the control undefined, or render()'s ctrl.cc dereference throws
+      // AFTER cfgSave() has already persisted this bank (P2-1).
       ['fader1','fader2','encoder'].forEach(k => {
         const c = bank[k];
-        if (!c) return;
-        c.cc = clampCc(c.cc, 0);
-        c.channel = clampChannel(c.channel, 0);
+        const src = (c && typeof c === 'object' && !Array.isArray(c)) ? c : {};
+        bank[k] = { ...src, cc: clampCc(src.cc, ctrlDefaultCc[k]), channel: clampChannel(src.channel, 0) };
       });
       bank.uacc_values = clampCcList(bank.uacc_values);
       bank.ks_notes = clampCcList(bank.ks_notes);
       bank.nav_keys_cw = clampHidList(bank.nav_keys_cw).length ? clampHidList(bank.nav_keys_cw) : [0x52];
       bank.nav_keys_ccw = clampHidList(bank.nav_keys_ccw).length ? clampHidList(bank.nav_keys_ccw) : [0x51];
-      if (bank.fader1) bank.fader1.label = faderDisplayName(bank.fader1,'fader1');
-      if (bank.fader2) bank.fader2.label = faderDisplayName(bank.fader2,'fader2');
+      bank.fader1.label = faderDisplayName(bank.fader1,'fader1');
+      bank.fader2.label = faderDisplayName(bank.fader2,'fader2');
     });
     p.macro_keys = clampHidList(p.macro_keys);
     return p;
   }
   return {
     macro_keys: clampHidList(p.macro_keys),
-    banks: p.banks.map((b, i) => {
+    banks: p.banks.map((raw, i) => {
+      // A malformed bank entry (null/string/array/etc.) must not throw when its
+      // fields are read below — coerce to a bare object first (P2-1).
+      const b = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
       // Device metadata may omit presentation fields; keep name/icon/labels from
       // localStorage as fallbacks, while functional data always comes from hardware.
       const prev = (typeof cfg === 'object' && cfg && Array.isArray(cfg.banks) && cfg.banks[i]) || {};
@@ -4636,9 +4646,30 @@ function onImport(e){
   const r=new FileReader();r.onload=ev=>{
     try{
       let p=JSON.parse(ev.target.result);
-      if(!p.banks)throw new Error('Invalid device backup');
+      // Validate structure BEFORE touching cfg/localStorage: must be a plain
+      // object with an array `banks` whose entries are objects. Anything else
+      // is rejected here so it can never be persisted (P2-1 — previously
+      // cfgSave() ran before render(), so a bank-shaped-but-malformed config
+      // could be written to localStorage even though render() then threw).
+      const banksOk = p && typeof p==='object' && !Array.isArray(p) && Array.isArray(p.banks)
+        && p.banks.every(b => b && typeof b==='object' && !Array.isArray(b));
+      if(!banksOk){ toast('e','Neplatný config soubor'); return; }
       p=normalizeFwConfig(p);
-      cfg=p;loaded=true;dirty=true;activeBank=0;cfgSave();render();toast('s',t('toast.preset_imported') + ' — send it to the device when ready');
+      const prevCfg=cfg, prevLoaded=loaded, prevDirty=dirty, prevActiveBank=activeBank;
+      cfg=p;loaded=true;dirty=true;activeBank=0;
+      try{
+        render();
+      }catch(renderErr){
+        // Belt-and-suspenders: normalizeFwConfig should already guarantee a
+        // renderable cfg, but if render() throws anyway, roll back before any
+        // cfgSave() so the broken cfg is never persisted.
+        cfg=prevCfg;loaded=prevLoaded;dirty=prevDirty;activeBank=prevActiveBank;
+        try{render();}catch(_){}
+        toast('e','Neplatný config soubor');
+        return;
+      }
+      cfgSave();
+      toast('s',t('toast.preset_imported') + ' — send it to the device when ready');
     }catch(err){toast('e',err.message);}
   };r.readAsText(f);e.target.value='';
 }
