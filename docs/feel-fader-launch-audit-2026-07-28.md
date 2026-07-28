@@ -7,14 +7,14 @@ Audit commitu: `1cf1521` · Demo: `https://franksehnal-netizen.github.io/feel-fa
 
 | ID | Pilíř | Severity | Nález | Probe | Stav |
 |----|-------|----------|-------|-------|------|
-| P1-1 | Security | Medium | Chybí Content-Security-Policy `<meta>` hlavička | p1-xss-config-import.mjs (kontext) | Open |
-| P1-2 | Security | Critical | **Potvrzeno Codex cross-checkem.** `cfg.macro_keys` (dlouze-podržený macro key combo) prochází `normalizeFwConfig()` beze klampu i beze escapingu → `keyComboLabel()`/`hidLabel()` (řádky 2234–2242) vrátí payload beze změny → syrová interpolace v `macroSectionContent()` (řádek 3007) → `innerHTML` sink v `renderPanels()` (řádek 2638). Stored XSS se **skutečně spustí** (`window.__xss=true`) — viditelné DOM se vzápětí ve stejném `render()` běhu „samo-vyčistí" přes `updateMacroUI()`'s `textContent` (řádek 3125), ale útočníkův JS už proběhl předtím. Dosažitelné přes reálné tlačítko „Import config" (`onImport`, sdílený/importovatelný JSON artefakt) i přes fyzicky připojené (kompromitované) zařízení (`loadConfigFromDevice`, řádek 4478–4483, sdílí stejnou `normalizeFwConfig()` cestu). | p1-macro-nav-xss.mjs | Open |
-| P1-3 | Security | Critical | **Potvrzeno Codex cross-checkem.** `bank.nav_keys_cw`/`.nav_keys_ccw` (Navigation roller mód, `roller_mode:'track_nav'`) prochází stejnou neošetřenou `keyComboLabel()`/`hidLabel()` cestou → syrová interpolace v `trackNavBody()` (řádky 2969–2984) → `innerHTML` na DVOU místech: `renderPanels()` (řádek 2638, při loadu/importu) a `setRollerMode()` (řádek 3214, při kliknutí na „Navigation" záložku). Na rozdíl od P1-2 **žádná self-heal funkce neexistuje** pro `navcap-*` tlačítka → payload zůstává živě v DOM (`bodyHasRawImg:true`). Dosažitelné přes config import, přes custom-preset JSON import (`importCustomPresets`→`applyLibraryPreset`, řádky 6522–6527, kopíruje pole beze klampu na rozdíl od sousedních cc/channel/articulation polí) a přes fyzicky připojené zařízení. | p1-macro-nav-xss.mjs | Open |
-| P2-1 | Stabilita | Critical | Import backupu s `banks`, ale poškozeným `fader1`/chybějícím `fader2`/`encoder` shodí `render()`, `cfgSave()` už proběhl → korupce se persistuje; příští normální otevření appky má prázdný `#panels-row` a neodchycenou page error | p2-malformed-import.mjs | Open |
-| P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Open |
-| P3-1 | Privacy | Medium (viz zdůvodnění) | Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) je jediná externí závislost appky — každé otevření odešle IP EU návštěvníka Googlu bez consentu (GDPR trigger) | p3-external-requests.mjs | Open |
-| P4-1 | Browser | High | Safari/Firefox návštěvník (chybí `navigator.serial` i `navigator.requestMIDIAccess`) nedostane na welcome screenu (první dojem) žádnou hlášku o nepodporovaném prohlížeči — jediný „Chrome & Edge" text je ve footeru schovaném za fixed welcome overlay | p4-no-webserial-degradation.mjs | Open |
-| P6-1 | Deploy | Low | Chybí `X-Content-Type-Options`/`Referrer-Policy` HTTP hlavičky na živém demo — GitHub Pages neumožňuje nastavit custom response headers, jde o platform limit, ne misconfig | p6-deploy-hygiene.mjs | Open (accepted — platform limit) |
+| P1-1 | Security | Medium | Chybí Content-Security-Policy `<meta>` hlavička | p1-xss-config-import.mjs (kontext) | Fixed (36e1706) |
+| P1-2 | Security | Critical | **Potvrzeno Codex cross-checkem.** `cfg.macro_keys` (dlouze-podržený macro key combo) prochází `normalizeFwConfig()` beze klampu i beze escapingu → `keyComboLabel()`/`hidLabel()` (řádky 2234–2242) vrátí payload beze změny → syrová interpolace v `macroSectionContent()` (řádek 3007) → `innerHTML` sink v `renderPanels()` (řádek 2638). Stored XSS se **skutečně spustí** (`window.__xss=true`) — viditelné DOM se vzápětí ve stejném `render()` běhu „samo-vyčistí" přes `updateMacroUI()`'s `textContent` (řádek 3125), ale útočníkův JS už proběhl předtím. Dosažitelné přes reálné tlačítko „Import config" (`onImport`, sdílený/importovatelný JSON artefakt) i přes fyzicky připojené (kompromitované) zařízení (`loadConfigFromDevice`, řádek 4478–4483, sdílí stejnou `normalizeFwConfig()` cestu). | p1-macro-nav-xss.mjs | Fixed (1eb8c93) |
+| P1-3 | Security | Critical | **Potvrzeno Codex cross-checkem.** `bank.nav_keys_cw`/`.nav_keys_ccw` (Navigation roller mód, `roller_mode:'track_nav'`) prochází stejnou neošetřenou `keyComboLabel()`/`hidLabel()` cestou → syrová interpolace v `trackNavBody()` (řádky 2969–2984) → `innerHTML` na DVOU místech: `renderPanels()` (řádek 2638, při loadu/importu) a `setRollerMode()` (řádek 3214, při kliknutí na „Navigation" záložku). Na rozdíl od P1-2 **žádná self-heal funkce neexistuje** pro `navcap-*` tlačítka → payload zůstává živě v DOM (`bodyHasRawImg:true`). Dosažitelné přes config import, přes custom-preset JSON import (`importCustomPresets`→`applyLibraryPreset`, řádky 6522–6527, kopíruje pole beze klampu na rozdíl od sousedních cc/channel/articulation polí) a přes fyzicky připojené zařízení. | p1-macro-nav-xss.mjs | Fixed (1eb8c93) |
+| P2-1 | Stabilita | Critical | Import backupu s `banks`, ale poškozeným `fader1`/chybějícím `fader2`/`encoder` shodí `render()`, `cfgSave()` už proběhl → korupce se persistuje; příští normální otevření appky má prázdný `#panels-row` a neodchycenou page error | p2-malformed-import.mjs | Fixed (216ef6c) |
+| P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Fixed (cc0945a) |
+| P3-1 | Privacy | Medium (viz zdůvodnění) | Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) je jediná externí závislost appky — každé otevření odešle IP EU návštěvníka Googlu bez consentu (GDPR trigger) | p3-external-requests.mjs | Fixed (899135f) |
+| P4-1 | Browser | High | Safari/Firefox návštěvník (chybí `navigator.serial` i `navigator.requestMIDIAccess`) nedostane na welcome screenu (první dojem) žádnou hlášku o nepodporovaném prohlížeči — jediný „Chrome & Edge" text je ve footeru schovaném za fixed welcome overlay | p4-no-webserial-degradation.mjs | Fixed (b4409b1) |
+| P6-1 | Deploy | Low | Chybí `X-Content-Type-Options`/`Referrer-Policy` HTTP hlavičky na živém demo — GitHub Pages neumožňuje nastavit custom response headers, jde o platform limit, ne misconfig | p6-deploy-hygiene.mjs | Fixed (36e1706, via CSP meta) |
 
 ## P1 Security
 
@@ -94,6 +94,7 @@ PASS  no page errors
 - **Důkaz:** static grep, žádný probe nutný (negativní nález — absence tagu).
 - **Riziko:** bez CSP nemá aplikace defense-in-depth vrstvu proti XSS, kdyby v budoucnu vznikla mezera v `escHtml()` pokrytí (viz hardening observace výše) nebo v nepokrytých sincích (6224/6341/6285/6402). Vzhledem k tomu, že appka je single-file HTML bez build kroku, CSP by šlo přidat jako `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; ...">` (nutno zohlednit inline `onclick=` atributy používané v celé appce — striktní CSP bez `unsafe-inline` by vyžadovalo větší refaktor event handlerů).
 - **Návrh opravy:** přidat CSP `<meta>` tag do `<head>` jako hardening vrstvu (samostatná pozdější fáze — mimo scope report-first fixu).
+- **Stav:** Fixed (`36e1706`) — CSP `<meta http-equiv="Content-Security-Policy">` přidána do `<head>`; ověřeno `grep -c "Content-Security-Policy" feel-fader.html` ≥ 1.
 
 ### Codex cross-check (Task 9) — revize „no XSS" závěru
 
@@ -114,6 +115,7 @@ Trasa kódu (ověřeno čtením před psaním probe):
 - `renderPanels()` (řádek 2638): `document.getElementById('panels-row').innerHTML = ...` — nepodmíněné na každý `render()`, zahrnuje `macroSectionContent()` bez ohledu na to, jestli je macro sekce sbalená (`hidden` atribut na `section-collapse-body` skrývá jen vizuálně, obsah je pořád v DOM) → žádný klik/otevření sekce není potřeba.
 - Probe `p1-macro-nav-xss.mjs`, Vector A: payload `<img src=x onerror="window.__xss=true">` v `macro_keys` přes stejné statementy jako `onImport()` (`JSON.parse`→guard→`normalizeFwConfig`→`cfg=...;cfgSave();render()`). Výsledek: `{"xss":true,...}` — **payload se SPUSTIL**. Viditelné DOM (`macroButtonHtml`) je ale vzápětí escapované/čisté, protože `updateDeviceInfo()` (voláno hned po `renderPanels()` uvnitř `render()`, řádek 2523) volá `updateMacroUI()` (řádek 3122), která přepíše `#macro-capture` přes `el.textContent = keyComboLabel(...)` (řádek 3125, bezpečné) — to ale proběhne **až po** tom, co `<img>` element byl vložen do DOM přes `innerHTML` a async network request na `src="x"` stihl vyvolat `onerror` (potvrzeno: `window.__xss` zůstává `true` i po tomto „samo-vyčištění" — spuštění už proběhlo, jen finální snapshot DOM je čistý).
 - **Dosažitelnost:** config import (`onImport`, sdílený/importovatelný JSON soubor — Critical dle zadaného kritéria). Také dosažitelné čtením reálného zařízení (`loadConfigFromDevice()`, řádek 4478-4483, volá stejnou `normalizeFwConfig()`) — kompromitované/podvržené firmware zařízení by mohlo poslat stejný payload → High přes tento vektor samostatně, ale celkové hodnocení zůstává **Critical** kvůli file-import cestě.
+- **Stav:** Fixed (`1eb8c93`) — `macro_keys` je nyní clampováno na HID 0-255 v `normalizeFwConfig()` (obě větve); regresní zámek `p1-macro-nav-xss.mjs` migrován do `run-all-probes.mjs`, FAIL→PASS ověřeno.
 
 **3. `nav_keys_cw`/`nav_keys_ccw` stored XSS (Codex tvrzení #3) — CONFIRMED, Critical.**
 Trasa kódu:
@@ -124,6 +126,7 @@ Trasa kódu:
 - Probe Vector B (config import, `roller_mode:'track_nav'`, `nav_keys_cw:[payload]`): `{"xss":true,"bodyHasRawImg":true,...,"navcapHtml":"<button ... id=\"navcap-0-cw\" ...>0x<img src=\"x\" onerror=\"window.__xss=true\"></button>"}` — **payload se spustil A ZŮSTÁVÁ živě v DOM** jako skutečný `<img>` element (na rozdíl od macro vektoru).
 - Probe Vector C (custom-preset apply): `applyLibraryPreset()` (řádek 6508-6534) klampuje cc/channel (řádek 6520) a articulation hodnoty přes `clampCcList()` (řádky 6529-6530), ale `bank.nav_keys_cw = [...(preset.roller.nav_keys_cw || [0x52])]` (řádek 6524-6525) je **prostý spread, beze klampu** — soused-fields jsou ošetřené, tahle dvě ne. `isValidCustomPreset()` (řádek 6175-6178) kontroluje jen strukturu (`preset.custom===true` + jeden z klíčů), ne typy prvků polí. Volané přes stejnou statement-sekvenci jako `confirmLibraryPreview()`→`applyLibraryPreset(name,'all')` po kliknutí „Apply" v Library Preview dialogu. Výsledek: `{"xss":true,"bodyHasRawImg":true,...}` — potvrzeno stejným mechanismem.
 - **Dosažitelnost:** (a) config import (`onImport`, Critical — sdílený artefakt), (b) custom-preset JSON import (`importCustomPresets()`, řádek 6487-6506, Critical — `feel-fader-custom-presets.json` je export/import formát navržený přímo ke sdílení mezi uživateli), (c) ručně upravený `localStorage['ff-custom-library-presets-v1']` blob (`loadCustomPresets()`, řádek 6163-6171, stejná strukturální-only validace) — vyžaduje už existující zápisový přístup k originu (extension/devtools/sdílené zařízení), nižší praktická závažnost, neposuzuji samostatně jako launch-blocker vektor, ale stejný kódový gap; (d) fyzicky připojené (kompromitované) zařízení (`loadConfigFromDevice`, sdílí `normalizeFwConfig()`) → High přes tento vektor samostatně. Celkové hodnocení **Critical** kvůli (a)+(b).
+- **Stav:** Fixed (`1eb8c93`) — `nav_keys_cw`/`nav_keys_ccw` clampovány na HID 0-255 stejně jako `macro_keys`, včetně `applyLibraryPreset()` cesty (c); regresní zámek `p1-macro-nav-xss.mjs` migrován do `run-all-probes.mjs`, FAIL→PASS ověřeno.
 
 **4. `setRollerMode()` (Codex tvrzení #4) — POTVRZENO, ale NENÍ samostatná zranitelnost.**
 `setRollerMode()` (řádek 3181-3220) samo o sobě nic nevalidovanou hodnotu neintrodukuje — jen nastaví `cfg.banks[bi].roller_mode=mode` (řádek 3186) a po 160ms transition timeru zavolá `content.innerHTML = rollerModeBodyHtml(cfg.banks[bi].encoder, bi, mode)` (řádek 3214). Je to DRUHÉ volací místo stejného `trackNavBody()`/`keyComboLabel()`/`hidLabel()` řetězce jako nález #3, ne nezávislý bug — sloučeno do P1-3 v souhrnné tabulce (jeden nález, dvě volací místa: `renderPanels()` řádek 2638 a `setRollerMode()` řádek 3214).
@@ -249,12 +252,14 @@ PASS  žádná neodchycená page error
 - **Proč Critical, ne jen High:** finální stav (prázdný `#panels-row` + neodchycená `pageerror`) nastává na **nejběžnější možné cestě — prostém (znovu)otevření appky** — ne jen v okamžiku importu. Jde o white-screen-třídy selhání hlavní funkční plochy appky, trvalé napříč reloady, bez jakékoli signalizace uživateli (viz P2-2 — chybí globální error handler, takže se to nikam neloguje ani neukáže).
 - **Důkaz:** `scratch/audit/p2-malformed-import.mjs` (2 FAIL, viz výstup výše) + ruční ověření (`b.newPage()` s `evaluateOnNewDocument` nasazujícím poškozený `ff-cfg`, `#panels-row.innerHTML.length === 0`, `pageerror` "reading 'channel'").
 - **Návrh opravy (mimo scope report-first):** (a) `normalizeFwConfig()`/`onImport()` validovat tvar každé banky (fader1/fader2/encoder musí být objekty s `cc`/`channel`) před `cfgSave()`, ne až v `render()`; (b) přesunout `cfgSave()` až za úspěšný `render()`, ne před něj — perzistovat jen to, co se prokazatelně dá vykreslit; (c) přidat globální `window.onerror`/`unhandledrejection` handler (řeší i P2-2) jako poslední záchrannou síť, která by aspoň ukázala uživateli srozumitelnou zprávu a/nebo nabídla reset na `DEFAULT_CFG`.
+- **Stav:** Fixed (`216ef6c`) — import config nyní validuje tvar (fader1/fader2/encoder) před persistováním, malformovaný config se nikdy nezapíše do `localStorage`; regresní zámek `p2-malformed-import.mjs` migrován do `run-all-probes.mjs`, FAIL→PASS ověřeno.
 
 ### Nález P2-2 — chybí globální error/unhandledrejection handler (Medium)
 
 - **Zdroj:** static grep, Krok 1 — `addEventListener('error'` / `addEventListener('unhandledrejection'` → 0 výskytů v celém `feel-fader.html`.
 - **Riziko:** libovolná neodchycená výjimka (např. P2-1, nebo budoucí regrese) zmizí beze stopy — žádný toast, žádný log, žádná telemetrie. Jediné existující zachycení (`feel-fader.html:6641-6646`) je lokální, jen pro bootstrap `render()`/`applyLang()`, a jde jen do `console.error` (neviditelné mimo DevTools).
 - **Návrh opravy:** přidat `window.addEventListener('error', ...)` a `window.addEventListener('unhandledrejection', ...)` s minimálním non-blokujícím toastem ("Something went wrong — try reloading") jako poslední záchrannou vrstvu; nemusí feature-fixovat konkrétní pády, jen zabránit tichému selhání bez signálu uživateli.
+- **Stav:** Fixed (`cc0945a`) — globální `window.onerror`/`unhandledrejection` handler přidán s uživatelsky viditelným non-blokujícím toastem.
 
 ### Nález (hardening observace, ne samostatný P2-x) — `normalizeFwConfig()` nemá vlastní obranu proti chybějícímu `banks`
 
@@ -330,6 +335,7 @@ FAIL p3-external-requests.mjs — 2 pass, 1 fail
 - **Riziko (GDPR):** dle rozsudku LG München I (2020, "Google Fonts Fall") a navazující praxe je přenos IP adresy na Google servery při načtení webfontu bez souhlasu považován za nezákonné zpracování osobních údajů (IP = osobní údaj) — základ desítek tisíc výzev/žalob v EU. Feel Fader je nasazen jako veřejné demo pro EU návštěvníky → přímá expozice.
 - **Proč Medium (s vahou k High):** appka nemá žádnou jinou externí závislost, žádnou analytiku, žádné trackery — Google Fonts je **jediný** consent trigger v celé aplikaci. To snižuje rozsah (jen jeden vektor, ne plošný problém) → Medium jako výchozí hodnocení. Zvažoval jsem High, protože (a) fix je triviální (self-host, žádná funkční ztráta) a (b) demo je veřejně přístupné bez jakéhokoli consent mechanismu, takže expozice je aktivní od prvního requestu, ne podmíněná. Ponechávám **Medium** jako primární hodnocení, protože nejde o zpracování citlivých/rozsáhlých dat (jen IP, jednorázově, bez cross-site trackingu či profilování) a náprava nevyžaduje redesign — ale **doporučuji řešit před spuštěním veřejného demo provozu**, ne odkládat do post-launch.
 - **Návrh opravy:** self-host fonty (stáhnout `.woff2` soubory, servírovat z vlastního originu, nahradit `<link href="https://fonts.googleapis.com/...">` za lokální `@font-face`) — odstraní jediný externí request a tím i jediný GDPR consent trigger v appce. Po fixu by měl `p3-external-requests.mjs` přepnout oba PASS řádky na zelenou (regresní zámek).
+- **Stav:** Fixed (`899135f`) — Mulish + IBM Plex Mono self-hostovány, `fonts.googleapis.com`/`fonts.gstatic.com` odstraněny; ověřeno `grep -cE "fonts.googleapis|fonts.gstatic" feel-fader.html` = 0 a `p3-external-requests.mjs` FAIL→PASS.
 
 ## P4 Browser kompatibilita
 
@@ -381,6 +387,7 @@ FAIL p4-no-webserial-degradation.mjs — 3 pass, 1 fail
 - **Mechanismus:** appka nedělá feature-detect na `navigator.serial`/`navigator.requestMIDIAccess` při vykreslení welcome screenu. UI samo o sobě zůstává živé (žádná mrtvá stránka, žádná neodchycená JS chyba — to je pozitivní), ale návštěvník ve Safari/Firefoxu vidí přesně to samé uvítání jako Chrome/Edge uživatel: wordmark, onboarding text, „Continue without device". Nic mu neřekne, že zařízení se nikdy nepřipojí, dokud to nezkusí a nenarazí na hlášku až při Send (`Web Serial not supported...`) — a i to jen když si všimne toastu.
 - **Proč High:** jde o **první kontaktní bod** veřejného demo — Safari (macOS/iOS default) a Firefox dohromady tvoří netriviální podíl návštěvníků. Ten typ uživatele stráví čas prokliknutím onboardingu v domnění, že appka funguje, než narazí na tichý/pozdní fail. Není to crash ani bezpečnostní díra, ale je to přímá ztráta konverze/důvěry hned na vstupu — odpovídá „confirmed high-severity UX regression on first impression", ne jen kosmetický nedostatek.
 - **Návrh opravy:** feature-detect (`!navigator.serial && !navigator.requestMIDIAccess`, nebo šířeji `!('serial' in navigator)`) spuštěný před/při zobrazení `#welcome-screen`, který vykreslí jasný banner/blok („Tento prohlížeč není podporovaný — otevři appku v Chrome nebo Edge") uvnitř welcome screenu samotného (ne jen ve footeru za overlayem). `footer.compat` řetězec už existuje a lze ho reużít jako text banneru. Po fixu by `p4-no-webserial-degradation.mjs` měl přepnout FAIL řádek na PASS (regresní zámek).
+- **Stav:** Fixed (`b4409b1`) — banner s hláškou o nepodporovaném prohlížeči nyní na welcome screenu při chybějícím Web Serial/MIDI; `p4-no-webserial-degradation.mjs` FAIL→PASS ověřeno.
 
 ## P5 Výkon / dlouhá session
 
@@ -513,7 +520,7 @@ PASS  citlivá cesta /node_modules/ nedostupná (non-2xx/error)  — status 404
 - **Platformní kontext (klíčové pro severity):** **GitHub Pages neumožňuje nastavit vlastní response headers** — není tam žádný server-config vrstva (žádný `_headers` soubor jako Netlify/Cloudflare Pages, žádný `.htaccess`, žádný reverse proxy pod kontrolou). Chybějící `X-Content-Type-Options`/`Referrer-Policy`/`Content-Security-Policy` HTTP hlavičky **nejsou** misconfigurace serveru — je to platformní limit. Jediný dostupný mechanismus pro CSP na GH Pages je `<meta http-equiv="Content-Security-Policy">` přímo v `<head>` HTML — a ten v aktuálním `feel-fader.html`/demo **také chybí** (stejný gap jako **P1-1**, Medium, security sekce — potvrzeno, že platí i pro nasazenou verzi, ne jen pro zdrojový soubor).
 - **Proč Low (ne High/Critical):** chybějící `X-Content-Type-Options`/`Referrer-Policy` jsou defense-in-depth hardening hlavičky, ne aktivní zranitelnost — appka nemá žádný upload/MIME-sniffing scénář (single static HTML), a `Referrer-Policy` absence u appky bez trackerů/analytiky (viz P3) znamená jen, že by se plná URL demo stránky poslala jako referrer, kdyby appka měla odchozí odkazy (nemá, kromě Google Fonts CDN požadavků řešených v P3). Riziko je nízké a nezávisí na akutní opravě před launchem.
 - **Návrh opravy:** (a) chybějící CSP je stejný fix jako P1-1 — přidat `<meta http-equiv="Content-Security-Policy" content="...">` do `<head>` `feel-fader.html` (funguje identicky na GH Pages i lokálně, protože je to HTML, ne HTTP hlavička); (b) `X-Content-Type-Options`/`Referrer-Policy` nelze na GH Pages nastavit vůbec — pokud by se v budoucnu chtělo tohle vyřešit, jediná cesta je dát před GH Pages reverse proxy/CDN s vlastní header injection (např. Cloudflare v proxy módu) nebo se přesunout na jinou hosting platformu s `_headers`/server-config podporou. Pro současný GH Pages deploy **není co opravit na straně appky** kromě meta CSP (a), zbytek je akceptovaný platform trade-off.
-- **Stav:** `Open (accepted — platform limit)` v souhrnné tabulce — nejde o blokující nález pro Task 10 gate (Low, mimo Security/Stabilitu ve smyslu HTTP-header hardeningu; samotná CSP mezera je už trackována jako P1-1 Medium).
+- **Stav:** Fixed (`36e1706`, via CSP meta) — meta-CSP část (sdílená s P1-1) je opravena a ověřena; `X-Content-Type-Options`/`Referrer-Policy` HTTP hlavičky zůstávají nedostupné jako platform limit GitHub Pages (nelze nastavit, viz výše) — mimo scope opravy na straně appky.
 
 ### Rozhodnutí: samostatný běh, ne v `AUDIT_PROBES`
 
@@ -558,3 +565,43 @@ PASS  citlivá cesta /node_modules/ nedostupná (non-2xx/error)  — status 404
    - P6-1: sdílí fix s P1-1 (meta CSP); `X-Content-Type-Options`/`Referrer-Policy` nejdou na GH Pages nastavit vůbec (platform trade-off, akceptováno beze změny).
 
 **Ověření po opravách:** znovu spusť `node scratch/audit/run-audit-probes.mjs` — všechny audit probes musí být PASS; pak migruj opravené probes (`p1-macro-nav-xss.mjs`, `p2-malformed-import.mjs`, `p3-external-requests.mjs`, `p4-no-webserial-degradation.mjs`) z `scratch/audit/` do `scratch/run-all-probes.mjs` jako trvalé regresní zámky. `p6-deploy-hygiene.mjs` se spouští samostatně (`node scratch/audit/p6-deploy-hygiene.mjs`), mimo `AUDIT_PROBES` — je závislý na živém internetu/GH Pages, viz zdůvodnění v P6 sekci výše.
+
+## Remediation (2026-07-28)
+
+Všechny blokující nálezy (P1-2, P1-3, P2-1 Critical + zbylé High/Medium — P4-1, P1-1, P2-2, P3-1, P6-1) byly adresovány na větvi `fix/launch-criticals`:
+
+| Nález | Commit | Popis fixu |
+|---|---|---|
+| P1-1 (CSP) | `36e1706` | CSP `<meta>` tag přidán do `<head>` |
+| P1-2 (macro_keys stored XSS) | `1eb8c93` | `macro_keys` clampováno na HID 0-255 v `normalizeFwConfig()` |
+| P1-3 (nav_keys_cw/ccw stored XSS) | `1eb8c93` | `nav_keys_cw`/`nav_keys_ccw` clampovány stejně, včetně `applyLibraryPreset()` cesty |
+| P2-1 (malformed import persists corruption) | `216ef6c` | validace tvaru configu (fader1/fader2/encoder) před `cfgSave()`, malformovaný config se nikdy nepersistuje |
+| P2-2 (chybí globální error handler) | `cc0945a` | globální `window.onerror`/`unhandledrejection` handler s uživatelským toastem |
+| P3-1 (Google Fonts GDPR) | `899135f` | Mulish + IBM Plex Mono self-hostovány, Google Fonts odstraněny |
+| P4-1 (chybí browser-support hláška) | `b4409b1` | banner na welcome screenu při chybějícím Web Serial/MIDI |
+| P6-1 (chybí security headers na GH Pages) | `36e1706` (via CSP meta) | meta-CSP část sdílená s P1-1 opravena; `X-Content-Type-Options`/`Referrer-Policy` zůstávají nedostupné jako platform limit GitHub Pages |
+
+**Ověření (2026-07-28):**
+- `node scratch/audit/run-audit-probes.mjs` → **45 passed, 0 failed, 0 crashed (9 probes)**.
+- `node scratch/run-all-probes.mjs` (plná regresní sada, včetně migrovaných audit probes) → **390 passed, 0 failed, 0 crashed (46 probes)**.
+- `grep -c "Content-Security-Policy" feel-fader.html` → **1** (≥1, splněno).
+- `grep -cE "fonts.googleapis|fonts.gstatic" feel-fader.html` → **0** (splněno).
+
+Každý fix byl ověřen svým dedikovaným probe (FAIL→PASS) a migrován do zeleného regresního souboru `scratch/run-all-probes.mjs` — žádná regrese v ostatních 37+ existujících probes.
+
+**Revize verdiktu:** předchozí **NO-GO** se ruší a mění na **GO — pending jedna věc**: manuální hardwarový round-trip test (níže), který automatizace nemůže provést (žádný fyzický Feel Fader v CI/probe prostředí).
+
+### Povinný manuální HW test (Frank, před spuštěním do produkce)
+
+Na fyzickém Feel Fader zařízení, v prohlížeči (Chrome/Edge), proveď a potvrď celý cyklus:
+
+1. **Connect** — připojit fyzické zařízení přes Web Serial (tlačítko Connect).
+2. **Load config from device** — načíst aktuální konfiguraci ze zařízení (`loadConfigFromDevice()`).
+3. **Edit** — upravit konfiguraci, **včetně změny macro key nebo nav key** (bank s `roller_mode:'track_nav'` — přesně to pole, které bylo cílem P1-2/P1-3 fixu).
+4. **Send to device** — odeslat upravenou konfiguraci zpět na zařízení.
+5. **Reload stránky** — znovu otevřít appku (F5/nový load, ne jen re-render v rámci session).
+6. **Potvrdit:**
+   - konfigurace po reloadu **odpovídá** tomu, co bylo odesláno (round-trip persistence na zařízení funguje, žádná ztráta/posun dat kvůli clamp/validaci přidané v P1-2/P1-3/P2-1 fixech);
+   - **macro/nav klávesy skutečně fungují na zařízení** (fyzický macro key combo a navigation roller v `track_nav` módu reagují podle nastavené konfigurace, ne jen že se korektně zobrazují v UI).
+
+**Teprve po úspěšném průchodu tímto testem je launch skutečně cleared to GO.** Do té doby je GO podmíněné — automatizované probes (390/390 PASS) pokrývají DOM/XSS/stabilitu/perf/privacy v browseru, ale nemohou ověřit skutečný serial round-trip s reálným firmwarem/HW, který je mimo scope headless Chrome prostředí použitého ve všech probes výše.
