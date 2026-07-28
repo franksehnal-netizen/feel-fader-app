@@ -1143,6 +1143,8 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .welcome-start:active{transform:scale(.97);}
 .welcome-start:disabled{opacity:.6;cursor:default;}
 .welcome-start-msg{width:100%;height:14px;min-height:14px;margin:6px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:14px;color:var(--danger);}
+.welcome-browser-notice{display:none;width:100%;box-sizing:border-box;margin:10px 0 0;padding:9px 14px;border-radius:12px;font-size:12px;line-height:1.4;color:var(--danger);background:var(--danger-bg);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
+.welcome-browser-notice.show{display:block;}
 .welcome-skip{
   position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:3;
   width:max-content;transform:translateX(-50%);
@@ -1988,6 +1990,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       </div>
       <div class="welcome-action-slot" id="welcome-action-slot"></div>
       <div class="welcome-start-msg" id="welcome-start-msg" role="status" aria-live="polite"></div>
+      <div class="welcome-browser-notice" id="welcome-browser-notice" role="alert" aria-live="assertive"></div>
       <button class="welcome-skip" onclick="skipWelcome()">
         <span data-i18n="welcome.skip">Continue without device</span>
       </button>
@@ -5718,8 +5721,21 @@ function positionWelcomeAnchor() {
   const currentPaddingTop = parseFloat(getComputedStyle(ws).paddingTop) || 0;
   ws.style.setProperty('--welcome-anchor-top', (currentPaddingTop + (btnRect.top - slotRect.top)) + 'px');
 }
+// P4-1: Safari/Firefox visitors have no Web Serial + Web MIDI — the app stays
+// alive but silently gives them no direction. Feature-detect and surface a
+// readable notice INSIDE the welcome overlay (the actual first impression),
+// not the footer's "Chrome & Edge" text, which sits behind #welcome-screen
+// (z-index 200, fixed, full-viewport) and is never visible on load.
+function checkBrowserSupport() {
+  const notice = document.getElementById('welcome-browser-notice');
+  if (!notice) return;
+  const unsupported = !('serial' in navigator) || typeof navigator.requestMIDIAccess !== 'function';
+  notice.textContent = unsupported ? 'Feel Fader needs Chrome or Edge — Web Serial & Web MIDI required.' : '';
+  notice.classList.toggle('show', unsupported);
+}
 function showWelcome() {
   resetAppScrollTop();
+  checkBrowserSupport();
   const ws = document.getElementById('welcome-screen');
   if (ws) ws.classList.remove('hidden','connecting');
   document.body.classList.remove('welcome-connecting');
