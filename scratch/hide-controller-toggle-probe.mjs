@@ -54,12 +54,13 @@ P('initially: sticky send row is hidden', before.rowHidden, JSON.stringify(befor
 P('initially: switch is checked (ON = controller visible)', before.switchChecked === true, JSON.stringify(before));
 
 await p.click('#controller-toggle-input');
-// 2026-07-23: the collapse now runs as two sequential phases (content fades
-// .4s, THEN the box collapses .5s, delayed until the fade finishes) instead
-// of one .9s transition — 900ms total either way, but the box doesn't reach
-// 0 height until closer to the full duration, so this wait needs headroom
-// past 900ms rather than the old 500ms half-way sample.
-await new Promise(r => setTimeout(r, 1000));
+// 2026-07-26/27: the collapse is one coupled transition (box + content move
+// together, no sequential delay); reparenting waits for transitionend with a
+// 1400ms safety fallback (feel-fader.html applyControllerVisibility). The box
+// itself now runs 1.1s (retuned from .55s on 2026-07-27, "slow controller
+// collapse") — this wait needs headroom past that 1.1s transition AND past
+// the JS's own 1400ms safety timeout, not just the old .9s/500ms figures.
+await new Promise(r => setTimeout(r, 1500));
 
 const hidden = await p.evaluate(() => {
   const anchor = document.querySelector('.send-anchor');
@@ -90,11 +91,10 @@ P('sticky send row stays pinned under the header while scrolling', stickyTop >= 
 await p.evaluate(() => window.scrollTo(0, 0));
 
 await p.click('#controller-toggle-input');
-// 2026-07-23: Send now waits out the box-growth phase (delayed 500ms) before
-// reparenting back into device-wrap, so it arrives in sync with the content
-// fade-in instead of jumping ahead of it — needs headroom past that 500ms
-// delay's own transition, not just the delay itself.
-await new Promise(r => setTimeout(r, 1000));
+// Same coupled-transition mechanism as the hide direction above: reparenting
+// waits for transitionend (1.1s box transition) or the 1400ms JS safety
+// fallback — needs headroom past both, not the old .9s-era figures.
+await new Promise(r => setTimeout(r, 1500));
 
 const restored = await p.evaluate(() => {
   const anchor = document.querySelector('.send-anchor');

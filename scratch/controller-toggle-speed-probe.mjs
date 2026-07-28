@@ -14,20 +14,24 @@ await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); applyControllerVisibility(false, false); });
 
 // Coupled single-phase choreography (Frank 2026-07-26): box + content animate
-// together over one ~.55s window, no sequential delay, so the controller
+// together over one window, no sequential delay, so the controller
 // grows/shrinks AS the button and panels move (the earlier box-then-content
 // two-step read as "the button arrives, then the controller catches up").
-// The box uses the SAME fast ease-out in both directions so hide feels as
-// snappy as show; only the content OPACITY is front-loaded on hide (.32s) so
+// The box uses the SAME ease-out curve in both directions so hide feels
+// consistent with show; only the content OPACITY is front-loaded on hide so
 // it leads the box down and is faint before the clip bites — no squish, no
 // dead-time, no easing mismatch.
+// Durations retuned 2026-07-27 (commit 4861bf3, "slow controller collapse"):
+// the whole choreography was intentionally doubled from .55s/.32s to
+// 1.1s/.64s for a calmer feel; the coupling structure and curves are
+// unchanged, only the numbers below were updated to match.
 const durations = await p.evaluate(() => {
   const wrapBase = getComputedStyle(document.getElementById('stage-collapse'));
   const innerBase = getComputedStyle(document.querySelector('#stage-collapse > .stage'));
   return { wrapDuration: wrapBase.transitionDuration, wrapDelay: wrapBase.transitionDelay, innerDuration: innerBase.transitionDuration, innerDelay: innerBase.transitionDelay };
 });
-P('Box (show, base rule) grows in 0.55s, no delay', durations.wrapDuration === '0.55s' && durations.wrapDelay === '0s', JSON.stringify(durations));
-P('Content (show, base rule) opacity+transform both 0.55s, no delay', durations.innerDuration === '0.55s, 0.55s' && durations.innerDelay === '0s, 0s', JSON.stringify(durations));
+P('Box (show, base rule) grows in 1.1s, no delay', durations.wrapDuration === '1.1s' && durations.wrapDelay === '0s', JSON.stringify(durations));
+P('Content (show, base rule) opacity+transform both 1.1s, no delay', durations.innerDuration === '1.1s, 1.1s' && durations.innerDelay === '0s, 0s', JSON.stringify(durations));
 
 // Hide direction reads its transition off the .is-collapsed rule (CSS uses
 // the "after" style's transition config) — add the class directly rather
@@ -41,8 +45,8 @@ const hideDurations = await p.evaluate(() => {
   wrap.classList.remove('is-collapsed');
   return out;
 });
-P('Box (hide) collapses in 0.55s, no delay — SAME fast curve as show (symmetric)', hideDurations.wrapDuration === '0.55s' && hideDurations.wrapDelay === '0s', JSON.stringify(hideDurations));
-P('Content (hide) opacity front-loaded 0.32s, transform 0.55s, no delay', hideDurations.innerDuration === '0.32s, 0.55s' && hideDurations.innerDelay === '0s, 0s', JSON.stringify(hideDurations));
+P('Box (hide) collapses in 1.1s, no delay — SAME curve as show (symmetric)', hideDurations.wrapDuration === '1.1s' && hideDurations.wrapDelay === '0s', JSON.stringify(hideDurations));
+P('Content (hide) opacity front-loaded 0.64s, transform 1.1s, no delay', hideDurations.innerDuration === '0.64s, 1.1s' && hideDurations.innerDelay === '0s, 0s', JSON.stringify(hideDurations));
 
 // The real behavioral guarantee: no BAD squish. "severity" = opacity × how
 // clipped the device is; a flattened-rectangle squish (content fully visible

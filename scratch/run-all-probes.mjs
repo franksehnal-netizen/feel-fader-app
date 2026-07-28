@@ -50,6 +50,15 @@ const PROBES = [
   'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
   'controller-toggle-speed-probe.mjs',
+  'audit/p1-xss-config-import.mjs',
+  'audit/p1-proto-pollution.mjs',
+  'audit/p1-macro-nav-xss.mjs',
+  'audit/p2-malformed-import.mjs',
+  'audit/p2-storage-failure.mjs',
+  'audit/p2-serial-robustness.mjs',
+  'audit/p3-external-requests.mjs',
+  'audit/p4-no-webserial-degradation.mjs',
+  'audit/p5-heap-growth.mjs',
 ];
 
 function startServer() {
