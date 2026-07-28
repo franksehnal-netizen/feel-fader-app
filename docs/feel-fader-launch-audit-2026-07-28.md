@@ -20,6 +20,8 @@ Audit commitu: `1cf1521` · Demo: `https://franksehnal-netizen.github.io/feel-fa
 
 **Rozsah:** XSS přes import konfigurace (jméno banku, ikona, label faderu) a prototype-pollution přes `__proto__` klíč v importovaném JSON. Oba probe soubory asertují bezpečné chování (report-first — PASS = čisto, FAIL by byl potvrzený nález).
 
+**Coverage gap:** blueprintová položka „Trust boundary serial/MIDI (port-name ≠ authentication)" (`docs/feel-fader-launch-audit-blueprint.md`, P1 checklist) nebyla tento běh cvičena jako samostatný probe — dotkla se jí jen okrajově diskuze dosažitelnosti XSS přes device data (`loadConfigFromDevice()`, viz Task 9 níže); doporučeno pokrýt vlastním probe v příštím auditu.
+
 ### Krok 1 — statický grep pass (DOM sinky a untrusted zdroje)
 
 `grep -nE "innerHTML|insertAdjacentHTML|outerHTML|document\.write" feel-fader.html` — sinky (výběr, s posouzením untrusted vstupu):
@@ -133,12 +135,21 @@ Původní formulace v Kroku 1 výše („`escHtml()` je důsledně aplikován...
 - **Oprava:** obě větve jsou bezpečné, ale ze DVOU RŮZNÝCH důvodů — modern větev díky jmenovitému rebuildu, legacy větev (ta, kterou reálně testuje stávající probe) díky inertnímu chování `JSON.parse` vůči `__proto__`. Codexovo tvrzení #5 je správné: sázet vysvětlení jen na „rebuild" by bylo zavádějící pro legacy větev. `escHtml()` (řádek 4275) samo o sobě s prototype-pollution nesouvisí (to je jiná ochrana, pro XSS) — tahle věta v původním textu byla matoucí kombinace dvou různých mechanismů, teď rozdělena.
 - Probe `p1-proto-pollution.mjs` zůstává platný regresní zámek (beze změny, 5/5 PASS) — cvičí legacy větev, což je i ten reálnější případ (re-import vlastního `exportP()` výstupu).
 
-**Souhrn probe běhu** (`node scratch/audit/run-audit-probes.mjs`, `p1-macro-nav-xss.mjs` nově v `AUDIT_PROBES`):
+**Souhrn probe běhu** (`node scratch/audit/run-audit-probes.mjs`, `p1-macro-nav-xss.mjs` nově v `AUDIT_PROBES`, celá sada P1–P5):
 ```
 ok   p1-xss-config-import.mjs — 5 pass, 0 fail
 ok   p1-proto-pollution.mjs — 5 pass, 0 fail
 FAIL p1-macro-nav-xss.mjs — 3 pass, 5 fail
+FAIL p2-malformed-import.mjs — 7 pass, 2 fail
+ok   p2-storage-failure.mjs — 4 pass, 0 fail
+ok   p2-serial-robustness.mjs — 6 pass, 0 fail
+FAIL p3-external-requests.mjs — 2 pass, 1 fail
+FAIL p4-no-webserial-degradation.mjs — 3 pass, 1 fail
+ok   p5-heap-growth.mjs — 3 pass, 0 fail
+
+38 passed, 9 failed, 0 crashed (9 probes)
 ```
+(P2/P3/P4/P5 FAILy beze změny — viz Task 4/5/6/7 briefy; přidání `p1-macro-nav-xss.mjs` nic v ostatní sadě nerozbilo.)
 Detailní výstup (`p1-macro-nav-xss.mjs`, throwaway server na :8100):
 ```
 FAIL  [macro_keys/config-import] onerror payload se nespustil (window.__xss=false)  — {"xss":true,"bodyHasRawImg":false,"macroKeysAfterNormalize":["<img src=x onerror=\"window.__xss=true\">"],"macroButtonHtml":"<button id=\"macro-capture\" ... disabled title=\"Requires HID enabled\">0x&lt;img src=x onerror=\"window.__xss=true\"&gt;</button>"}

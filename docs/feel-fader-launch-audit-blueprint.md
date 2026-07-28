@@ -11,6 +11,8 @@
 3. **Security nálezy** nech cross-checknout Codexem (`codex:rescue`).
 4. **Aplikuj go/no-go gate**, zapiš verdikt.
 
+> Probes mají natvrdo zadrátovaný `executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'` (Frankův Windows box) — na jiném stroji/CI je potřeba tuhle cestu upravit.
+
 ---
 
 ## Severity model
@@ -18,7 +20,7 @@
 | Severity | Význam |
 |---|---|
 | **Critical** | XSS s exekucí JS · white-screen na běžné cestě · ztráta configu · secret ve deployi |
-| **High** | Pád na věrohodném malformovaném vstupu · celá třída prohlížečů dostane rozbitou stránku bez hlášky · únik dat třetí straně bez notice |
+| **High** | Pád na věrohodném malformovaném vstupu · celá třída prohlížečů dostane rozbitou stránku bez hlášky nebo tichý slepý konec na primární vstupní cestě pro celou třídu prohlížečů · únik dat třetí straně bez notice |
 | **Medium** | Degradovaná UX v edge případech · perf regrese · chybějící hardening (žádné CSP) |
 | **Low** | Kosmetika · defense-in-depth nice-to-have |
 
@@ -36,7 +38,7 @@ Zbytek (Medium/Low, a High v ostatních pilířích) se **dokumentuje a vědomě
 - **Security pilíř navíc:** Codex second-opinion cross-check nálezů (XSS, injection, prototype pollution) — nezávislé oči tam, kde chyba nejvíc bolí. V souladu s globálním pravidlem „Codex review před nasazením business-critical kódu".
 - **Výkon:** Lighthouse jako rychlé objektivní číslo, ne celý scanner aparát.
 
-**MCP/HW invariant:** Automatizace **NIKDY** nesahá na reálný Feel Fader hardware. Live testy běží **výhradně přes interní-stav-poke vzor** — poke interno stav appky přes `evaluate` volání (`skipWelcome(); _ffConnected=true; _serialPort={}; DEVICE_INFO.*; renderConnState();` apod.) — nikdy nemož `navigator.serial.requestPort()` + SysEx ani autentické MIDI. Každý audit probe je sandbox a neinteraktivní s reálným zařízením. Operátor sledující tenhle blueprint vidí tuto bezpečnostní hranici explicitně a nezkusí jít dál.
+**MCP/HW invariant:** Automatizace **NIKDY** nesahá na reálný Feel Fader hardware. Live testy běží **výhradně přes interní-stav-poke vzor** — poke interní stav appky přes `evaluate` volání (`skipWelcome(); _ffConnected=true; _serialPort={}; DEVICE_INFO.*; renderConnState();` apod.) — nikdy nevolá `navigator.serial.requestPort()` + SysEx ani autentické MIDI. Každý audit probe je sandbox a neinteraktivní s reálným zařízením. Operátor sledující tenhle blueprint vidí tuto bezpečnostní hranici explicitně a nezkusí jít dál.
 
 ---
 

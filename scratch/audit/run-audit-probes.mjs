@@ -23,7 +23,7 @@ const AUDIT_PROBES = [
   'p3-external-requests.mjs',
   'p4-no-webserial-degradation.mjs',
   'p5-heap-growth.mjs',
-  /* filled by Task 8 */
+  /* p6-deploy-hygiene.mjs is intentionally NOT here — it hits the live internet; run it standalone. See report P6 section. */
 ];
 
 function startServer() {
