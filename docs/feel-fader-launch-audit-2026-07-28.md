@@ -11,6 +11,7 @@ Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: <DEMO_URL>
 | P2-1 | Stabilita | Critical | Import backupu s `banks`, ale poškozeným `fader1`/chybějícím `fader2`/`encoder` shodí `render()`, `cfgSave()` už proběhl → korupce se persistuje; příští normální otevření appky má prázdný `#panels-row` a neodchycenou page error | p2-malformed-import.mjs | Open |
 | P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Open |
 | P3-1 | Privacy | Medium (viz zdůvodnění) | Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) je jediná externí závislost appky — každé otevření odešle IP EU návštěvníka Googlu bez consentu (GDPR trigger) | p3-external-requests.mjs | Open |
+| P4-1 | Browser | High | Safari/Firefox návštěvník (chybí `navigator.serial` i `navigator.requestMIDIAccess`) nedostane na welcome screenu (první dojem) žádnou hlášku o nepodporovaném prohlížeči — jediný „Chrome & Edge" text je ve footeru schovaném za fixed welcome overlay | p4-no-webserial-degradation.mjs | Open |
 
 ## P1 Security
 
@@ -255,6 +256,55 @@ FAIL p3-external-requests.mjs — 2 pass, 1 fail
 - **Návrh opravy:** self-host fonty (stáhnout `.woff2` soubory, servírovat z vlastního originu, nahradit `<link href="https://fonts.googleapis.com/...">` za lokální `@font-face`) — odstraní jediný externí request a tím i jediný GDPR consent trigger v appce. Po fixu by měl `p3-external-requests.mjs` přepnout oba PASS řádky na zelenou (regresní zámek).
 
 ## P4 Browser kompatibilita
+
+**Rozsah:** appka je Chrome/Edge-only (Web Serial + Web MIDI). Cíl: ověřit, co uvidí Safari/Firefox návštěvník veřejného demo — konkrétně **první dojem** (welcome screen při loadu, před jakýmkoli Send). Existující `scratch/send-without-web-serial-probe.mjs` (regresní, nemodifikováno) už pokrývá `doSend()`/`_serialEnsureOpen()` cestu — ta je v pořádku (čistý toast/Error, žádná raw JS chyba). Tento probe (`p4-no-webserial-degradation.mjs`, report-first, nový) cílí na to, co se stane HNED po loadu.
+
+### Krok 1 — statický grep pass (feature-detect a user-facing hlášky)
+
+`grep -nE "navigator\.serial|requestMIDIAccess|not supported|unsupported|nepodporov|Chrome|Edge|Web Serial" feel-fader.html`:
+
+| Řádek | Nález | Kdy se spustí |
+|---|---|---|
+| 4097 | `if(!navigator.requestMIDIAccess){ _midiState='unsupported'; renderConnState(); return; }` | při MIDI init — mění jen header connection-status pill, **ne** welcome screen |
+| 4365 | `if (!navigator.serial) throw new Error('Web Serial not supported in this browser — use Chrome or Edge.')` | uvnitř `_serialEnsureOpen()` — voláno až z `doSend()`/`loadConfigFromDevice()`, tj. **po** akci uživatele |
+| 4589 | `toast('e', 'Web Serial not supported in this browser — use Chrome or Edge to send to your device.')` | v `doSend()` — stejně, až po kliknutí Send |
+| 1953 | `data-i18n="footer.compat"` → „Works with Chrome & Edge · Web Serial & Web MIDI required" | statický text v `<footer>` uvnitř `<main>` — ale `<main>` je při loadu **za** `#welcome-screen` (position:fixed, inset:0, z-index 200, celý viewport), takže návštěvník ho fyzicky nevidí, dokud overlay neopustí |
+| 1970–1997 | `#welcome-screen` markup (wordmark, onboarding beaty, `#welcome-start-msg`, tlačítko „Continue without device") | **žádná** browser-support podmínka nikde v tomto bloku |
+
+**Závěr grepu:** support-hláška existuje v kódu (`footer.compat`, `Web Serial not supported...`), ale je buď (a) skrytá za welcome overlayem, nebo (b) se ukáže až po akci uživatele. Na samotném welcome screenu — první věc, kterou Safari/Firefox návštěvník vidí — není nic.
+
+### Krok 2 — probe
+
+`scratch/audit/p4-no-webserial-degradation.mjs`: `page.evaluateOnNewDocument()` smaže `navigator.serial` i `navigator.requestMIDIAccess` PŘED loadem (simulace Safari/Firefox), appka se načte, probe čte `#welcome-screen.innerText` (ne `document.body.innerText` — to by triviálně PASSnulo na skrytém footer textu, viz komentář v souboru).
+
+Výstup (`node scratch/audit/p4-no-webserial-degradation.mjs`, samostatně přes throwaway server na :8100):
+```
+PASS  UI žije i bez Web Serial/MIDI (žádná mrtvá stránka)  — {"uiAlive":true,"wsVisible":true}
+PASS  welcome screen (první dojem) je zobrazený  — {"wsVisible":true}
+FAIL  uživatel dostane NA WELCOME SCREENU čitelnou hlášku o prohlížeči  — welcome text: "Feel Fader\nMeet Feel Fader\nTwo motorless faders and a roller for articulations — built for orchestral MIDI.\nContinue without device" | (info) match anywhere on page incl. hidden footer: true
+PASS  žádná neodchycená page error
+```
+
+Přes `run-audit-probes.mjs` (celá sada P1–P4):
+```
+ok   p1-xss-config-import.mjs — 5 pass, 0 fail
+ok   p1-proto-pollution.mjs — 5 pass, 0 fail
+FAIL p2-malformed-import.mjs — 7 pass, 2 fail
+ok   p2-storage-failure.mjs — 4 pass, 0 fail
+ok   p2-serial-robustness.mjs — 6 pass, 0 fail
+FAIL p3-external-requests.mjs — 2 pass, 1 fail
+FAIL p4-no-webserial-degradation.mjs — 3 pass, 1 fail
+
+32 passed, 4 failed, 0 crashed (7 probes)
+```
+(P2/P3 FAILy beze změny — viz Task 4/5 briefy; přidání `p4-no-webserial-degradation.mjs` nic v P1–P3 sadě nerozbilo.)
+
+### Nález P4-1 — Safari/Firefox návštěvník bez vodítka na welcome screenu
+
+- **Zdroj:** `p4-no-webserial-degradation.mjs`, druhý assert FAIL.
+- **Mechanismus:** appka nedělá feature-detect na `navigator.serial`/`navigator.requestMIDIAccess` při vykreslení welcome screenu. UI samo o sobě zůstává živé (žádná mrtvá stránka, žádná neodchycená JS chyba — to je pozitivní), ale návštěvník ve Safari/Firefoxu vidí přesně to samé uvítání jako Chrome/Edge uživatel: wordmark, onboarding text, „Continue without device". Nic mu neřekne, že zařízení se nikdy nepřipojí, dokud to nezkusí a nenarazí na hlášku až při Send (`Web Serial not supported...`) — a i to jen když si všimne toastu.
+- **Proč High:** jde o **první kontaktní bod** veřejného demo — Safari (macOS/iOS default) a Firefox dohromady tvoří netriviální podíl návštěvníků. Ten typ uživatele stráví čas prokliknutím onboardingu v domnění, že appka funguje, než narazí na tichý/pozdní fail. Není to crash ani bezpečnostní díra, ale je to přímá ztráta konverze/důvěry hned na vstupu — odpovídá „confirmed high-severity UX regression on first impression", ne jen kosmetický nedostatek.
+- **Návrh opravy:** feature-detect (`!navigator.serial && !navigator.requestMIDIAccess`, nebo šířeji `!('serial' in navigator)`) spuštěný před/při zobrazení `#welcome-screen`, který vykreslí jasný banner/blok („Tento prohlížeč není podporovaný — otevři appku v Chrome nebo Edge") uvnitř welcome screenu samotného (ne jen ve footeru za overlayem). `footer.compat` řetězec už existuje a lze ho reużít jako text banneru. Po fixu by `p4-no-webserial-degradation.mjs` měl přepnout FAIL řádek na PASS (regresní zámek).
 
 ## P5 Výkon / dlouhá session
 
