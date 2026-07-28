@@ -1,7 +1,7 @@
 # Feel Fader — Launch Audit Report (2026-07-28)
 
 Blueprint: `docs/feel-fader-launch-audit-blueprint.md` · Spec: `docs/superpowers/specs/2026-07-28-launch-audit-design.md`  
-Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: `https://franksehnal-netizen.github.io/feel-fader-demo/` (GitHub Pages, host `franksehnal-netizen.github.io`, base path `/feel-fader-demo/`)
+Audit commitu: `1cf1521` · Demo: `https://franksehnal-netizen.github.io/feel-fader-demo/` (GitHub Pages, host `franksehnal-netizen.github.io`, base path `/feel-fader-demo/`) — potvrzeno byte-identické s aktuálním `feel-fader.html` (viz P6 Krok 1), takže všechny níže uvedené nálezy platí i pro živé produkční demo
 
 ## Souhrn nálezů
 
@@ -513,4 +513,37 @@ PASS  citlivá cesta /node_modules/ nedostupná (non-2xx/error)  — status 404
 
 ## Go/no-go verdikt
 
-_(Task 10)_
+**Rozhodnutí:** NO-GO
+
+**Kontext:** živé veřejné demo (`https://franksehnal-netizen.github.io/feel-fader-demo/`) bylo potvrzeno **byte-identické** s aktuálním `feel-fader.html` (P6 Krok 1, `body === localLF` → `true`, commit `1cf1521`). Všechny nálezy níže tedy neplatí jen pro zdrojový soubor — **jsou živé na produkci právě teď**, včetně obou Critical XSS a Critical stability bugu.
+
+**Blokující nálezy** (gate: jakýkoli otevřený Critical, NEBO High v Security/Stabilitě):
+- **P1-2** (Critical, Security) — Stored XSS přes `macro_keys`: neescapované `hidLabel()`/`keyComboLabel()` → syrová interpolace v `macroSectionContent()` → `innerHTML` v `renderPanels()`. Reachable přes reálné tlačítko „Import config" (sdílený JSON artefakt) i přes připojené zařízení.
+- **P1-3** (Critical, Security) — Stored XSS přes `nav_keys_cw`/`nav_keys_ccw` (roller `track_nav` mód) stejnou neošetřenou cestou → `innerHTML` na DVOU místech (`renderPanels()`, `setRollerMode()`); na rozdíl od P1-2 **bez self-heal** — payload zůstává živě v DOM. Reachable přes config import i custom-preset JSON import.
+- **P2-1** (Critical, Stabilita) — Malformovaný device-backup import: `onImport()` volá `cfgSave()` PŘED `render()` → poškozený config se persistuje do `localStorage` bez ohledu na to, co udělá render. Příští normální (znovu)otevření appky má prázdný `#panels-row` (celý editační panel fader/encoder) + neodchycenou `pageerror` — trvale, dokud si uživatel ručně nesmaže `localStorage`.
+  - *Nuance k „Critical":* jde o white-screen jen v širším smyslu — header, bank-tabs a `#device-wrap` v DOM přežívají, mizí jen `#panels-row`. Rating zůstává Critical, protože jde o perzistentní a tichou úplnou ztrátu hlavní editační plochy appky na té nejběžnější cestě (prosté opětovné otevření), ne o jednorázový pád při importu.
+
+Žádný otevřený High v Security/Stabilitě navíc (P1-1 a P2-2 jsou Medium).
+
+**Akceptováno pro launch až po opravě blokujících:**
+- **P4-1** (High, Browser) — Safari/Firefox návštěvník nedostane na welcome screenu žádné vodítko o nepodporovaném prohlížeči. High severity, ale mimo gate pilíře (Browser ≠ Security/Stabilita) → nezakládá NO-GO samo o sobě, nicméně **doporučeno opravit před launchem** kvůli přímé ztrátě konverze na prvním kontaktním bodě veřejného demo.
+- **P1-1** (Medium, Security) — Chybí CSP `<meta>` hlavička; hardening/defense-in-depth vrstva, ne aktivní zranitelnost sama o sobě — akceptovatelné jako podmínka, ne blocker.
+- **P2-2** (Medium, Stabilita) — Chybí globální `error`/`unhandledrejection` handler; zvyšuje dopad budoucích pádů (viz P2-1), ale sama o sobě nic neshazuje.
+- **P3-1** (Medium, Privacy) — Google Fonts bez consentu (GDPR trigger); jediný externí vektor v appce, triviální fix, ale nejde o launch-blocking podle gate pravidla (Privacy není v gate seznamu).
+- **P6-1** (Low, Deploy) — Chybí security HTTP hlavičky na živém demo; z větší části platform limit GitHub Pages (nelze nastavit response headers), zbytek (meta CSP) sdílí fix s P1-1.
+- **Lighthouse perf 0.54 / LCP·TTI 5.1s** — informativní hardening metrika (throttled mobile simulace na 576KB single-file cold-load), NEblokující — P5 samo o sobě je clean (heap Δ0.3MB, DOM node Δ0/300 cyklů, žádný leak, žádná neodchycená error).
+
+**Doporučené pořadí oprav:**
+1. **Critical (blokující, launch-gating):**
+   - P1-2 + P1-3: clampovat/sanitizovat `macro_keys` a `nav_keys_cw`/`nav_keys_ccw` stejně jako už clampované `cc`/`channel`/`uacc_values`/`ks_notes` sousední pole v `normalizeFwConfig()` (obě větve) a v `applyLibraryPreset()` — stávající SEC-001/SEC-002 clamp práce minula právě tato dvě pole; alternativně/navíc `escHtml()` na výstupu `hidLabel()`/`keyComboLabel()` jako druhá obranná vrstva.
+   - P2-1: přesunout `cfgSave()` až za úspěšný `render()` v `onImport()` (nepersistovat, co se neprokáže vykreslitelné), a/nebo validovat tvar každé banky (`fader1`/`fader2`/`encoder` musí být objekty s `cc`/`channel`) před uložením.
+2. **High:**
+   - P4-1: feature-detect (`!navigator.serial && !navigator.requestMIDIAccess`) spuštěný při zobrazení `#welcome-screen`, banner uvnitř welcome screenu (reużít existující `footer.compat` text).
+3. **Medium:**
+   - P1-1: přidat `<meta http-equiv="Content-Security-Policy">` do `<head>` (zohlednit inline `onclick=` handlery — vyžaduje `unsafe-inline` nebo refaktor).
+   - P2-2: přidat `window.addEventListener('error', ...)` a `('unhandledrejection', ...)` s minimálním non-blokujícím toastem jako poslední záchrannou vrstvu.
+   - P3-1: self-host Google Fonts (`.woff2` z vlastního originu), odstranit `fonts.googleapis.com`/`fonts.gstatic.com` `<link>`.
+4. **Low:**
+   - P6-1: sdílí fix s P1-1 (meta CSP); `X-Content-Type-Options`/`Referrer-Policy` nejdou na GH Pages nastavit vůbec (platform trade-off, akceptováno beze změny).
+
+**Ověření po opravách:** znovu spusť `node scratch/audit/run-audit-probes.mjs` — všechny audit probes musí být PASS; pak migruj opravené probes (`p1-macro-nav-xss.mjs`, `p2-malformed-import.mjs`, `p3-external-requests.mjs`, `p4-no-webserial-degradation.mjs`) z `scratch/audit/` do `scratch/run-all-probes.mjs` jako trvalé regresní zámky. `p6-deploy-hygiene.mjs` se spouští samostatně (`node scratch/audit/p6-deploy-hygiene.mjs`), mimo `AUDIT_PROBES` — je závislý na živém internetu/GH Pages, viz zdůvodnění v P6 sekci výše.
