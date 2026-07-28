@@ -1,7 +1,7 @@
 # Feel Fader — Launch Audit Report (2026-07-28)
 
 Blueprint: `docs/feel-fader-launch-audit-blueprint.md` · Spec: `docs/superpowers/specs/2026-07-28-launch-audit-design.md`  
-Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: <DEMO_URL>
+Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: `https://franksehnal-netizen.github.io/feel-fader-demo/` (GitHub Pages, host `franksehnal-netizen.github.io`, base path `/feel-fader-demo/`)
 
 ## Souhrn nálezů
 
@@ -12,6 +12,7 @@ Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: <DEMO_URL>
 | P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Open |
 | P3-1 | Privacy | Medium (viz zdůvodnění) | Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) je jediná externí závislost appky — každé otevření odešle IP EU návštěvníka Googlu bez consentu (GDPR trigger) | p3-external-requests.mjs | Open |
 | P4-1 | Browser | High | Safari/Firefox návštěvník (chybí `navigator.serial` i `navigator.requestMIDIAccess`) nedostane na welcome screenu (první dojem) žádnou hlášku o nepodporovaném prohlížeči — jediný „Chrome & Edge" text je ve footeru schovaném za fixed welcome overlay | p4-no-webserial-degradation.mjs | Open |
+| P6-1 | Deploy | Low | Chybí `X-Content-Type-Options`/`Referrer-Policy` HTTP hlavičky na živém demo — GitHub Pages neumožňuje nastavit custom response headers, jde o platform limit, ne misconfig | p6-deploy-hygiene.mjs | Open (accepted — platform limit) |
 
 ## P1 Security
 
@@ -373,6 +374,78 @@ Soubor `scratch/audit/lighthouse-perf.json` byl po vytažení čísel smazán (n
 Heap Δ 0.3 MB (limit 10 MB) a DOM node Δ 0 (limit 200) po 300 cyklech `render()`/`selectBank()`/`onMidiMsg()` — **žádné leaknuté listenery ani detached nodes** v testovaném render/bank-switch/MIDI-churn loopu. Žádná neodchycená page error. Lighthouse perf skóre (0.54, throttled) je informativní hardening číslo, ne blocker. **Pozitivní výsledek, žádný P5-x nález.**
 
 ## P6 Deploy hygiena
+
+**Rozsah:** probe fetchuje **živé veřejné demo** (ne localhost) — hlavičky hlavní stránky, přítomnost bezpečnostních hlaviček/meta CSP, hledání zjevných secrets v servírovaném HTML, a ověření, že citlivé cesty (`.git/`, `.superpowers/`, `scratch/`, `docs/`, `package.json`, `node_modules/`) nejsou přes web dostupné. Report-first — probe jen zjišťuje/asertuje, neopravuje.
+
+### Krok 1 — demo URL
+
+Z memory `reference_feelfader_demo_deploy`: **host** `franksehnal-netizen.github.io`, **base path** `/feel-fader-demo/`, servírováno jako `index.html` v kořeni té cesty (GitHub Pages), **ne** `/feel-fader.html`. Repo `franksehnal-netizen/feel-fader-demo` (PUBLIC) obsahuje jen `index.html` + README — je to snapshot kopie `feel-fader.html`, ne live mirror repa.
+
+**Ověření stálosti snímku (nad rámec skeletonu, provedeno navíc):** stáhl jsem živé demo a porovnal ho byte-po-byte s aktuálním `feel-fader.html` (po normalizaci CRLF→LF, protože deploy kopíruje přes `git show`, který CRLF odstraňuje — viz memory `reference_feelfader_demo_deploy`). **Výsledek: identické** (`563707` znaků na obou stranách po normalizaci, `body === localLF` → `true`). Demo tedy **není** zastaralý snímek — odpovídá aktuálnímu stavu `feel-fader.html` (commit `4861bf3`, 2026-07-27 22:40:30 +0200; demo `Last-Modified: Mon, 27 Jul 2026 20:41:29 GMT` = ~1 min po commitu, konzistentní s deploy krokem hned po poslední změně souboru).
+
+### Krok 2–3 — probe a výsledek běhu
+
+`scratch/audit/p6-deploy-hygiene.mjs`, spuštěno **samostatně** (`node scratch/audit/p6-deploy-hygiene.mjs`), **ne** přes `run-audit-probes.mjs`/`AUDIT_PROBES` — viz zdůvodnění v sekci „Rozhodnutí: samostatný běh" níže.
+
+**Zachycené hlavičky hlavní stránky** (`GET https://franksehnal-netizen.github.io/feel-fader-demo/`, status `200`):
+```json
+{
+  "accept-ranges": "bytes",
+  "access-control-allow-origin": "*",
+  "cache-control": "max-age=600",
+  "content-encoding": "gzip",
+  "content-length": "241341",
+  "content-type": "text/html; charset=utf-8",
+  "etag": "W/\"6a67c279-8af37\"",
+  "last-modified": "Mon, 27 Jul 2026 20:41:29 GMT",
+  "server": "GitHub.com",
+  "strict-transport-security": "max-age=31556952",
+  "vary": "Accept-Encoding",
+  "via": "1.1 varnish",
+  "x-cache": "MISS",
+  "x-served-by": "cache-vie6322-VIE"
+  /* + fastly/github request-id hlavičky, netýkají se hygieny */
+}
+```
+(`content-length: 241341` je **gzip-komprimovaná** velikost — dekomprimované tělo má 563 707 znaků, odpovídá lokálnímu souboru po CRLF normalizaci, viz Krok 1.)
+
+**PASS/FAIL výstup:**
+```
+PASS  HTTPS + 200 na hlavní stránce  — 200
+FAIL  X-Content-Type-Options: nosniff  — chybí
+FAIL  má nějaké Referrer-Policy  — chybí
+FAIL  má Content-Security-Policy HTTP header  — chybí (GH Pages neumožňuje custom response headers — očekávané, viz report)
+PASS  žádné zjevné secrets v served HTML  — grep hit — prověřit ručně
+FAIL  má <meta http-equiv="Content-Security-Policy"> tag v HTML  — chybí meta CSP tag (jediný mechanismus dostupný na GH Pages)
+PASS  citlivá cesta /.git/config nedostupná (non-2xx/error)  — status 404
+PASS  citlivá cesta /.superpowers/ nedostupná (non-2xx/error)  — status 404
+PASS  citlivá cesta /scratch/ nedostupná (non-2xx/error)  — status 404
+PASS  citlivá cesta /docs/ nedostupná (non-2xx/error)  — status 404
+PASS  citlivá cesta /package.json nedostupná (non-2xx/error)  — status 404
+PASS  citlivá cesta /node_modules/ nedostupná (non-2xx/error)  — status 404
+```
+
+### Pozitivní zjištění — žádný nález
+
+- **HTTPS + 200:** demo běží na HTTPS (GitHub Pages default), hlavní stránka odpovídá `200`. Žádná akce nutná.
+- **Žádné secrets v servírovaném HTML:** regex `/(api[_-]?key|secret|token|-----BEGIN)/i` proti celému tělu stránky nenašel shodu. Žádná akce nutná.
+- **Žádné citlivé cesty dostupné:** `/.git/config`, `/.superpowers/`, `/scratch/`, `/docs/`, `/package.json`, `/node_modules/` všechny vrací `404` — potvrzuje, že demo repo (`franksehnal-netizen/feel-fader-demo`) skutečně obsahuje jen `index.html` + README, žádný vývojový obsah není přes web dosažitelný. Žádná akce nutná.
+- **Demo není zastaralý snapshot** (viz Krok 1) — pozitivní zjištění nad rámec zadání, ne blocker, ale relevantní pro Task 10 (nálezy P1–P5 z auditu source souboru platí i pro to, co je aktuálně veřejně nasazené).
+
+### Nález P6-1 — chybí bezpečnostní HTTP hlavičky na živém demo (Low, platform-aware)
+
+- **Zdroj:** `p6-deploy-hygiene.mjs`, 3× FAIL na hlavičkách (`X-Content-Type-Options`, `Referrer-Policy`, `Content-Security-Policy` HTTP header) + 1× FAIL na `<meta http-equiv="Content-Security-Policy">` v HTML.
+- **Platformní kontext (klíčové pro severity):** **GitHub Pages neumožňuje nastavit vlastní response headers** — není tam žádný server-config vrstva (žádný `_headers` soubor jako Netlify/Cloudflare Pages, žádný `.htaccess`, žádný reverse proxy pod kontrolou). Chybějící `X-Content-Type-Options`/`Referrer-Policy`/`Content-Security-Policy` HTTP hlavičky **nejsou** misconfigurace serveru — je to platformní limit. Jediný dostupný mechanismus pro CSP na GH Pages je `<meta http-equiv="Content-Security-Policy">` přímo v `<head>` HTML — a ten v aktuálním `feel-fader.html`/demo **také chybí** (stejný gap jako **P1-1**, Medium, security sekce — potvrzeno, že platí i pro nasazenou verzi, ne jen pro zdrojový soubor).
+- **Proč Low (ne High/Critical):** chybějící `X-Content-Type-Options`/`Referrer-Policy` jsou defense-in-depth hardening hlavičky, ne aktivní zranitelnost — appka nemá žádný upload/MIME-sniffing scénář (single static HTML), a `Referrer-Policy` absence u appky bez trackerů/analytiky (viz P3) znamená jen, že by se plná URL demo stránky poslala jako referrer, kdyby appka měla odchozí odkazy (nemá, kromě Google Fonts CDN požadavků řešených v P3). Riziko je nízké a nezávisí na akutní opravě před launchem.
+- **Návrh opravy:** (a) chybějící CSP je stejný fix jako P1-1 — přidat `<meta http-equiv="Content-Security-Policy" content="...">` do `<head>` `feel-fader.html` (funguje identicky na GH Pages i lokálně, protože je to HTML, ne HTTP hlavička); (b) `X-Content-Type-Options`/`Referrer-Policy` nelze na GH Pages nastavit vůbec — pokud by se v budoucnu chtělo tohle vyřešit, jediná cesta je dát před GH Pages reverse proxy/CDN s vlastní header injection (např. Cloudflare v proxy módu) nebo se přesunout na jinou hosting platformu s `_headers`/server-config podporou. Pro současný GH Pages deploy **není co opravit na straně appky** kromě meta CSP (a), zbytek je akceptovaný platform trade-off.
+- **Stav:** `Open (accepted — platform limit)` v souhrnné tabulce — nejde o blokující nález pro Task 10 gate (Low, mimo Security/Stabilitu ve smyslu HTTP-header hardeningu; samotná CSP mezera je už trackována jako P1-1 Medium).
+
+### Rozhodnutí: samostatný běh, ne v `AUDIT_PROBES`
+
+`p6-deploy-hygiene.mjs` **není** přidán do `scratch/audit/run-audit-probes.mjs`/`AUDIT_PROBES`, přestože plán (Task 8) to podmínečně navrhoval („přidej ho jen pokud demo funguje bez lokálního serveru"). Toto je autorizované zpřesnění toho plánu:
+
+- `run-audit-probes.mjs` startuje lokální throwaway server na `:8100` a je navržen jako **offline-deterministický** — spustitelný bez internetu, opakovatelně, v CI i letadle. `p6-deploy-hygiene.mjs` fetchuje absolutní internetovou URL (živé GitHub Pages demo) — pokud by internet nebyl dostupný nebo GH Pages mělo výpadek, celá audit sada by najednou byla flaky kvůli jednomu externímu závislému probu, který s ostatními pěti pilíři sdílí jen společný `P()` formát výstupu, ne server ani DOM.
+- Držet ho jako **samostatný skript** (`node scratch/audit/p6-deploy-hygiene.mjs`) zachovává offline spolehlivost lokální regresní/audit sady a zároveň umožňuje spustit deploy-hygiene kontrolu kdykoliv nezávisle (např. po každém novém `git show`-based demo deployi, viz memory `reference_feelfader_demo_deploy`).
 
 ## Go/no-go verdikt
 
