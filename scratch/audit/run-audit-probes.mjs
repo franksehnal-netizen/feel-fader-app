@@ -16,7 +16,10 @@ const PORT = 8100;
 const AUDIT_PROBES = [
   'p1-xss-config-import.mjs',
   'p1-proto-pollution.mjs',
-  /* filled by Tasks 4–8 */
+  'p2-malformed-import.mjs',
+  'p2-storage-failure.mjs',
+  'p2-serial-robustness.mjs',
+  /* filled by Tasks 5–8 */
 ];
 
 function startServer() {

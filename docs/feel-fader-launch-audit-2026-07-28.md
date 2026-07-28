@@ -8,6 +8,8 @@ Audit commitu: <git rev-parse --short HEAD při běhu> · Demo: <DEMO_URL>
 | ID | Pilíř | Severity | Nález | Probe | Stav |
 |----|-------|----------|-------|-------|------|
 | P1-1 | Security | Medium | Chybí Content-Security-Policy `<meta>` hlavička | p1-xss-config-import.mjs (kontext) | Open |
+| P2-1 | Stabilita | Critical | Import backupu s `banks`, ale poškozeným `fader1`/chybějícím `fader2`/`encoder` shodí `render()`, `cfgSave()` už proběhl → korupce se persistuje; příští normální otevření appky má prázdný `#panels-row` a neodchycenou page error | p2-malformed-import.mjs | Open |
+| P2-2 | Stabilita | Medium | Chybí globální `window.onerror`/`unhandledrejection` handler — žádná neodchycená chyba (např. P2-1) se nikam nereportuje, ani uživateli, ani do konzole mimo `console.error` na jednom místě | static grep (Krok 1) | Open |
 
 ## P1 Security
 
@@ -87,6 +89,105 @@ PASS  no page errors
 - **Návrh opravy:** přidat CSP `<meta>` tag do `<head>` jako hardening vrstvu (samostatná pozdější fáze — mimo scope report-first fixu).
 
 ## P2 Stabilita
+
+**Rozsah:** malformed config import, localStorage selhání (korupce / QuotaExceeded), a robustnost sériové transakční vrstvy (`serialRequest`/`_readReply`/`_txnChain`) proti `ERR` rámci, cizímu (stale) `rid` a no-response timeoutu. Probes asertují SAFE chování (report-first — PASS = appka je robustní, FAIL = potvrzený nález).
+
+### Krok 1 — statický pass
+
+```
+grep -nE "addEventListener\('(error|unhandledrejection)'" feel-fader.html
+```
+→ **0 výskytů.** V celém souboru není žádný globální `error`/`unhandledrejection` handler. Jediné zachycení běhové chyby na úrovni bootstrapu je lokální `try/catch` kolem inicializačního `render()` volání (`feel-fader.html:6641-6646`, jen `console.error(...)`, žádný toast/UI signál, žádné odeslání kamkoli).
+
+```
+grep -nE "try\s*\{|catch\s*\(" feel-fader.html | wc -l
+```
+→ **55** výskytů `try{`/`catch(` napříč souborem — hustá lokální (per-call) error-handling praxe, ale bez jediného centrálního zachytávače.
+
+```
+grep -nE "JSON\.parse|localStorage\.(get|set)Item" feel-fader.html
+```
+→ 40+ výskytů (viz P1 sekce pro plný výpis `JSON.parse`). Relevantní pro P2:
+- `cfgLoad()` (`feel-fader.html:2285-2298`) **obaluje `JSON.parse` v try/catch** (try na 2286, catch na 2296) a při chybě vrací `null`, což na řádku 2301 (`let cfg = _savedCfg || JSON.parse(JSON.stringify(DEFAULT_CFG));`) padá zpět na `DEFAULT_CFG`. → korupce syntakticky nevalidního JSON je ošetřená.
+- `cfgSave()` (`feel-fader.html:2276-2279`) **obaluje `localStorage.setItem` v try/catch** (`catch(e){}`), takže `QuotaExceededError` je tichá no-op, ne pád.
+- `onImport()` (`feel-fader.html:4629-4639`) obaluje celý import (parse + guard + `normalizeFwConfig` + `cfg=...;cfgSave();render()`) v jednom try/catch, ale **guard `if(!p.banks)throw...` (řádek 4634) kontroluje jen přítomnost klíče `banks`, ne tvar jeho obsahu** — a `cfgSave()` (řádek 4636) běží **před** `render()` ve stejném příkazu, takže i když `render()` na řádku 4636 shodí, poškozený `cfg` je už zapsaný do `localStorage`. Toto je kořen nálezu P2-1 níže.
+
+**Závěr Kroku 1:** žádný globální error guard (→ P2-2, Medium) + `cfgLoad`/`cfgSave` jsou lokálně ošetřené (dobrý základ pro P2 storage-failure probe), ale `onImport()`'s persist-before-render pořadí je fragilní.
+
+### Krok 2–4 — probes a výsledek běhu
+
+`node scratch/audit/run-audit-probes.mjs`:
+```
+ok   p1-xss-config-import.mjs — 5 pass, 0 fail
+ok   p1-proto-pollution.mjs — 5 pass, 0 fail
+FAIL p2-malformed-import.mjs — 7 pass, 2 fail
+ok   p2-storage-failure.mjs — 4 pass, 0 fail
+ok   p2-serial-robustness.mjs — 6 pass, 0 fail
+
+27 passed, 2 failed, 0 crashed (5 probes)
+```
+
+Detailní výstup (`p2-malformed-import.mjs`):
+```
+PASS  [truncated JSON] UI nezbělá (root elementy v DOM)  — {"threw":"SyntaxError: ...","guardWouldBlock":false,"uiAlive":true,"persistedBroken":false}
+PASS  [truncated JSON] localStorage ff-cfg nezůstal zkorumpovaný (chybí fader1/fader2/encoder)  — ...
+PASS  [wrong types (reachable via real Import Config button)] UI nezbělá (root elementy v DOM)  — {"threw":"TypeError: Cannot read properties of undefined (reading 'cc')","guardWouldBlock":false,"uiAlive":true,"persistedBroken":true}
+FAIL  [wrong types (reachable via real Import Config button)] localStorage ff-cfg nezůstal zkorumpovaný (chybí fader1/fader2/encoder)  — {"threw":"TypeError: Cannot read properties of undefined (reading 'cc')","guardWouldBlock":false,"uiAlive":true,"persistedBroken":true}
+PASS  [missing banks (blocked by onImport/loadConfigFromDevice guard in practice)] UI nezbělá (root elementy v DOM)  — {"threw":"Error: Invalid device backup","guardWouldBlock":true,"uiAlive":true,"persistedBroken":false}
+PASS  [missing banks (blocked by onImport/loadConfigFromDevice guard in practice)] localStorage ff-cfg nezůstal zkorumpovaný (chybí fader1/fader2/encoder)  — ...
+PASS  nové otevření appky po perzistované korupci: root elementy v DOM  — {"uiAlive":true}
+FAIL  nové otevření appky po perzistované korupci: žádná neodchycená page error  — TypeError: Cannot read properties of undefined (reading 'channel')
+PASS  žádná neodchycená page error (celkem)
+```
+
+Detailní výstup (`p2-storage-failure.mjs`) — **čistý PASS, žádný nález**:
+```
+PASS  korumpovaný ff-cfg: appka nabootuje na fallback cfg  — {"uiAlive":true,"hasCfg":true}
+PASS  QuotaExceeded při cfgSave neshodí appku (chyba je odchycená)  — {"threw":null}
+PASS  QuotaExceeded v odloženém cfgAutosave()->cfgSave() neshodí appku  — {"caughtByWindow":false}
+PASS  žádná neodchycená page error
+```
+
+Detailní výstup (`p2-serial-robustness.mjs`) — **čistý PASS, žádný nález**:
+```
+PASS  ERR frame -> serialRequest rejectuje  — {"err":"rejected: ERR:boom","errChainOk":true,"staleRid":"resolved-correctly","timeout":"rejected: timeout","timeoutMs":305,"timeoutChainOk":true}
+PASS  po ERR frame _txnChain přijme další request (nezaseknuto)  — ...
+PASS  stale/cizí rid je zahozen, korektní rid frame stále resolvne  — ...
+PASS  timeout -> serialRequest rejectuje v čase (< 2000ms)  — ...
+PASS  po timeoutu _txnChain přijme další request (nezaseknuto)  — ...
+PASS  žádná neodchycená page error
+```
+
+### Nález P2-1 — malformed import přežije jako perzistovaná korupce, appka na příštím otevření ztratí celý editační panel (Critical)
+
+- **Trigger:** import backup souboru (reálné tlačítko "Import config" → `onImport()`, `feel-fader.html:4629-4639`) s JSON, kde `banks` existuje (guard `if(!p.banks)` na řádku 4634 tedy propustí), ale některá banka má `fader1` jako string/scalar místo objektu a chybí jí `fader2`/`encoder` klíče — např. ručně upravený nebo z jiné verze pocházející export. Ekvivalentní vstup: `{"banks":[{"name":123,"fader1":"nope","uacc_values":"x"}]}`.
+- **Mechanismus (ověřeno, ne teoreticky):**
+  1. `normalizeFwConfig()` (`feel-fader.html:4285-4302`) tuto banku nechá projít beze změny tvaru (`fader1` zůstane string, `fader2`/`encoder` chybí).
+  2. `onImport()` (`feel-fader.html:4636`) provede `cfg=p; ...; cfgSave(); render();` — **`cfgSave()` běží před `render()`**, takže poškozená struktura je zapsaná do `localStorage['ff-cfg']` bez ohledu na to, co se stane dál.
+  3. `render()` → `renderPanels()` → `faderSectionContent()` shodí `TypeError: Cannot read properties of undefined (reading 'cc')` (stack: `faderSectionContent` `feel-fader.html:2672` ← `renderPanels` `2647` ← `render` `2516`), protože přistupuje na `bank.fader2.cc`/`bank.encoder.cc` bez guardu.
+  4. Tento pád je uvnitř `onImport()`'s vlastního `try/catch`, takže se ukáže uživateli jako `toast('e', err.message)` s **syrovým JS textem chyby** ("Cannot read properties of undefined (reading 'cc')") — ne jako srozumitelná zpráva.
+  5. **Reálný dopad ale nastává až při příštím normálním otevření appky** (žádná další akce uživatele není potřeba): `cfgLoad()` na startu úspěšně naparsuje tuto (synteticky validní) poškozenou JSON strukturu a přiřadí ji jako `cfg` (obchází `DEFAULT_CFG` fallback, protože `_savedCfg` je truthy). Bootstrap `render()` (`feel-fader.html:6642`) je sice obalený v try/catch (`6641-6646`), ale ten crash zachytí až **po** částečném provedení — `#panels-row` (`feel-fader.html:1831`, celý editační panel fader/encoder) skončí s **prázdným `innerHTML` (0 bajtů)**, protože pád nastane dřív, než proběhne přiřazení na řádku 2638. Navíc jinde v init sekvenci (mimo tento try/catch) proběhne **další, neodchycená** `pageerror`: `TypeError: Cannot read properties of undefined (reading 'channel')` — potvrzeno živě otevřením nové stránky s předem nasazeným poškozeným `ff-cfg` v `localStorage`.
+  6. Bez manuálního smazání `localStorage['ff-cfg']` (žádná in-app cesta k obnově) zůstává appka v tomto stavu trvale — hlavička, bank-tabs a `#device-wrap` jsou v DOM (`uiAlive===true`), ale hlavní konfigurační plocha je prázdná.
+- **Proč Critical, ne jen High:** finální stav (prázdný `#panels-row` + neodchycená `pageerror`) nastává na **nejběžnější možné cestě — prostém (znovu)otevření appky** — ne jen v okamžiku importu. Jde o white-screen-třídy selhání hlavní funkční plochy appky, trvalé napříč reloady, bez jakékoli signalizace uživateli (viz P2-2 — chybí globální error handler, takže se to nikam neloguje ani neukáže).
+- **Důkaz:** `scratch/audit/p2-malformed-import.mjs` (2 FAIL, viz výstup výše) + ruční ověření (`b.newPage()` s `evaluateOnNewDocument` nasazujícím poškozený `ff-cfg`, `#panels-row.innerHTML.length === 0`, `pageerror` "reading 'channel'").
+- **Návrh opravy (mimo scope report-first):** (a) `normalizeFwConfig()`/`onImport()` validovat tvar každé banky (fader1/fader2/encoder musí být objekty s `cc`/`channel`) před `cfgSave()`, ne až v `render()`; (b) přesunout `cfgSave()` až za úspěšný `render()`, ne před něj — perzistovat jen to, co se prokazatelně dá vykreslit; (c) přidat globální `window.onerror`/`unhandledrejection` handler (řeší i P2-2) jako poslední záchrannou síť, která by aspoň ukázala uživateli srozumitelnou zprávu a/nebo nabídla reset na `DEFAULT_CFG`.
+
+### Nález P2-2 — chybí globální error/unhandledrejection handler (Medium)
+
+- **Zdroj:** static grep, Krok 1 — `addEventListener('error'` / `addEventListener('unhandledrejection'` → 0 výskytů v celém `feel-fader.html`.
+- **Riziko:** libovolná neodchycená výjimka (např. P2-1, nebo budoucí regrese) zmizí beze stopy — žádný toast, žádný log, žádná telemetrie. Jediné existující zachycení (`feel-fader.html:6641-6646`) je lokální, jen pro bootstrap `render()`/`applyLang()`, a jde jen do `console.error` (neviditelné mimo DevTools).
+- **Návrh opravy:** přidat `window.addEventListener('error', ...)` a `window.addEventListener('unhandledrejection', ...)` s minimálním non-blokujícím toastem ("Something went wrong — try reloading") jako poslední záchrannou vrstvu; nemusí feature-fixovat konkrétní pády, jen zabránit tichému selhání bez signálu uživateli.
+
+### Nález (hardening observace, ne samostatný P2-x) — `normalizeFwConfig()` nemá vlastní obranu proti chybějícímu `banks`
+
+- `normalizeFwConfig()` (`feel-fader.html:4286`: `if (!p.banks) return p;`) sám o sobě nevaliduje, jen prostrčí vstup beze změny — následné `cfg.banks.map(...)` v `renderBankTabs()` (`feel-fader.html:2530`) by na takovém vstupu spadlo.
+- **Aktuálně nedosažitelné přes UI:** oba reálné volací body (`onImport()` řádek 4634, `loadConfigFromDevice()` řádek 4482) mají vlastní `if(!p.banks) throw` guard **před** voláním `normalizeFwConfig()` — potvrzeno probe casem "missing banks" (`guardWouldBlock:true`, `PASS`, žádný nález).
+- Držet jako regresní zámek (probe case "missing banks" v `p2-malformed-import.mjs`) pro případ, že budoucí/alternativní volací místo guard vynechá — pak by reprodukovalo pád stejného tvaru jako P2-1.
+
+### Storage-failure a serial-robustness — žádný nález
+
+- **Storage:** korumpovaný `ff-cfg` (nevalidní JSON) při bootu i `QuotaExceededError` (synchronní `cfgSave()` i odložený `cfgAutosave()`→`cfgSave()` přes `setTimeout`) jsou plně ošetřené existujícím `try/catch` v `cfgLoad()`/`cfgSave()` — appka padá zpět na `DEFAULT_CFG` / tiše ignoruje neúspěšný zápis. Žádná akce nutná.
+- **Serial:** `ERR:` rámec, cizí/stale `rid` (zahozen, čeká na korektní rámec), a úplné ticho (timeout `_readReply`, `feel-fader.html:4419`) — všechny tři cesty korektně `reject()`ují svůj `serialRequest()` promise a **`_txnChain` (`feel-fader.html:4272`, `.catch(()=>{})` na řádku 4410) zůstává funkční** — ověřeno kontrolním requestem hned po každém fault-case, který proběhl normálně. Žádná akce nutná.
 
 ## P3 Privacy/GDPR
 
