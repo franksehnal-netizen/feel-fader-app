@@ -4281,6 +4281,8 @@ function escHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 function clampCc(v, dflt) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(127, Math.trunc(v))) : dflt; }
 function clampChannel(v, dflt) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(15, Math.trunc(v))) : dflt; }
 function clampCcList(arr) { return Array.isArray(arr) ? arr.map(v => clampCc(v, 0)) : []; }
+// HID usage IDs 0–255 (mirrors firmware ff_config.parse_macro_keys / _nav_keys).
+function clampHidList(arr) { return Array.isArray(arr) ? arr.map(v => Number(v)).filter(v => Number.isFinite(v) && v >= 0 && v <= 255).map(v => Math.trunc(v)) : []; }
 
 function normalizeFwConfig(p) {
   if (!p.banks) return p;
@@ -4295,13 +4297,16 @@ function normalizeFwConfig(p) {
       });
       bank.uacc_values = clampCcList(bank.uacc_values);
       bank.ks_notes = clampCcList(bank.ks_notes);
+      bank.nav_keys_cw = clampHidList(bank.nav_keys_cw).length ? clampHidList(bank.nav_keys_cw) : [0x52];
+      bank.nav_keys_ccw = clampHidList(bank.nav_keys_ccw).length ? clampHidList(bank.nav_keys_ccw) : [0x51];
       if (bank.fader1) bank.fader1.label = faderDisplayName(bank.fader1,'fader1');
       if (bank.fader2) bank.fader2.label = faderDisplayName(bank.fader2,'fader2');
     });
+    p.macro_keys = clampHidList(p.macro_keys);
     return p;
   }
   return {
-    macro_keys: Array.isArray(p.macro_keys) ? p.macro_keys : [],
+    macro_keys: clampHidList(p.macro_keys),
     banks: p.banks.map((b, i) => {
       // Device metadata may omit presentation fields; keep name/icon/labels from
       // localStorage as fallbacks, while functional data always comes from hardware.
@@ -4319,8 +4324,8 @@ function normalizeFwConfig(p) {
       ks_notes:    clampCcList(Array.isArray(b.ks_notes) ? b.ks_notes : []),
       ks_channel:  typeof b.ks_channel === 'number' ? b.ks_channel : (typeof b.encoder_ch === 'number' ? b.encoder_ch : 0),
       ks_velocity: typeof b.ks_velocity === 'number' ? b.ks_velocity : 100,
-      nav_keys_cw:  Array.isArray(b.nav_keys_cw)  ? b.nav_keys_cw  : [0x52],
-      nav_keys_ccw: Array.isArray(b.nav_keys_ccw) ? b.nav_keys_ccw : [0x51],
+      nav_keys_cw:  (clampHidList(b.nav_keys_cw).length  ? clampHidList(b.nav_keys_cw)  : [0x52]),
+      nav_keys_ccw: (clampHidList(b.nav_keys_ccw).length ? clampHidList(b.nav_keys_ccw) : [0x51]),
       nav_invert:   !!b.nav_invert,
       });
     })
@@ -6166,11 +6171,22 @@ function loadCustomPresets() {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return Object.fromEntries(Object.entries(parsed).filter(([name, preset]) =>
       name && !['__proto__','prototype','constructor'].includes(name) && !conflictsWithBuiltInPreset(name) && isValidCustomPreset(preset)
-    ));
+    ).map(([name, preset]) => [name, clampCustomPresetHidFields(preset)]));
   } catch (_) { return {}; }
 }
 function conflictsWithBuiltInPreset(name) {
   return Object.keys(LIBRARY_PRESETS).some(builtIn => builtIn.toLowerCase() === String(name).toLowerCase());
+}
+// A custom preset can arrive from an imported JSON file or a hand-edited
+// localStorage blob (both untrusted) and gets rendered directly by
+// libraryPresetPreviewRows()/applyLibraryPreset() without going through
+// normalizeFwConfig — clamp its nav_keys here so every render path is covered.
+function clampCustomPresetHidFields(preset) {
+  if (preset && preset.roller) {
+    preset.roller.nav_keys_cw = clampHidList(preset.roller.nav_keys_cw).length ? clampHidList(preset.roller.nav_keys_cw) : [0x52];
+    preset.roller.nav_keys_ccw = clampHidList(preset.roller.nav_keys_ccw).length ? clampHidList(preset.roller.nav_keys_ccw) : [0x51];
+  }
+  return preset;
 }
 function isValidCustomPreset(preset) {
   return !!preset && typeof preset === 'object' && preset.custom === true &&
@@ -6496,7 +6512,7 @@ async function importCustomPresets(event) {
       if (safeName && !['__proto__','prototype','constructor'].includes(safeName) && !conflictsWithBuiltInPreset(safeName) && isValidCustomPreset(preset)) {
         const oldName = Object.keys(customLibraryPresets).find(item => item.toLowerCase() === safeName.toLowerCase());
         if (oldName && oldName !== safeName) delete customLibraryPresets[oldName];
-        customLibraryPresets[safeName] = JSON.parse(JSON.stringify(preset)); count++;
+        customLibraryPresets[safeName] = clampCustomPresetHidFields(JSON.parse(JSON.stringify(preset))); count++;
       }
     });
     if (!count) throw new Error('No custom setups found');
@@ -6521,8 +6537,8 @@ function applyLibraryPreset(name, scope = 'all') {
     }
     if (scope === 'all' && preset.roller) {
       bank.roller_mode = preset.roller.roller_mode || 'cc';
-      bank.nav_keys_cw = [...(preset.roller.nav_keys_cw || [0x52])];
-      bank.nav_keys_ccw = [...(preset.roller.nav_keys_ccw || [0x51])];
+      bank.nav_keys_cw = clampHidList(preset.roller.nav_keys_cw).length ? clampHidList(preset.roller.nav_keys_cw) : [0x52];
+      bank.nav_keys_ccw = clampHidList(preset.roller.nav_keys_ccw).length ? clampHidList(preset.roller.nav_keys_ccw) : [0x51];
       bank.nav_invert = !!preset.roller.nav_invert;
     }
     if (preset.articulations) {
