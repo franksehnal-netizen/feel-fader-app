@@ -13,7 +13,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..', '..');
 const PORT = 8100;
 
-const AUDIT_PROBES = [ /* filled by Tasks 3–8 */ ];
+const AUDIT_PROBES = [
+  'p1-xss-config-import.mjs',
+  'p1-proto-pollution.mjs',
+  /* filled by Tasks 4–8 */
+];
 
 function startServer() {
   return new Promise((resolve) => {
