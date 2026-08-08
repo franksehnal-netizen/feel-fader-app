@@ -4370,6 +4370,7 @@ function handleSysEx(data){
       if(info.firmware)DEVICE_INFO.firmware=info.firmware;
       if(typeof info.hid_available==='boolean') DEVICE_INFO.hid_available=info.hid_available;
       if(typeof info.hid_enabled==='boolean')   DEVICE_INFO.hid_enabled=info.hid_enabled;
+      if(typeof info.bank==='number' && info.bank>=0) liveBank=info.bank|0;   // sync live-bank indicator on info push
       updateHidToggle();
       updateDeviceInfo();
       render();   // re-render roller selector — track_nav gating depends on hid_enabled
@@ -4487,6 +4488,10 @@ async function serialReadInfo() {
   if (info.serial)   DEVICE_INFO.serial   = info.serial;
   if (typeof info.hid_available === 'boolean') DEVICE_INFO.hid_available = info.hid_available;
   if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
+  // Sync live-bank indicator to the device's actual current bank on (re)connect,
+  // so it isn't stuck at Bank 1 until the next Program Change (firmware reports
+  // its bank_index in CMD_INFO; liveBank sync-on-load 2026-07-29).
+  if (typeof info.bank === 'number' && info.bank >= 0) liveBank = info.bank | 0;
   DEVICE_INFO.config_hash   = info.config_hash   || null;
   DEVICE_INFO.config_source = info.config_source || null;
   try { localStorage.setItem(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId); } catch(e) {}
