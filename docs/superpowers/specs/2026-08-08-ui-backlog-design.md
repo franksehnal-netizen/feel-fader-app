@@ -102,51 +102,64 @@ Pouze CSS:
 
 ---
 
-## C. Notifikace nesmí posouvat layout
+## C. Jedna chyba = jeden signál
 
 ### Problém
 
-`#vbar` je první dítě `.center-col` uvnitř `<main>` a přepíná se `display:none → block`
-(`styles.css:840–841`, plněno v `app.js:1872`). Při duplicitním CC vstoupí do flow a posune dolů
-**všechno pod sebou** — včetně stepperu `+`/`−`, na kterém uživatel právě drží kurzor.
+Původní zadání znělo „notifikace posouvá layout". Při rozboru se ukázalo, že posun je jen následek —
+skutečný problém je, že **jedna chyba vyrábí čtyři vizuální signály najednou**:
 
-### Řešení
+| # | Kde | Co | Kód |
+|---|---|---|---|
+| 1 | `#vbar`, první dítě `.center-col` | ⚠ + věta + tlačítko „Show" | `app.js:1872` |
+| 2 | u Send tlačítka | „1 issue to fix" (`.has-issues`) | `app.js:1874` |
+| 3 | samotné Send tlačítko | text `Show error` + `.review` | `app.js:1873` |
+| 4 | pod stepperem | červená věta — **stejná jako #1** | `app.js:1878–1882` |
 
-`#vbar` mimo flow. `position:sticky` nestačí — sticky prvek v flow pořád zabírá místo, takže `fixed`.
+Signál #1 se přepíná `display:none → block` (`styles.css:840–841`) a jako první dítě `.center-col`
+vstupuje do flow → posune dolů všechno pod sebou, včetně stepperu `+`/`−`, na kterém uživatel
+drží kurzor. To je ten původně hlášený symptom.
 
-**Nevymýšlet nový vzor** — appka už má přesně tenhle případ vyřešený u `.sync-banner`
-(`styles.css:914`): `position:fixed; top:50px; left:50%; transform:translateX(-50%); z-index:250`,
-tedy pod jednořádkovým headerem a nad stage. `.vbar` převezme stejnou geometrii i stacking:
+`#vbar` má ale legitimní důvod existence: chyba může být ve **sbalené sekci nebo v jiné bance**,
+kde je inline hláška neviditelná — proto to tlačítko „Show". Chyba tedy není v tom, že signály
+existují, ale že se zobrazují **všechny naráz i tehdy, když je chybné pole přímo na očích**.
 
-```css
-.vbar{display:none}
-.vbar.err{
-  display:block;
-  position:fixed; top:50px; left:50%; transform:translateX(-50%);
-  width:min(668px, calc(100vw - 32px));   /* .center-col je max-width:700px s paddingem 16px */
-  z-index:250;
-  animation:vbar-in .18s ease-out;
-}
-@media (prefers-reduced-motion: reduce){ .vbar.err{animation:none} }
-```
+### Řešení: signál patří k místu opravy
 
-- `.top-sticky` je **sticky s proměnnou výškou** (roste, když je controller schovaný, aby pojal
-  dokovaný Send řádek) — proto se `top` neváže na jeho změřenou výšku, ale kopíruje ověřenou
-  konstantu ze `.sync-banner`. Finální hodnota se doladí okem.
-- `.top-sticky` je `pointer-events:none` kontejner (z-50) a pointer vrací jen `<header>`;
-  `.vbar` je samostatný fixed prvek, takže se ho to netýká — stejně jako dokovaného Send pillu.
-- Pozor na gotchu zdokumentovanou u `.sync-banner[hidden]`: `display` nastavený přes třídu přebije
-  UA pravidlo pro `[hidden]`. `.vbar` se dnes řídí třídou `.err`, ne atributem, takže je to čisté —
-  ale nepřidávat `[hidden]` jako druhý mechanismus.
-- Kolize se `.sync-banner`, když by byly viditelné naráz (oba `top:50px`): ověřit ručně;
-  v praxi sync banner naskakuje jen při (re)connectu. Pokud kolidují, `.vbar` posunout níž.
-- `role="alert"` / `aria-live="assertive"` beze změny → stávající `vbar-aria-live-probe.mjs` musí projít dál.
+- **Inline hláška u pole je jediná textová.** Je jediná akční — je přesně tam, kde se to opravuje.
+- **`#vbar` přestává být vizuální prvek.** Element zůstává jako `visually-hidden` live region
+  (`role="alert"`, `aria-live="assertive"`), takže odečítač obrazovky dál dostane oznámení a
+  `vbar-aria-live-probe.mjs` má co testovat. Tím **mizí i původní problém s posunem layoutu** —
+  není co dostávat mimo flow, žádný `position:fixed` se nekoná.
+- **Červená tečka v hlavičce sekce** místo banneru. Sekce s chybou ji má vedle chevronu, ať je
+  otevřená nebo sbalená → vidíš *kde* problém je, bez věty navíc. Po zrušení akordeonu (A) je to
+  důležitější než dnes, protože sbalených sekcí bude víc.
+- **Stejná tečka na tabu banky**, když je chyba v jiné bance. Nahrazuje skok „Show" napříč bankami.
+  Následovat existující vzor `bank-tab-device` (`app.js:458`, `479–481`) — nová třída `bank-tab-issue`.
+- **Send tlačítko si nechá text `Send to device`.** Nikdy „Show error". Dostane tlumený vzhled
+  novou třídou `.send-btn.blocked` — vizuální jazyk převzít ze stávající `.send-btn.idle`
+  (`styles.css:333`, control-glass + `--t2`) s jemným danger akcentem. **Zůstává klikatelné**
+  (Frankovo rozhodnutí): klik při chybě dělá to co dnes — `handleDirtyAction()` → `focusValidationError(0)`.
+  Disabled tlačítko nikam nevede a uživatel se nedozví proč.
+- **„1 issue to fix" vypustit.** `send-change-note` si nechá svou běžnou roli shrnutí změn;
+  větev `.has-issues` (`app.js:1874`, `styles.css:347`) se ruší.
+
+Výsledek na Frankově screenshotu: jedna červená věta pod stepperem, tlumené tlačítko, nic víc.
+
+### Zvažováno a zamítnuto
+
+- **`#vbar` jako `position:fixed` overlay** (původní návrh, `.sync-banner` vzor `styles.css:914`) —
+  vyřeší posun, ale duplicitu ne. To je přesně to, co vadí.
+- **Toast přes stávající `#toasts`** — mizí sám, jenže neplatná konfigurace je trvalý stav,
+  ne událost. Uživatel by hlášku ztratil a neměl kam se vrátit.
+- **Jen inline a nic dalšího** — nejmíň kódu, ale chyba ve sbalené sekci nebo cizí bance je
+  neviditelná, dokud se neklikne na Send. Tečky to řeší lacino, proto zůstávají.
 
 ### C-navíc: rezervovat výšku inline chyby
 
 `#err-b{bi}-{key}` (`app.js:626`, `677`) sedí na konci těla sekce a při zobrazení posouvá sekce
-**pod** sebou stejným mechanismem. Frankův konkrétní zásah to netrefil (byl nad ní), ale po zrušení
-akordeonu (A) bude otevřených sekcí víc naráz a projeví se to častěji.
+**pod** sebou. Frankův konkrétní zásah to netrefil (byl nad ní), ale po zrušení akordeonu (A) bude
+otevřených sekcí víc naráz a projeví se to častěji.
 
 Řešení: dát tomu divu pevnou rezervovanou výšku (~18 px) v otevřené sekci, aby výška sekce
 nezávisela na tom, jestli je chyba zobrazená. Přesunout inline styl do třídy `.section-error`.
@@ -212,7 +225,7 @@ LEFT FADER / RIGHT FADER / ROLLER (`app.js:577–578`, `917–930`), což čte j
 |---|---|
 | A | Nový probe: otevřít 2 sekce, přepnout banku, obě zůstávají otevřené; třetí otevření nezavře předchozí |
 | B | Nový probe: šířka `.fader-title-input` ≤ šířka textu + tolerance, a klik napravo od textu rozbalí sekci |
-| C | Nový probe: `getBoundingClientRect().top` stepper tlačítka `+` je identický před a po vyvolání duplicitního CC |
+| C | Nový probe: po vyvolání duplicitního CC je `getBoundingClientRect().top` stepper tlačítka `+` identický jako předtím; viditelná červená věta je právě jedna; `#send-btn` má text `Send to device` a třídu `blocked`; hlavička dotčené sekce nese tečku |
 | A/B/C | `npm test` zelený včetně stávajícího `vbar-aria-live-probe.mjs` a `c10-bank-switch-preserves-edit-probe.mjs` |
 | D | `pytest` zelený, rozšířené `tests/test_macro.py` a `tests/test_wave2_hash.py` |
 | D | Ruční HW test (Frank): per-bank makro na Bank 2 vs Bank 3, pak `Global` ON → stejné makro všude |
