@@ -360,18 +360,18 @@ JS se nemeni — hlavicka uz ma guard closest('input,button')."
 
 ---
 
-### Task C1: Jedna chyba = jedna hláška
+### Task C1: Inline chyba nemění výšku sekce
 
-Ruší tři ze čtyř dnešních signálů: `#vbar` jako vizuální prvek, „N issues to fix" u tlačítka a přejmenování tlačítka na „Show error". Inline hláška u pole zůstává jediná textová.
+První ze tří kroků sekce C. Jde první, protože je nezávislý na ostatních — a protože bez něj by následující tasky commitovaly se známou padající assertion.
 
 **Files:**
-- Modify: `feel-fader.html` — `<div id="vbar">` markup, CSS `.vbar` / `.send-change-note.has-issues` / nové `.send-btn.blocked`, funkce `runValidation()` (odpovídá `app.js:1855–1875`)
+- Modify: `feel-fader.html` — `faderSectionContent()` (`app.js:626`), `ccEncoderBody()` (`app.js:677`), per-field smyčka v `runValidation()` (`app.js:1878–1882`), inline `<style>`
 - Create: `scratch/validation-single-signal-probe.mjs`
 - Modify: `scratch/run-all-probes.mjs` (registrace probe)
 
 **Interfaces:**
-- Consumes: `validate() -> Array<{field,target,msg}>`, `dirty`, `_sendConfirmed`, `t('btn.send') === 'Send to device'`, `handleDirtyAction()`
-- Produces: `#vbar` s třídou `sr-only` (zůstává `role="alert"` + `aria-live="assertive"`); `#send-btn` s třídou `blocked` při neplatné konfiguraci; třída `.sr-only` použitelná dál
+- Consumes: `#err-b{bi}-{key}` elementy, `runValidation()`, `isSectionOpen(key)` a `toggleSection(key)` z Tasku A
+- Produces: CSS třída `.section-error` — jediný selektor pro inline validační hlášku; probe soubor, který Tasky C2 a C3 rozšiřují
 
 - [ ] **Step 1: Napsat padající probe**
 
@@ -379,11 +379,13 @@ Create `scratch/validation-single-signal-probe.mjs`:
 
 ```js
 // Regression probe: one validation error produces exactly ONE visible
-// message. Before 2026-08-08 a duplicate CC raised four at once: the #vbar
-// banner, "1 issue to fix" next to the send button, a "Show error" relabel of
-// the send button itself, and the inline red line under the stepper — and
-// #vbar, as the first child of .center-col, pushed the whole page down so the
-// cursor was no longer over the +/- stepper being clicked.
+// message, and showing it does not move anything on the page. Before
+// 2026-08-08 a duplicate CC raised four signals at once (the #vbar banner,
+// "1 issue to fix" next to the send button, a "Show error" relabel of the
+// button itself, and the inline red line) and #vbar, as the first child of
+// .center-col, pushed the whole page down so the cursor was no longer over
+// the +/- stepper being clicked.
+// Grows across three tasks: C1 inline height, C2 single signal, C3 dots.
 // Spec: 2026-08-08-ui-backlog-design.md §C.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -397,10 +399,13 @@ const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
 await p.evaluate(() => { skipWelcome(); toggleSection('fader1'); });
 await new Promise(r => setTimeout(r, 300));
 
-const stepTop = () => p.evaluate(() =>
-  document.querySelector('#b0-fader1-cc + .step-btn').getBoundingClientRect().top);
+// Výška sekce se nesmí měnit tím, že se v ní objeví chyba. Měří se sekce
+// samotná, ne pozice na stránce — tu v tuhle chvíli pořád posouvá #vbar
+// (řeší Task C2).
+const sectionH = () => p.evaluate(() =>
+  document.querySelector('.bank-section[data-fader="fader1"]').getBoundingClientRect().height);
 
-const before = await stepTop();
+const heightBefore = await sectionH();
 
 await p.evaluate(() => {
   cfg.banks[0].fader2.cc      = cfg.banks[0].fader1.cc;
@@ -409,50 +414,24 @@ await p.evaluate(() => {
 });
 await new Promise(r => setTimeout(r, 150));
 
-const after = await stepTop();
-P('stepper does not move when the error appears', Math.abs(after - before) < 1,
-  `before ${before.toFixed(1)} / after ${after.toFixed(1)}`);
+const heightAfter = await sectionH();
+P('section height is unchanged when the error appears', Math.abs(heightAfter - heightBefore) < 1,
+  `before ${heightBefore.toFixed(1)} / after ${heightAfter.toFixed(1)}`);
 
-const s = await p.evaluate(() => {
+const inline = await p.evaluate(() => {
   const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
     return r.width > 2 && r.height > 2 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
-  const vbar = document.getElementById('vbar');
-  const btn  = document.getElementById('send-btn');
-  const note = document.getElementById('send-change-note');
-  const inlineVisible = [...document.querySelectorAll('.section-error')]
-    .filter(el => el.textContent.trim() && vis(el));
-  return {
-    vbarSrOnly:   vbar.classList.contains('sr-only'),
-    vbarAnnounces: vbar.textContent.trim().length > 0,
-    vbarRole:     vbar.getAttribute('role'),
-    vbarVisible:  vis(vbar),
-    btnText:      btn.textContent.trim(),
-    btnBlocked:   btn.classList.contains('blocked'),
-    btnDisabled:  btn.disabled,
-    noteText:     note ? note.textContent.trim() : '',
-    inlineCount:  inlineVisible.length,
-    inlineText:   inlineVisible[0]?.textContent.trim() || '',
-  };
+  const shown = [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim() && vis(el));
+  return { count: shown.length, text: shown[0]?.textContent.trim() || '' };
 });
+P('exactly one visible inline error', inline.count === 1, `${inline.count}: ${inline.text}`);
 
-P('#vbar is screen-reader-only',              s.vbarSrOnly && !s.vbarVisible, `srOnly=${s.vbarSrOnly} visible=${s.vbarVisible}`);
-P('#vbar still announces the error',          s.vbarAnnounces && s.vbarRole === 'alert', `role=${s.vbarRole}`);
-P('send button keeps its label',              s.btnText === 'Send to device', s.btnText);
-P('send button is muted, not disabled',       s.btnBlocked && !s.btnDisabled, `blocked=${s.btnBlocked} disabled=${s.btnDisabled}`);
-P('change note shows no issue count',         !/issue/i.test(s.noteText), s.noteText || '(empty)');
-P('exactly one visible inline error',         s.inlineCount === 1, `${s.inlineCount}: ${s.inlineText}`);
-
-await p.evaluate(() => {
+const cleared = await p.evaluate(() => {
   cfg.banks[0].fader2.cc = (cfg.banks[0].fader1.cc + 1) % 128;
   renderPanels(); runValidation();
+  return [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length;
 });
-const cleared = await p.evaluate(() => {
-  const btn = document.getElementById('send-btn');
-  return { blocked: btn.classList.contains('blocked'), text: btn.textContent.trim(),
-           inline: [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length };
-});
-P('blocked state clears when the error is fixed', !cleared.blocked && cleared.inline === 0,
-  `blocked=${cleared.blocked} inline=${cleared.inline}`);
+P('inline error clears when the conflict is fixed', cleared === 0, String(cleared));
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
@@ -460,7 +439,7 @@ await b.close();
 
 - [ ] **Step 2: Zaregistrovat probe v runneru**
 
-V `scratch/run-all-probes.mjs` přidej do `PROBES` hned za `'fader-name-input-width-probe.mjs',`:
+V `scratch/run-all-probes.mjs` přidej do pole `PROBES` hned za `'fader-name-input-width-probe.mjs',`:
 
 ```js
   'validation-single-signal-probe.mjs',
@@ -469,9 +448,168 @@ V `scratch/run-all-probes.mjs` přidej do `PROBES` hned za `'fader-name-input-wi
 - [ ] **Step 3: Spustit probe a ověřit, že padá**
 
 Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: FAIL na `stepper does not move`, `#vbar is screen-reader-only`, `send button keeps its label`, `change note shows no issue count` i `exactly one visible inline error` (třída `.section-error` zatím neexistuje — ta přijde v Tasku C3; zatím počítej s tím, že `inlineCount` bude 0 a řádek padne).
+Expected: FAIL na `section height is unchanged` (div se přepíná `display:none/block`) i na `exactly one visible inline error` (třída `.section-error` zatím neexistuje, počet je 0).
 
-- [ ] **Step 4: Přidat `.sr-only` utilitu a `.send-btn.blocked`, zrušit `.has-issues`**
+- [ ] **Step 4: Přidat CSS třídu s rezervovanou výškou**
+
+V `feel-fader.html` najdi:
+
+```css
+.vbar{display:none}
+```
+
+a **před** tento řádek vlož:
+
+```css
+/* Výška je rezervovaná pořád, i když je hláška prázdná: jinak by zobrazení
+   chyby posunulo sekce pod sebou. Po zrušení akordeonu je otevřených sekcí
+   víc naráz, takže by to bylo vidět častěji (spec §C-navíc). */
+.section-error{font-size:12px;color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
+```
+
+- [ ] **Step 5: Převést fader hlášku na třídu**
+
+V `feel-fader.html` najdi:
+
+```js
+      <div id="err-b${bi}-${key}" style="font-size:12px;color:var(--danger);margin-top:4px;display:${err?'block':'none'}">${escHtml(err)}</div>
+```
+
+a nahraď za:
+
+```js
+      <div id="err-b${bi}-${key}" class="section-error">${escHtml(err)}</div>
+```
+
+- [ ] **Step 6: Převést encoder hlášku na třídu**
+
+Najdi:
+
+```js
+        <div id="err-b${bi}-encoder" style="font-size:12px;color:var(--danger);margin-top:6px;display:${encErr?'block':'none'}">${escHtml(encErr)}</div>
+```
+
+a nahraď za:
+
+```js
+        <div id="err-b${bi}-encoder" class="section-error">${escHtml(encErr)}</div>
+```
+
+- [ ] **Step 7: Přestat přepínat `display` v `runValidation()`**
+
+Najdi:
+
+```js
+      el.textContent = e ? e.msg : '';
+      el.style.display = e ? 'block' : 'none';
+```
+
+a nahraď za:
+
+```js
+      el.textContent = e ? e.msg : '';
+```
+
+- [ ] **Step 8: Spustit probe a ověřit, že prochází celý**
+
+Run: `npm test -- validation-single-signal-probe.mjs`
+Expected: **všechny** řádky `PASS`, exit 0.
+
+- [ ] **Step 9: Ověřit celou sadu**
+
+Run: `npm test`
+Expected: exit 0, žádný `FAIL`.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add feel-fader.html scratch/validation-single-signal-probe.mjs scratch/run-all-probes.mjs
+git commit -m "fix(ui): inline validacni hlaska ma rezervovanou vysku
+
+Div uz se neprepina display:none/block, jen se meni jeho text — vyska
+sekce je konstantni, takze zobrazeni chyby neposune sekce pod sebou.
+Inline styly presunuty do tridy .section-error."
+```
+
+---
+
+### Task C2: Jedna chyba = jedna hláška
+
+Ruší tři ze čtyř dnešních signálů: `#vbar` jako vizuální prvek, „N issues to fix" u tlačítka a přejmenování tlačítka na „Show error". Inline hláška z Tasku C1 zůstává jediná textová.
+
+**Files:**
+- Modify: `feel-fader.html` — `<div id="vbar">` markup, CSS `.vbar` / `.send-change-note.has-issues` / nové `.send-btn.blocked` a `.sr-only`, funkce `runValidation()` (odpovídá `app.js:1855–1875`)
+- Modify: `scratch/validation-single-signal-probe.mjs` (rozšíření)
+
+**Interfaces:**
+- Consumes: `validate() -> Array<{field,target,msg}>`, `dirty`, `_sendConfirmed`, `t('btn.send') === 'Send to device'`, `handleDirtyAction()`, `.section-error` z Tasku C1
+- Produces: `#vbar` s třídou `sr-only` (zůstává `role="alert"` + `aria-live="assertive"`); `#send-btn` s třídou `blocked` při neplatné konfiguraci; třída `.sr-only` použitelná dál
+
+- [ ] **Step 1: Rozšířit probe**
+
+V `scratch/validation-single-signal-probe.mjs` přidej **hned za** řádek `const heightBefore = await sectionH();`:
+
+```js
+const stepTop = () => p.evaluate(() =>
+  document.querySelector('#b0-fader1-cc + .step-btn').getBoundingClientRect().top);
+const stepBefore = await stepTop();
+```
+
+Za řádek `P('section height is unchanged when the error appears', ...)` přidej:
+
+```js
+const stepAfter = await stepTop();
+P('stepper does not move when the error appears', Math.abs(stepAfter - stepBefore) < 1,
+  `before ${stepBefore.toFixed(1)} / after ${stepAfter.toFixed(1)}`);
+
+const s = await p.evaluate(() => {
+  const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+    return r.width > 2 && r.height > 2 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
+  const vbar = document.getElementById('vbar');
+  const btn  = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return {
+    vbarSrOnly:    vbar.classList.contains('sr-only'),
+    vbarVisible:   vis(vbar),
+    vbarAnnounces: vbar.textContent.trim().length > 0,
+    vbarRole:      vbar.getAttribute('role'),
+    btnText:       btn.textContent.trim(),
+    btnBlocked:    btn.classList.contains('blocked'),
+    btnDisabled:   btn.disabled,
+    noteText:      note ? note.textContent.trim() : '',
+  };
+});
+P('#vbar is screen-reader-only',        s.vbarSrOnly && !s.vbarVisible, `srOnly=${s.vbarSrOnly} visible=${s.vbarVisible}`);
+P('#vbar still announces the error',    s.vbarAnnounces && s.vbarRole === 'alert', `role=${s.vbarRole}`);
+P('send button keeps its label',        s.btnText === 'Send to device', s.btnText);
+P('send button is muted, not disabled', s.btnBlocked && !s.btnDisabled, `blocked=${s.btnBlocked} disabled=${s.btnDisabled}`);
+P('change note shows no issue count',   !/issue/i.test(s.noteText), s.noteText || '(empty)');
+```
+
+A rozšiř existující blok `const cleared = ...` — nahraď ho celý za:
+
+```js
+const cleared = await p.evaluate(() => {
+  cfg.banks[0].fader2.cc = (cfg.banks[0].fader1.cc + 1) % 128;
+  renderPanels(); runValidation();
+  const btn = document.getElementById('send-btn');
+  return {
+    inline:  [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length,
+    blocked: btn.classList.contains('blocked'),
+    text:    btn.textContent.trim(),
+  };
+});
+P('inline error clears when the conflict is fixed', cleared.inline === 0, String(cleared.inline));
+P('blocked state clears with the error', !cleared.blocked && cleared.text === 'Send to device',
+  `blocked=${cleared.blocked} text=${cleared.text}`);
+```
+
+- [ ] **Step 2: Spustit probe a ověřit, že nové řádky padají**
+
+Run: `npm test -- validation-single-signal-probe.mjs`
+Expected: FAIL na `stepper does not move`, `#vbar is screen-reader-only`, `send button keeps its label`, `send button is muted`, `change note shows no issue count` a `blocked state clears with the error`. Řádky z Tasku C1 dál procházejí.
+
+- [ ] **Step 3: Přidat `.sr-only` utilitu a `.send-btn.blocked`, zrušit `.has-issues`**
 
 V `feel-fader.html` najdi:
 
@@ -510,7 +648,7 @@ a nahraď za:
 .send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
 ```
 
-- [ ] **Step 5: Označit `#vbar` v markupu jako sr-only**
+- [ ] **Step 4: Označit `#vbar` v markupu jako sr-only**
 
 V `feel-fader.html` najdi:
 
@@ -524,65 +662,55 @@ a nahraď za:
   <div id="vbar" class="vbar sr-only" role="alert" aria-live="assertive"></div>
 ```
 
-- [ ] **Step 6: Přepsat `runValidation()` — jeden signál**
+- [ ] **Step 5: Vyčistit bezchybnou větev `runValidation()`**
 
-V `feel-fader.html` najdi tuto větev (uvnitř `runValidation()`):
+V `feel-fader.html` najdi:
 
 ```js
   if(errs.length===0){
     bar.className='vbar';bar.innerHTML='';
 ```
 
-a nahraď první dva řádky za:
+a nahraď za:
 
 ```js
   if(errs.length===0){
     bar.className='vbar sr-only';bar.textContent='';
 ```
 
-Dál v téže funkci najdi:
-
-```js
-      }else if(!dirty){
-```
-
-Řádek nech být. Místo toho najdi tři výskyty, kde se maže stavová třída, a doplň `blocked` — nahraď:
+Dál nahraď tyto tři řádky (každý zvlášť, jsou unikátní) tak, aby mazaly i `blocked`:
 
 ```js
         btn.disabled=true;btn.textContent='✓ Sent';btn.classList.add('sent');btn.classList.remove('review','idle');
 ```
 
-za:
+na:
 
 ```js
         btn.disabled=true;btn.textContent='✓ Sent';btn.classList.add('sent');btn.classList.remove('review','idle','blocked');
 ```
 
-a nahraď:
-
 ```js
         btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('idle');btn.classList.remove('review','sent');
 ```
 
-za:
+na:
 
 ```js
         btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('idle');btn.classList.remove('review','sent','blocked');
 ```
 
-a nahraď:
-
 ```js
         btn.disabled=false;btn.textContent=t('btn.send');btn.classList.remove('review','sent','idle');
 ```
 
-za:
+na:
 
 ```js
         btn.disabled=false;btn.textContent=t('btn.send');btn.classList.remove('review','sent','idle','blocked');
 ```
 
-- [ ] **Step 7: Přepsat chybovou větev `runValidation()`**
+- [ ] **Step 6: Přepsat chybovou větev `runValidation()`**
 
 Najdi:
 
@@ -610,99 +738,109 @@ a nahraď za:
   }
 ```
 
-- [ ] **Step 8: Odstranit zbylé odkazy na `.review` a `has-issues`**
+- [ ] **Step 7: Ověřit, že nezbyly odkazy na zrušené stavy**
 
 Run: `rg -n "classList.add\('review'\)|has-issues|'Show error'" feel-fader.html`
 Expected: **žádný výstup**. Když něco zbylo, odstraň to.
 
-CSS pravidlo `.vbar-jump` / `.vbar-message` / `.vbar-go` nech být — je mrtvé, ale jeho odstranění je kosmetika mimo rozsah a zvyšuje riziko překlepu v 840 KB souboru.
+CSS pravidla `.vbar-jump` / `.vbar-message` / `.vbar-go` nech být — jsou mrtvá, ale jejich odstranění je kosmetika mimo rozsah a zvyšuje riziko překlepu v 840 KB souboru.
 
-- [ ] **Step 9: Spustit probe**
+- [ ] **Step 8: Spustit probe**
 
 Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: všechny řádky `PASS` **kromě** `exactly one visible inline error`, který dál padá — třída `.section-error` vzniká až v Tasku C3. To je očekávané; nepřidávej ji sem.
+Expected: **všechny** řádky `PASS`, exit 0.
 
-- [ ] **Step 10: Ověřit, že stávající vbar probe drží**
+- [ ] **Step 9: Ověřit, že stávající vbar probe drží**
 
 Run: `npm test -- vbar-aria-live-probe.mjs`
-Expected: všechny řádky `PASS`. Probe testuje `role`, `aria-live` a to, že se obsah `#vbar` při chybě naplní — což platí dál.
+Expected: všechny řádky `PASS`. Probe testuje `role`, `aria-live` a naplnění obsahu `#vbar` při chybě — to platí dál.
+
+- [ ] **Step 10: Ověřit celou sadu**
+
+Run: `npm test`
+Expected: exit 0.
 
 - [ ] **Step 11: Commit**
 
 ```bash
-git add feel-fader.html scratch/validation-single-signal-probe.mjs scratch/run-all-probes.mjs
+git add feel-fader.html scratch/validation-single-signal-probe.mjs
 git commit -m "fix(ui): jedna validacni chyba = jeden viditelny signal
 
 #vbar se meni na sr-only live region (odecitac obrazovky o chybe dal vi,
 ale nic nevstupuje do flow -> nehne se stepper pod nim). Send tlacitko
 si nechava text 'Send to device' a jen zesladne novou tridou .blocked;
-'N issues to fix' a prejmenovani na 'Show error' zrusene.
-
-Probe validation-single-signal-probe.mjs zatim padá na poslednim radku
-(.section-error prijde v nasledujicim commitu)."
+'N issues to fix' a prejmenovani na 'Show error' zrusene."
 ```
 
 ---
 
-### Task C2: Tečka ukazuje, kde chyba je
+### Task C3: Tečka ukazuje, kde chyba je
 
 Nahrazuje zrušené tlačítko „Show" — lokaci chyby nese marker v hlavičce sekce a na tabu banky.
 
 **Files:**
-- Modify: `feel-fader.html` — `sectionHeaderHtml()` (`app.js:80–105`), `renderBankTabs()` (`app.js:458–461`), `setActiveTab()` (`app.js:472–486`), `runValidation()` (konec funkce), inline `<style>`
-- Modify: `scratch/validation-single-signal-probe.mjs` (rozšíření o kontrolu teček)
+- Modify: `feel-fader.html` — `runValidation()` (konec funkce), `setActiveTab()` (`app.js:472–486`), inline `<style>`
+- Modify: `scratch/validation-single-signal-probe.mjs` (rozšíření)
 
 **Interfaces:**
-- Consumes: `validate() -> Array<{field}>` kde `field` má tvar `b<index>.<fader1|fader2|encoder|uacc>`; `isSectionOpen(key)`; `cfg.banks`
+- Consumes: `validate() -> Array<{field}>` kde `field` má tvar `b<index>.<fader1|fader2|encoder|uacc>`; `isSectionOpen(key)`; `cfg.banks`; `activeBank`
 - Produces:
   - `sectionIssueKeys(bi: number) -> Set<string>` — klíče sekcí (`'fader1'|'fader2'|'roller'|'macro'`) s chybou v bance `bi`
   - `banksWithIssues() -> Set<number>` — indexy bank s chybou
-  - `markSectionIssues() -> void` — promítne oboje do DOM; volá se z `runValidation()`
+  - `markSectionIssues() -> void` — promítne oboje do DOM; volá se z `runValidation()` a `setActiveTab()`
   - CSS třídy `.section-issue-dot`, `.bank-tab-issue`
 
-- [ ] **Step 1: Rozšířit probe o kontrolu teček**
+- [ ] **Step 1: Rozšířit probe**
 
-V `scratch/validation-single-signal-probe.mjs` přidej do objektu vraceného z `p.evaluate` (blok `const s = await p.evaluate(...)`) tyto dva klíče před `inlineCount`:
+V `scratch/validation-single-signal-probe.mjs` přidej do objektu vraceného z `const s = await p.evaluate(...)` tyto dva klíče před uzavírací `};`:
 
 ```js
-    sectionDot:   !!document.querySelector('[data-fader="fader1"] .section-issue-dot'),
-    otherDot:     !!document.querySelector('[data-fader="roller"] .section-issue-dot'),
+    sectionDot: !!document.querySelector('.bank-section[data-fader="fader1"] .section-issue-dot'),
+    otherDot:   !!document.querySelector('.bank-section[data-fader="roller"] .section-issue-dot'),
 ```
 
-a přidej dva `P(...)` řádky hned za řádek `P('exactly one visible inline error', ...)`:
+a přidej dva `P(...)` řádky za `P('change note shows no issue count', ...)`:
 
 ```js
-P('section head with the error carries a dot',    s.sectionDot,  String(s.sectionDot));
-P('unaffected section carries no dot',            !s.otherDot,   String(s.otherDot));
+P('section head with the error carries a dot', s.sectionDot,  String(s.sectionDot));
+P('unaffected section carries no dot',        !s.otherDot,    String(s.otherDot));
 ```
 
-Do bloku `const cleared = await p.evaluate(...)` přidej klíč:
+Do bloku `const cleared = await p.evaluate(...)` přidej do vraceného objektu:
 
 ```js
-           dot: !!document.querySelector('.section-issue-dot'),
+    dot: !!document.querySelector('.section-issue-dot'),
 ```
 
-a rozšiř jeho assert:
+a rozšiř jeho assert — nahraď:
 
 ```js
-P('blocked state clears when the error is fixed', !cleared.blocked && cleared.inline === 0 && !cleared.dot,
-  `blocked=${cleared.blocked} inline=${cleared.inline} dot=${cleared.dot}`);
+P('blocked state clears with the error', !cleared.blocked && cleared.text === 'Send to device',
+  `blocked=${cleared.blocked} text=${cleared.text}`);
+```
+
+za:
+
+```js
+P('blocked state clears with the error', !cleared.blocked && cleared.text === 'Send to device',
+  `blocked=${cleared.blocked} text=${cleared.text}`);
+P('issue dot clears with the error', !cleared.dot, String(cleared.dot));
 ```
 
 - [ ] **Step 2: Spustit probe a ověřit, že nové řádky padají**
 
 Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: FAIL na `section head with the error carries a dot`.
+Expected: FAIL na `section head with the error carries a dot`. Ostatní řádky dál procházejí.
 
 - [ ] **Step 3: Přidat CSS pro obě tečky**
 
-V `feel-fader.html` najdi pravidlo, které jsi přidal v Tasku C1:
+V `feel-fader.html` najdi:
 
 ```css
 .send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow)}
 ```
 
-a **před** něj vlož:
+a **před** tento řádek vlož:
 
 ```css
 /* Lokace chyby bez věty navíc — nahrazuje zrušené tlačítko "Show" v #vbar.
@@ -735,7 +873,8 @@ a nahraď za:
 }
 
 // Mapa validačního `field` -> klíč sekce. 'encoder' i 'uacc' bydlí v roller
-// sekci; 'macro' zatím nemá vlastní validaci, ale klíč je tu kvůli symetrii.
+// sekci; 'macro' zatím nemá vlastní validaci, ale klíč je v seznamu níž
+// kvůli symetrii a kvůli tomu, aby se stará tečka uklidila.
 function _issueFieldToSection(field) {
   const m = /^b(\d+)\.(fader1|fader2|encoder|uacc)$/.exec(field || '');
   if (!m) return null;
@@ -754,8 +893,8 @@ function banksWithIssues() {
 function markSectionIssues() {
   const keys = sectionIssueKeys(activeBank);
   ['fader1','fader2','roller','macro'].forEach(key => {
-    const head = document.querySelector(`.bank-section[data-fader="${key}"] .section-head`)
-              || document.querySelector(`#section-toggle-${activeBank}-${key}`);
+    const section = document.querySelector(`.bank-section[data-fader="${key}"]`);
+    const head = section && section.querySelector('.section-head');
     if (!head) return;
     head.querySelector('.section-issue-dot')?.remove();
     if (keys.has(key)) {
@@ -801,104 +940,7 @@ a nahraď za:
 - [ ] **Step 6: Spustit probe**
 
 Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: `PASS` na obou nových řádcích i na `blocked state clears...`. Řádek `exactly one visible inline error` dál padá (čeká na Task C3).
-
-- [ ] **Step 7: Ověřit celou sadu**
-
-Run: `npm test`
-Expected: jediný `FAIL` je `exactly one visible inline error` ve `validation-single-signal-probe.mjs`. Cokoliv jiného zastav a vyřeš.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add feel-fader.html scratch/validation-single-signal-probe.mjs
-git commit -m "feat(ui): tecka v hlavicce sekce a na tabu banky ukazuje, kde chyba je
-
-Nahrazuje zrusene tlacitko 'Show' v #vbar. markSectionIssues() se vola
-z runValidation() i ze setActiveTab(), aby tecka prezila prestavbu tabu."
-```
-
----
-
-### Task C3: Inline chyba nemění výšku sekce
-
-**Files:**
-- Modify: `feel-fader.html` — `faderSectionContent()` (`app.js:626`), `ccEncoderBody()` (`app.js:677`), `runValidation()` per-field smyčka (`app.js:1878–1882`), inline `<style>`
-- Modify: `scratch/validation-single-signal-probe.mjs` (nic — poslední řádek začne procházet sám)
-
-**Interfaces:**
-- Consumes: `#err-b{bi}-{key}` elementy, `runValidation()`
-- Produces: CSS třída `.section-error` — jediný selektor pro inline validační hlášku
-
-- [ ] **Step 1: Ověřit, že probe pořád padá na tom jednom řádku**
-
-Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: FAIL jen na `exactly one visible inline error` s `0: ` — třída `.section-error` zatím neexistuje.
-
-- [ ] **Step 2: Přidat CSS třídu s rezervovanou výškou**
-
-V `feel-fader.html` najdi pravidlo přidané v Tasku C2:
-
-```css
-.section-issue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:2px}
-```
-
-a **před** něj vlož:
-
-```css
-/* Výška je rezervovaná pořád, i když je hláška prázdná: jinak by zobrazení
-   chyby posunulo sekce pod sebou. Po zrušení akordeonu je otevřených sekcí
-   víc naráz, takže by to bylo vidět častěji (spec §C-navíc). */
-.section-error{font-size:12px;color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
-```
-
-- [ ] **Step 3: Převést fader hlášku na třídu**
-
-V `feel-fader.html` najdi:
-
-```js
-      <div id="err-b${bi}-${key}" style="font-size:12px;color:var(--danger);margin-top:4px;display:${err?'block':'none'}">${escHtml(err)}</div>
-```
-
-a nahraď za:
-
-```js
-      <div id="err-b${bi}-${key}" class="section-error">${escHtml(err)}</div>
-```
-
-- [ ] **Step 4: Převést encoder hlášku na třídu**
-
-Najdi:
-
-```js
-        <div id="err-b${bi}-encoder" style="font-size:12px;color:var(--danger);margin-top:6px;display:${encErr?'block':'none'}">${escHtml(encErr)}</div>
-```
-
-a nahraď za:
-
-```js
-        <div id="err-b${bi}-encoder" class="section-error">${escHtml(encErr)}</div>
-```
-
-- [ ] **Step 5: Přestat přepínat `display` v `runValidation()`**
-
-Najdi:
-
-```js
-      el.textContent = e ? e.msg : '';
-      el.style.display = e ? 'block' : 'none';
-```
-
-a nahraď za:
-
-```js
-      el.textContent = e ? e.msg : '';
-```
-
-- [ ] **Step 6: Spustit probe a ověřit, že prochází celý**
-
-Run: `npm test -- validation-single-signal-probe.mjs`
-Expected: **všechny** řádky `PASS`, exit 0. Zvlášť `stepper does not move when the error appears` — rezervovaná výška ho drží na místě i uvnitř sekce.
+Expected: **všechny** řádky `PASS`, exit 0.
 
 - [ ] **Step 7: Ověřit celou sadu**
 
@@ -907,23 +949,22 @@ Expected: exit 0, žádný `FAIL`.
 
 - [ ] **Step 8: Ruční vizuální kontrola**
 
-Otevři appku v Chrome, otevři všechny čtyři sekce, nastav duplicitní CC. Zkontroluj očima:
+Otevři appku v Chrome (`npx http-server -p 8100` nebo jiný statický server), zavolej `skipWelcome()` v DevTools konzoli, otevři všechny čtyři sekce a nastav duplicitní CC. Zkontroluj očima:
 1. Viditelná je jedna červená věta pod stepperem, nic nahoře.
 2. Tlačítko říká „Send to device" a je tlumené.
 3. Hlavička LEFT FADER má červenou tečku.
 4. Během psaní do CC pole se stepper `+`/`−` ani o pixel nehne.
 
-Toto je původní Frankův požadavek — když bod 4 nesedí, plán selhal, ne probe.
+Bod 4 je původní Frankův požadavek — když nesedí, plán selhal, ne probe.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add feel-fader.html
-git commit -m "fix(ui): inline validacni hlaska ma rezervovanou vysku
+git add feel-fader.html scratch/validation-single-signal-probe.mjs
+git commit -m "feat(ui): tecka v hlavicce sekce a na tabu banky ukazuje, kde chyba je
 
-Div uz se neprepina display:none/block, jen se meni jeho text — vyska
-sekce je konstantni, takze zobrazeni chyby neposune sekce pod sebou.
-Inline styly presunuty do tridy .section-error.
+Nahrazuje zrusene tlacitko 'Show' v #vbar. markSectionIssues() se vola
+z runValidation() i ze setActiveTab(), aby tecka prezila prestavbu tabu.
 
 Uzavira UI vlnu 1: validation-single-signal-probe.mjs je cely zeleny."
 ```
