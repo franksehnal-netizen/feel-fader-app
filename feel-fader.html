@@ -2147,14 +2147,17 @@ function defaultFaderName(key) { return key === 'fader1' ? 'Expression' : 'Dynam
 function faderDisplayName(ctrl, key) { return String(ctrl?.label || '').trim() || defaultFaderName(key); }
 function liveArticulationName(value) { return uaccName(value); }
 
-const _openBankSections = new Map();
-function openBankSection(bi) { return _openBankSections.has(bi) ? _openBankSections.get(bi) : 'fader1'; }
-function isBankSectionOpen(bi, key) { return openBankSection(bi) === key; }
-function toggleBankSection(bi, key) {
-  _openBankSections.set(bi, isBankSectionOpen(bi,key) ? null : key);
+// Otevřené sekce jsou JEDEN sdílený Set klíčů, ne mapa per banka: sekce
+// togglují nezávisle (žádný akordeon) a stav zůstává stejný i po přepnutí
+// banky — patří sekci, ne bance (Frank, HW test 2026-08-08). Výchozí stav
+// je "všechno zavřené"; stav se záměrně nepersistuje do localStorage.
+const _openSections = new Set();
+function isSectionOpen(key) { return _openSections.has(key); }
+function toggleSection(key) {
+  if (_openSections.has(key)) _openSections.delete(key); else _openSections.add(key);
   renderPanels();
   runValidation();
-  requestAnimationFrame(() => document.getElementById(`section-toggle-${bi}-${key}`)?.focus());
+  requestAnimationFrame(() => document.getElementById(`section-toggle-${activeBank}-${key}`)?.focus());
 }
 function sectionSummaryHtml(summary) {
   const parts = typeof summary === 'string' ? {meta:summary} : (summary || {});
@@ -2168,12 +2171,12 @@ function setSectionSummary(id, summary) {
   if (el) el.innerHTML = sectionSummaryHtml(summary);
 }
 function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
-  const open = isBankSectionOpen(bi,key);
+  const open = isSectionOpen(key);
   const helpBtn = helpAnchor ? `<button type="button" class="tx" onclick="event.stopPropagation();openHelpAt('${helpAnchor}')" aria-label="Help: ${escHtml(title)}" title="Help">?</button>` : '';
   if (key === 'fader1' || key === 'fader2') {
     const side = key === 'fader1' ? 'Left' : 'Right';
     return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"
-      onclick="if(!event.target.closest('input,button'))toggleBankSection(${bi},'${key}')">
+      onclick="if(!event.target.closest('input,button'))toggleSection('${key}')">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
         <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
           oninput="onFaderName(${bi},'${key}',this.value)"
@@ -2182,13 +2185,13 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
       </span>
       ${helpBtn}
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
-        onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
+        onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
         ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
       </button>
     </div>`;
   }
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
-    onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
+    onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
       <span class="section-toggle-meta">${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;
@@ -2203,7 +2206,7 @@ function refreshSectionSemantics(bi, key) {
     const title = document.getElementById(`section-title-${bi}-${key}`);
     if (title && title !== document.activeElement) title.value = name;
     const toggle = document.getElementById(`section-toggle-${bi}-${key}`);
-    if (toggle) toggle.setAttribute('aria-label', `${isBankSectionOpen(bi,key)?'Collapse':'Expand'} ${name} settings`);
+    if (toggle) toggle.setAttribute('aria-label', `${isSectionOpen(key)?'Collapse':'Expand'} ${name} settings`);
     setSectionSummary(`section-summary-${bi}-${key}`, {meta:`Ch ${ctrl.channel+1} · CC${ctrl.cc}`});
     setTxt(`cc-meaning-${bi}-${key}`, musicalCcName(ctrl.cc,`CC ${ctrl.cc}`));
   }
@@ -2652,26 +2655,26 @@ function renderPanels() {
     <!-- Single bank card containing all sections -->
     <div class="bank-card${bankChanged ? ' bank-anim' : ''}">
       ${bankNameRowHtml}
-      <div class="bank-section ${isBankSectionOpen(bi,'fader1')?'is-open':'is-collapsed'}" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
+      <div class="bank-section ${isSectionOpen('fader1')?'is-open':'is-collapsed'}" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
         ${faderSectionContent('fader1', b.fader1, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section ${isBankSectionOpen(bi,'fader2')?'is-open':'is-collapsed'}" data-fader="fader2" onmouseenter="hoverFaderLink('fader2',true)" onmouseleave="hoverFaderLink('fader2',false)">
+      <div class="bank-section ${isSectionOpen('fader2')?'is-open':'is-collapsed'}" data-fader="fader2" onmouseenter="hoverFaderLink('fader2',true)" onmouseleave="hoverFaderLink('fader2',false)">
         ${faderSectionContent('fader2', b.fader2, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section bank-section-encoder ${isBankSectionOpen(bi,'roller')?'is-open':'is-collapsed'}" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
+      <div class="bank-section bank-section-encoder ${isSectionOpen('roller')?'is-open':'is-collapsed'}" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
         ${encoderSectionContent(b.encoder, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section bank-section-macro ${isBankSectionOpen(bi,'macro')?'is-open':'is-collapsed'}" data-fader="macro" onmouseenter="hoverFaderLink('macro',true)" onmouseleave="hoverFaderLink('macro',false)">
+      <div class="bank-section bank-section-macro ${isSectionOpen('macro')?'is-open':'is-collapsed'}" data-fader="macro" onmouseenter="hoverFaderLink('macro',true)" onmouseleave="hoverFaderLink('macro',false)">
         ${macroSectionContent(bi)}
       </div>
     </div>
   `;
   const zm = document.getElementById('zone-macro');
   if (zm) zm.classList.toggle('zone-hidden', !DEVICE_INFO.hid_enabled);
-  if ((b.roller_mode || 'cc') === 'keyswitch' && isBankSectionOpen(bi,'roller')) {
+  if ((b.roller_mode || 'cc') === 'keyswitch' && isSectionOpen('roller')) {
     requestAnimationFrame(() => ksRevealRange(bi, false));
   }
   updateStickySectionHeads();
@@ -2684,7 +2687,7 @@ function faderSectionContent(key, ctrl, bi) {
   const ariaDisplayLabel = escHtml(displayLabel);
   const ccMeaning = musicalCcName(ctrl.cc,`CC ${ctrl.cc}`);
   const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
-  const open = isBankSectionOpen(bi,key);
+  const open = isSectionOpen(key);
   return `
     ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null,'help-faders')}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
@@ -2949,7 +2952,7 @@ function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc') 
 }
 function encoderPanel(ctrl, bi) {
   const rmode = cfg.banks[bi].roller_mode || 'cc';
-  const open = isBankSectionOpen(bi,'roller');
+  const open = isSectionOpen('roller');
 
   return `
   <div class="panel panel-wide">
@@ -3005,7 +3008,7 @@ function trackNavBody(bi){
 }
 
 function macroSectionContent(bi = activeBank) {   // global long-press macro; always visible, HID gates only runtime
-  const open = isBankSectionOpen(bi,'macro');
+  const open = isSectionOpen('macro');
   const combo = keyComboLabel(cfg.macro_keys || []);
   const summary = DEVICE_INFO.hid_enabled ? (combo === '—' ? {label:'Not assigned'} : {meta:combo}) : {label:'Keyboard off'};
   return `
@@ -3300,21 +3303,13 @@ function onBankRename(bi, val) {
   runValidation();
 }
 
-function snapshotBankSectionState() {
-  return cfg.banks.map((_, i) => ({ has:_openBankSections.has(i), value:_openBankSections.get(i) }));
-}
-function restoreBankSectionState(states) {
-  _openBankSections.clear();
-  states.forEach((state, i) => { if (state.has) _openBankSections.set(i, state.value); });
-}
+// Otevřené sekce jsou od Task A globální (_openSections), ne per-bank, takže
+// je při reorder/duplicate banky není potřeba nikam přenášet — snapshot/
+// restore mechanismus tu dřív byl jen kvůli staré Map<bankIndex,key>.
 function reorderBank(from, to, focusAction = '') {
   if (from === to || from < 0 || to < 0 || from >= cfg.banks.length || to >= cfg.banks.length) return;
-  const states = snapshotBankSectionState();
   const [bank] = cfg.banks.splice(from, 1);
-  const [sectionState] = states.splice(from, 1);
   cfg.banks.splice(to, 0, bank);
-  states.splice(to, 0, sectionState);
-  restoreBankSectionState(states);
 
   if (activeBank === from) activeBank = to;
   else if (from < activeBank && activeBank <= to) activeBank--;
@@ -3346,13 +3341,10 @@ function duplicateBankName(sourceName) {
 }
 function duplicateBank(bi) {
   if (cfg.banks.length >= MAX_BANKS) { toast('i', t('toast.bank_max')); return; }
-  const states = snapshotBankSectionState();
   const copy = JSON.parse(JSON.stringify(cfg.banks[bi]));
   copy.name = duplicateBankName(copy.name || `Bank ${bi+1}`);
   const insertAt = bi + 1;
   cfg.banks.splice(insertAt, 0, copy);
-  states.splice(insertAt, 0, { ...states[bi] });
-  restoreBankSectionState(states);
   activeBank = insertAt;
   dirty = true;
   _lastRenderedBank = -1;
@@ -3903,7 +3895,7 @@ function focusValidationError(index = 0) {
   const bi = Math.max(0, Math.min(cfg.banks.length - 1, Number(match[1])));
   const field = match[2];
   const section = field === 'encoder' || field === 'uacc' ? 'roller' : field;
-  _openBankSections.set(bi, section);
+  _openSections.add(section);   // add, ne set — skok na chybu nesmí zavřít ostatní sekce (zpět akordeon)
   selectBank(bi);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const target = document.getElementById(err.target) || document.getElementById(`section-toggle-${bi}-${section}`);
