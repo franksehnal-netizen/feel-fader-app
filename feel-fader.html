@@ -366,7 +366,7 @@ main{width:100%;}
 .section-issue-dot.warn{background:var(--amber)}
 .bank-tab-issue{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:4px}
 .send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--glass-border))}
-.send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
+.send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--t1)}
 .send-change-note.is-feedback,.send-change-note.is-feedback:disabled{
   max-width:190px;color:var(--green-text);cursor:default;opacity:1
 }
@@ -388,10 +388,6 @@ main{width:100%;}
 .change-popover li::before{content:'—';margin-right:6px;color:var(--t3)}
 .change-popover-foot{display:flex;justify-content:flex-end;gap:6px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
 .change-undo-btn{padding:5px 9px;color:var(--t2);font:600 10px 'Mulish',sans-serif}
-.send-btn.review,.send-btn.review:hover{
-  color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 22%,var(--glass-border));
-  background:linear-gradient(145deg,var(--glass-dialog),var(--glass-soft));box-shadow:var(--shadow-sm)
-}
 @media(max-width:420px){
   .send-change-note{right:calc(100% + 7px);max-width:120px;font-size:10px}
   .send-change-note.is-feedback{max-width:145px}
@@ -4801,6 +4797,12 @@ async function doSend() {
   if (validate().length) { toast('e', t('toast.fix_errors')); return; }
   if (!navigator.serial) { toast('e', 'Web Serial not supported in this browser — use Chrome or Edge to send to your device.'); return; }
   if (!_ffConnected && !_serialPort) toast('i', "No device on MIDI — choose your Feel Fader's USB serial port to continue.");
+  // Captured before the send resolves: the .idle button is deliberately still
+  // clickable (Frank 2026-07-20, "muted, not disabled") so re-sending an
+  // unchanged config is a legitimate, useful action — but it didn't actually
+  // change anything on the device, so it must not get the same green "✓ Sent"
+  // celebration as a real write. See the branch below and .send-btn.idle.
+  const wasDirty = dirty;
   const sendButtons = [...document.querySelectorAll('[data-send-button]')];
   sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '…sending'; btn.classList.remove('sent','review','idle'); });
   try {
@@ -4812,12 +4814,16 @@ async function doSend() {
     }
     cfgSave();
     dirty = false;
-    _sendConfirmed = true;
+    _sendConfirmed = wasDirty;
     markConfigSynced();
-    showSendInlineFeedback('✓ ' + t('toast.config_sent'));
+    showSendInlineFeedback(wasDirty ? ('✓ ' + t('toast.config_sent')) : t('toast.already_in_sync'));
     reflectDirty();
     renderMidiDiagnostics();
-    sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '✓ Sent'; btn.classList.add('sent'); btn.classList.remove('idle'); });
+    if (wasDirty) {
+      sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '✓ Sent'; btn.classList.add('sent'); btn.classList.remove('idle'); });
+    } else {
+      sendButtons.forEach(btn => { btn.disabled = false; btn.textContent = t('btn.send'); btn.classList.add('idle'); btn.classList.remove('sent'); });
+    }
   } catch(e) {
     console.warn('[Send] failed:', e);
     const errReason = /^ERR:(.+)$/.exec(e.message || '');
@@ -5314,6 +5320,7 @@ var TRANSLATIONS = {
     'welcome.found': 'Device found',
     // Toasts
     'toast.config_sent': 'Configuration sent to device',
+    'toast.already_in_sync': 'Already in sync',
     'toast.preset_exported': 'Device backup exported',
     'toast.preset_imported': 'Device backup imported',
     'toast.reset': 'Local configuration reset to factory defaults',
