@@ -384,6 +384,27 @@ Aktualizuje se při:
 - Příchozích MIDI CC zprávách ze zařízení (`onMidiMsg()`)
 - Snapshotu faderů z `CMD_INFO` při připojení (`applyInfoFaders()`)
 
+### Long-press makro — per banka nebo globální (schema_version 3, 2026-08-08)
+
+```json
+{ "macro_global": true, "macro_keys": [224,22],
+  "banks": [ { "…": "…", "macro_keys": [44] } ] }
+```
+
+- `macro_global` chybí → `True` = dosavadní globální chování (zpětná kompatibilita).
+- `macro_global: false` → long-press bere `banks[bank_index]["macro_keys"]`.
+- **Prázdný per-bank seznam = žádná akce**, ne fallback na globální makro (jinak by nešlo
+  makro pro jednu banku vypnout).
+- Výběr je čistá funkce `ff_config.active_macro_keys(macro_global, macro_keys, bank)`.
+- `serialize_state()` vynechává `macro_global`, když je `True`, a prázdné per-bank `macro_keys` —
+  takže `config_hash` configů, které per-bank makra nepoužívají, se nemění.
+
+Appka drží stav v `cfg.macro_global` a `cfg.banks[i].macro_keys`. Přístup jde přes
+`activeMacroKeys(bi)` / `setActiveMacroKeys(bi, keys)`; checkbox volá `setMacroGlobal(on)`.
+Přechodová pravidla: zapnutí Global převezme makro právě zobrazené banky, vypnutí naseje
+globální hodnotu do všech bank. Když je zařízení připojené s `schema_version < 3` a Global
+je vypnutý, BUTTON sekce ukáže `#macro-schema-notice`.
+
 ---
 
 ## 5. Transport (MIDI + Serial)
