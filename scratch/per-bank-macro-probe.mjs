@@ -67,5 +67,32 @@ await new Promise(r => setTimeout(r, 200));
 const afterToggle = await p.evaluate(() => ({ flag: cfg.macro_global, checked: document.getElementById('macro-global-toggle').checked }));
 P('clicking the checkbox flips cfg.macro_global', afterToggle.flag === true && afterToggle.checked === true, JSON.stringify(afterToggle));
 
+// Fix round 1, Finding 1: a hardware bank switch (Program Change) arriving mid-capture
+// must not silently retarget the capture to the wrong bank. Drive the exact code path
+// the firmware's short-press bank switch uses: onMidiMsg() with a Program Change message.
+const pcMidCapture = await p.evaluate(() => {
+  DEVICE_INFO.hid_enabled = true;
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [];
+  cfg.banks[1].macro_keys = [];
+  dirty = false;
+  selectBank(0);
+  startMacroCapture(0);
+  const capturingBefore = document.getElementById('macro-capture').classList.contains('capturing');
+  onMidiMsg({ data: [0xC0, 1, 0] });   // hardware short-press -> Program Change to bank 1, same path as the real device
+  const captureSurvived = !!_keyCapture;
+  const bankAfterPC = activeBank;
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', bubbles: true, cancelable: true }));
+  return {
+    capturingBefore, captureSurvived, bankAfterPC,
+    b0: cfg.banks[0].macro_keys.slice(),
+    b1: cfg.banks[1].macro_keys.slice(),
+  };
+});
+P('macro capture is visibly active before the Program Change', pcMidCapture.capturingBefore === true, String(pcMidCapture.capturingBefore));
+P('Program Change mid-capture cancels the in-flight capture', pcMidCapture.captureSurvived === false, String(pcMidCapture.captureSurvived));
+P('Program Change mid-capture: no macro written to bank 0', pcMidCapture.b0.length === 0, JSON.stringify(pcMidCapture.b0));
+P('Program Change mid-capture: no macro written to bank 1', pcMidCapture.b1.length === 0, JSON.stringify(pcMidCapture.b1));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

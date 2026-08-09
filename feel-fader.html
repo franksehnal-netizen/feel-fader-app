@@ -3214,7 +3214,7 @@ function updateDeviceInfo() {
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
   if (!el) return;
-  el.textContent = keyComboLabel(activeMacroKeys(Number(el.getAttribute('data-bank')) || activeBank));
+  el.textContent = keyComboLabel(activeMacroKeys(Number.isFinite(Number(el.getAttribute('data-bank'))) ? Number(el.getAttribute('data-bank')) : activeBank));
   el.disabled = !DEVICE_INFO.hid_enabled;
   el.style.opacity = DEVICE_INFO.hid_enabled ? '1' : '0.45';
   el.title = DEVICE_INFO.hid_enabled ? 'Click and press a key (incl. Ctrl/Shift/Alt/Cmd)' : 'Requires HID enabled';
@@ -4365,6 +4365,7 @@ function onMidiMsg(event){
     if(pc < cfg.banks.length){
       liveBank = pc;
       if (!dirty) {
+        if (_keyCapture) cancelKeyCapture();   // in-flight capture no longer matches the bank about to be shown
         activeBank = pc;   // sync UI to hardware — but not while the user has unsaved edits open
         renderPanels();
       }
