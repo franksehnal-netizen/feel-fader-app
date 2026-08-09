@@ -61,6 +61,7 @@ const PROBES = [
   'controller-toggle-speed-probe.mjs',
   'sections-independent-probe.mjs',
   'fader-name-input-width-probe.mjs',
+  'validation-single-signal-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

@@ -845,6 +845,10 @@ html.dark #device-settings-chevron{color:var(--t3)}
 }
 
 /* VBAR */
+/* Výška je rezervovaná pořád, i když je hláška prázdná: jinak by zobrazení
+   chyby posunulo sekce pod sebou. Po zrušení akordeonu je otevřených sekcí
+   víc naráz, takže by to bylo vidět častěji (spec §C-navíc). */
+.section-error{font-size:12px;color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
 .vbar{display:none}
 .vbar.err{display:block}
 .vbar-jump{
@@ -2722,7 +2726,7 @@ function faderSectionContent(key, ctrl, bi) {
         </div>
 
       </div>
-      <div id="err-b${bi}-${key}" style="font-size:12px;color:var(--danger);margin-top:4px;display:${err?'block':'none'}">${escHtml(err)}</div>
+      <div id="err-b${bi}-${key}" class="section-error">${escHtml(err)}</div>
     </div></div>`;
 }
 
@@ -2773,7 +2777,7 @@ function ccEncoderBody(ctrl, bi) {
             </div>
           </div>
         </div>
-        <div id="err-b${bi}-encoder" style="font-size:12px;color:var(--danger);margin-top:6px;display:${encErr?'block':'none'}">${escHtml(encErr)}</div>
+        <div id="err-b${bi}-encoder" class="section-error">${escHtml(encErr)}</div>
       </div>
 
       <!-- Divider -->
@@ -3967,7 +3971,6 @@ function runValidation() {
       if (!el) return;
       const e = errs.find(x => x.field === `b${bi}.${key}`);
       el.textContent = e ? e.msg : '';
-      el.style.display = e ? 'block' : 'none';
       // F-02 (functional-audit 2026-07-20): the error text was screen-reader
       // accessible via #vbar (A9) but the individual cc/channel inputs never
       // reflected their own error state — a screen reader user tabbing
