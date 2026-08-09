@@ -356,6 +356,11 @@ main{width:100%;}
    zesládne — nikdy "Show error". Klik pořád funguje a skočí na první chybu
    (handleDirtyAction), protože disabled tlačítko uživateli neřekne proč.
    Vizuální jazyk převzatý ze .send-btn.idle o pár řádků výš. */
+/* Lokace chyby bez věty navíc — nahrazuje zrušené tlačítko "Show" v #vbar.
+   Tečka je čistě vizuální; znění chyby nese inline hláška a #vbar pro
+   odečítač obrazovky, proto aria-hidden. */
+.section-issue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:2px}
+.bank-tab-issue{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:4px}
 .send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow)}
 .send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
 .send-change-note.is-feedback,.send-change-note.is-feedback:disabled{
@@ -2597,6 +2602,7 @@ function setActiveTab(i){
       btn.insertBefore(s, btn.children[0]||null);
     }
   });
+  markSectionIssues();   // live marker se přestavuje tady, chybová tečka se musí obnovit s ním
   const act=el.querySelector('.bank-block-tab.active');
   if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'nearest'});
   _updateTabsFade(el);
@@ -3993,6 +3999,50 @@ function runValidation() {
       if (ccEl) ccEl.setAttribute('aria-invalid', e ? 'true' : 'false');
       if (chEl) chEl.setAttribute('aria-invalid', e ? 'true' : 'false');
     });
+  });
+  markSectionIssues();
+}
+
+// Mapa validačního `field` -> klíč sekce. 'encoder' i 'uacc' bydlí v roller
+// sekci; 'macro' zatím nemá vlastní validaci, ale klíč je v seznamu níž
+// kvůli symetrii a kvůli tomu, aby se stará tečka uklidila.
+function _issueFieldToSection(field) {
+  const m = /^b(\d+)\.(fader1|fader2|encoder|uacc)$/.exec(field || '');
+  if (!m) return null;
+  return { bi: Number(m[1]), key: (m[2] === 'encoder' || m[2] === 'uacc') ? 'roller' : m[2] };
+}
+function sectionIssueKeys(bi) {
+  const out = new Set();
+  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s && s.bi === bi) out.add(s.key); });
+  return out;
+}
+function banksWithIssues() {
+  const out = new Set();
+  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s) out.add(s.bi); });
+  return out;
+}
+function markSectionIssues() {
+  const keys = sectionIssueKeys(activeBank);
+  ['fader1','fader2','roller','macro'].forEach(key => {
+    const section = document.querySelector(`.bank-section[data-fader="${key}"]`);
+    const head = section && section.querySelector('.section-head');
+    if (!head) return;
+    head.querySelector('.section-issue-dot')?.remove();
+    if (keys.has(key)) {
+      const d = document.createElement('span');
+      d.className = 'section-issue-dot'; d.setAttribute('aria-hidden','true');
+      const slot = head.querySelector('.section-toggle-meta') || head.querySelector('.section-toggle-action') || head;
+      slot.insertBefore(d, slot.firstChild);
+    }
+  });
+  const bad = banksWithIssues();
+  document.querySelectorAll('#bank-tabs .bank-block-tab').forEach((btn, idx) => {
+    btn.querySelector('.bank-tab-issue')?.remove();
+    if (bad.has(idx)) {
+      const d = document.createElement('span');
+      d.className = 'bank-tab-issue'; d.setAttribute('aria-hidden','true');
+      btn.insertBefore(d, btn.children[0] || null);
+    }
   });
 }
 

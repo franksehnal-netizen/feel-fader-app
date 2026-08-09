@@ -60,6 +60,8 @@ const s = await p.evaluate(() => {
     btnBlocked:    btn.classList.contains('blocked'),
     btnDisabled:   btn.disabled,
     noteText:      note ? note.textContent.trim() : '',
+    sectionDot: !!document.querySelector('.bank-section[data-fader="fader1"] .section-issue-dot'),
+    otherDot:   !!document.querySelector('.bank-section[data-fader="roller"] .section-issue-dot'),
   };
 });
 P('#vbar is screen-reader-only',        s.vbarSrOnly && !s.vbarVisible, `srOnly=${s.vbarSrOnly} visible=${s.vbarVisible}`);
@@ -67,6 +69,8 @@ P('#vbar still announces the error',    s.vbarAnnounces && s.vbarRole === 'alert
 P('send button keeps its label',        s.btnText === 'Send to device', s.btnText);
 P('send button is muted, not disabled', s.btnBlocked && !s.btnDisabled, `blocked=${s.btnBlocked} disabled=${s.btnDisabled}`);
 P('change note shows no issue count',   !/issue/i.test(s.noteText), s.noteText || '(empty)');
+P('section head with the error carries a dot', s.sectionDot,  String(s.sectionDot));
+P('unaffected section carries no dot',        !s.otherDot,    String(s.otherDot));
 
 const inline = await p.evaluate(() => {
   const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
@@ -84,11 +88,13 @@ const cleared = await p.evaluate(() => {
     inline:  [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length,
     blocked: btn.classList.contains('blocked'),
     text:    btn.textContent.trim(),
+    dot: !!document.querySelector('.section-issue-dot'),
   };
 });
 P('inline error clears when the conflict is fixed', cleared.inline === 0, String(cleared.inline));
 P('blocked state clears with the error', !cleared.blocked && cleared.text === 'Send to device',
   `blocked=${cleared.blocked} text=${cleared.text}`);
+P('issue dot clears with the error', !cleared.dot, String(cleared.dot));
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
