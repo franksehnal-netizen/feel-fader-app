@@ -4314,6 +4314,7 @@ function connectInputs(){
     renderConnState();
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
+    DEVICE_INFO.schema_version = null;   // stale value could drive a false/suppressed firmware-mismatch warning for the next device
     liveSeen.f1 = false; liveSeen.f2 = false; encLiveVal = null; ksLiveNote = null;
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {

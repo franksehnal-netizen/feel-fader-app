@@ -112,5 +112,34 @@ const noNotice = await p.evaluate(() => {
 P('no warning on schema_version 3', !noNotice.onNewFw, String(noNotice.onNewFw));
 P('no warning while Global is on', !noNotice.onGlobal, String(noNotice.onGlobal));
 
+// Fix round 1, Finding 2: DEVICE_INFO.schema_version must not survive a disconnect. If it
+// did, a stale value from a prior device could drive a false (or falsely absent) warning
+// for whatever connects next before a fresh CMD_INFO lands. Drive the real disconnect path
+// (connectInputs() finding no Feel Fader input, same as a physical unplug) and confirm the
+// notice disappears even though _ffConnected flips back to true without a fresh CMD_INFO.
+const staleSchema = await p.evaluate(() => {
+  _ffConnected = true; DEVICE_INFO.schema_version = 2;
+  cfg.macro_global = false; renderPanels();
+  const shownBefore = !!document.getElementById('macro-schema-notice');
+
+  // Real disconnect path: connectInputs() with a MIDI stub that finds no Feel Fader input.
+  midiAccess = {
+    inputs: { forEach() {} },
+    outputs: { forEach() {} },
+  };
+  connectInputs();
+  const schemaAfterDisconnect = DEVICE_INFO.schema_version;
+
+  // Reconnect without a fresh CMD_INFO — app no longer knows the version.
+  _ffConnected = true;
+  renderPanels();
+  const shownAfterReconnect = !!document.getElementById('macro-schema-notice');
+
+  return { shownBefore, schemaAfterDisconnect, shownAfterReconnect };
+});
+P('notice shows before disconnect (sanity check on stub)', staleSchema.shownBefore, String(staleSchema.shownBefore));
+P('schema_version resets to null on disconnect', staleSchema.schemaAfterDisconnect === null, String(staleSchema.schemaAfterDisconnect));
+P('no stale warning after reconnect without a fresh CMD_INFO', !staleSchema.shownAfterReconnect, String(staleSchema.shownAfterReconnect));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
