@@ -26,6 +26,9 @@ const sectionH = () => p.evaluate(() =>
   document.querySelector('.bank-section[data-fader="fader1"]').getBoundingClientRect().height);
 
 const heightBefore = await sectionH();
+const stepTop = () => p.evaluate(() =>
+  document.querySelector('#b0-fader1-cc + .step-btn').getBoundingClientRect().top);
+const stepBefore = await stepTop();
 
 await p.evaluate(() => {
   cfg.banks[0].fader2.cc      = cfg.banks[0].fader1.cc;
@@ -38,6 +41,33 @@ const heightAfter = await sectionH();
 P('section height is unchanged when the error appears', Math.abs(heightAfter - heightBefore) < 1,
   `before ${heightBefore.toFixed(1)} / after ${heightAfter.toFixed(1)}`);
 
+const stepAfter = await stepTop();
+P('stepper does not move when the error appears', Math.abs(stepAfter - stepBefore) < 1,
+  `before ${stepBefore.toFixed(1)} / after ${stepAfter.toFixed(1)}`);
+
+const s = await p.evaluate(() => {
+  const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+    return r.width > 2 && r.height > 2 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
+  const vbar = document.getElementById('vbar');
+  const btn  = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return {
+    vbarSrOnly:    vbar.classList.contains('sr-only'),
+    vbarVisible:   vis(vbar),
+    vbarAnnounces: vbar.textContent.trim().length > 0,
+    vbarRole:      vbar.getAttribute('role'),
+    btnText:       btn.textContent.trim(),
+    btnBlocked:    btn.classList.contains('blocked'),
+    btnDisabled:   btn.disabled,
+    noteText:      note ? note.textContent.trim() : '',
+  };
+});
+P('#vbar is screen-reader-only',        s.vbarSrOnly && !s.vbarVisible, `srOnly=${s.vbarSrOnly} visible=${s.vbarVisible}`);
+P('#vbar still announces the error',    s.vbarAnnounces && s.vbarRole === 'alert', `role=${s.vbarRole}`);
+P('send button keeps its label',        s.btnText === 'Send to device', s.btnText);
+P('send button is muted, not disabled', s.btnBlocked && !s.btnDisabled, `blocked=${s.btnBlocked} disabled=${s.btnDisabled}`);
+P('change note shows no issue count',   !/issue/i.test(s.noteText), s.noteText || '(empty)');
+
 const inline = await p.evaluate(() => {
   const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
     return r.width > 2 && r.height > 2 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
@@ -49,9 +79,16 @@ P('exactly one visible inline error', inline.count === 1, `${inline.count}: ${in
 const cleared = await p.evaluate(() => {
   cfg.banks[0].fader2.cc = (cfg.banks[0].fader1.cc + 1) % 128;
   renderPanels(); runValidation();
-  return [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length;
+  const btn = document.getElementById('send-btn');
+  return {
+    inline:  [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim()).length,
+    blocked: btn.classList.contains('blocked'),
+    text:    btn.textContent.trim(),
+  };
 });
-P('inline error clears when the conflict is fixed', cleared === 0, String(cleared));
+P('inline error clears when the conflict is fixed', cleared.inline === 0, String(cleared.inline));
+P('blocked state clears with the error', !cleared.blocked && cleared.text === 'Send to device',
+  `blocked=${cleared.blocked} text=${cleared.text}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
