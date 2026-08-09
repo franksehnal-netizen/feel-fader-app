@@ -361,7 +361,7 @@ main{width:100%;}
    odečítač obrazovky, proto aria-hidden. */
 .section-issue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:2px}
 .bank-tab-issue{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:4px}
-.send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow)}
+.send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--glass-border))}
 .send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
 .send-change-note.is-feedback,.send-change-note.is-feedback:disabled{
   max-width:190px;color:var(--green-text);cursor:default;opacity:1
@@ -2750,7 +2750,6 @@ function faderSectionContent(key, ctrl, bi) {
 function ccEncoderBody(ctrl, bi) {
   const errs    = validate();
   const encErr  = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
-  const uaccErr = errs.find(e => e.field === `b${bi}.uacc`)?.msg || '';
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
@@ -2779,7 +2778,7 @@ function ccEncoderBody(ctrl, bi) {
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',-1)" aria-label="Decrease roller MIDI channel">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-ch" value="${ctrl.channel+1}" min="1" max="16"
                 oninput="onCtrl(${bi},'encoder','channel',+this.value-1)" aria-label="Roller MIDI channel"
-                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',1)" aria-label="Increase roller MIDI channel">+</button>
             </div>
           </div>
@@ -2789,12 +2788,11 @@ function ccEncoderBody(ctrl, bi) {
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',-1)" aria-label="Decrease roller MIDI CC">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-cc" value="${ctrl.cc}" min="0" max="127"
                 oninput="onCtrl(${bi},'encoder','cc',+this.value)" aria-label="Roller MIDI CC"
-                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',1)" aria-label="Increase roller MIDI CC">+</button>
             </div>
           </div>
         </div>
-        <div id="err-b${bi}-encoder" class="section-error">${escHtml(encErr)}</div>
       </div>
 
       <!-- Divider -->
@@ -2804,7 +2802,6 @@ function ccEncoderBody(ctrl, bi) {
       <div class="enc-right">
         <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
         <div class="uacc-grid ks-sequence-grid" id="uacc-grid">${uaccTags}</div>
-        ${uaccErr ? `<div style="font-size:12px;color:var(--danger);margin-top:6px">${escHtml(uaccErr)}</div>` : ''}
         <div class="uacc-add-row" style="margin-top:10px">
           <input type="number" id="uacc-input" min="0" max="127" placeholder="CC 0–127" aria-label="Articulation MIDI CC"
             onkeydown="if(event.key==='Enter')addUacc()"/>
@@ -2980,6 +2977,12 @@ function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc') 
 function encoderPanel(ctrl, bi) {
   const rmode = cfg.banks[bi].roller_mode || 'cc';
   const open = isSectionOpen('roller');
+  // Single error site for the whole roller section, rendered in every mode
+  // (cc/keyswitch/track_nav) — see runValidation(). Before this, keyswitch
+  // mode rendered no error element at all and cc mode's uacc error was a
+  // conditional, id-less div; both left roller errors invisible once #vbar
+  // stopped being shown (final whole-branch review, 2026-08-08).
+  const rollerErr = validate().find(e => e.field === `b${bi}.encoder` || e.field === `b${bi}.uacc`)?.msg || '';
 
   return `
   <div class="panel panel-wide">
@@ -2995,6 +2998,7 @@ function encoderPanel(ctrl, bi) {
         }).join('')}
       </div>
       <div class="roller-mode-content" id="roller-mode-content-${bi}">${rollerModeBodyHtml(ctrl, bi, rmode)}</div>
+      <div id="err-b${bi}-roller" class="section-error">${escHtml(rollerErr)}</div>
     </div>
   </div>`;
 }
@@ -3984,7 +3988,7 @@ function runValidation() {
     if (!skipBtnUpdate) { btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('blocked');btn.classList.remove('sent','idle','review'); }
   }
   cfg.banks.forEach((b,bi) => {
-    ['fader1','fader2','encoder'].forEach(key => {
+    ['fader1','fader2'].forEach(key => {
       const el = document.getElementById(`err-b${bi}-${key}`);
       if (!el) return;
       const e = errs.find(x => x.field === `b${bi}.${key}`);
@@ -3999,6 +4003,21 @@ function runValidation() {
       if (ccEl) ccEl.setAttribute('aria-invalid', e ? 'true' : 'false');
       if (chEl) chEl.setAttribute('aria-invalid', e ? 'true' : 'false');
     });
+    // Roller section: one error site regardless of mode (cc/keyswitch/
+    // track_nav) — 'encoder' and 'uacc' fields both live here (final
+    // whole-branch review, 2026-08-08, Finding 1).
+    const rollerEl = document.getElementById(`err-b${bi}-roller`);
+    if (rollerEl) {
+      const rollerErrEntry = errs.find(x => x.field === `b${bi}.encoder` || x.field === `b${bi}.uacc`);
+      rollerEl.textContent = rollerErrEntry ? rollerErrEntry.msg : '';
+    }
+    // The cc/channel inputs only exist in Articulation (cc) mode, and their
+    // aria-invalid must reflect the 'encoder' error specifically (not uacc).
+    const encErrEntry = errs.find(x => x.field === `b${bi}.encoder`);
+    const encCcEl = document.getElementById(`b${bi}-encoder-cc`);
+    const encChEl = document.getElementById(`b${bi}-encoder-ch`);
+    if (encCcEl) encCcEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
+    if (encChEl) encChEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
   });
   markSectionIssues();
 }
@@ -5825,7 +5844,7 @@ function showWelcome() {
     textBlock.classList.remove('welcome-onboarding','welcome-wordmark-beat');
   }
   const btn = document.getElementById('send-btn');
-  btn?.classList.remove('sent','review');
+  btn?.classList.remove('sent','review','blocked');
   btn?.classList.add('welcome-floating','welcome-start');
   // Reset to the normal welcome state first — beats may have hidden these in an
   // earlier first-run this session, and a later reconnect must show normal copy.

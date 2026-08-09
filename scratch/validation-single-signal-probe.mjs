@@ -96,5 +96,78 @@ P('blocked state clears with the error', !cleared.blocked && cleared.text === 'S
   `blocked=${cleared.blocked} text=${cleared.text}`);
 P('issue dot clears with the error', !cleared.dot, String(cleared.dot));
 
+// --- Finding 1 (final whole-branch review, 2026-08-08): removing the
+// visible #vbar left two error classes with no inline rendering site at
+// all — keyswitch mode renders no error element, and cc/Articulation mode's
+// uacc error was a conditional, id-less div runValidation() never touched.
+// A single #err-b{bi}-roller site must exist and be kept updated in every
+// roller mode.
+await p.evaluate(() => { toggleSection('roller'); });
+await new Promise(r => setTimeout(r, 300));
+
+const rollerSectionH = () => p.evaluate(() =>
+  document.querySelector('.bank-section[data-fader="roller"]').getBoundingClientRect().height);
+const visibleSectionErrors = () => p.evaluate(() => {
+  const vis = el => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+    return r.width > 2 && r.height > 2 && cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0'; };
+  const shown = [...document.querySelectorAll('.section-error')].filter(el => el.textContent.trim() && vis(el));
+  const rollerSection = document.querySelector('.bank-section[data-fader="roller"]');
+  return {
+    count: shown.length,
+    text: shown[0]?.textContent.trim() || '',
+    insideRoller: shown[0] ? rollerSection.contains(shown[0]) : false,
+  };
+});
+
+// Keyswitch mode: switch first (auto-populates a default note range, so this
+// starting point is itself error-free) and measure the settled height.
+await p.evaluate(() => { setRollerMode(0,'keyswitch'); renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+const ksHeightBefore = await rollerSectionH();
+
+// Empty the note list -> validate() emits "add at least one keyswitch note".
+await p.evaluate(() => { cfg.banks[0].ks_notes = []; renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+const ksHeightAfter = await rollerSectionH();
+const ks = await visibleSectionErrors();
+P('keyswitch mode: exactly one visible roller error', ks.count === 1, `${ks.count}: ${ks.text}`);
+P('keyswitch mode: roller error text is non-empty', ks.text.length > 0, JSON.stringify(ks.text));
+P('keyswitch mode: roller error sits inside the roller section', ks.insideRoller, String(ks.insideRoller));
+P('keyswitch mode: roller section height is unchanged when the error appears',
+  Math.abs(ksHeightAfter - ksHeightBefore) < 1, `before ${ksHeightBefore.toFixed(1)} / after ${ksHeightAfter.toFixed(1)}`);
+
+// Back to cc/Articulation mode with a valid (non-empty) uacc list -> settle.
+await p.evaluate(() => { setRollerMode(0,'cc'); cfg.banks[0].uacc_values = [1,2,3,20,21,22,40,41,42,43,50]; renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+
+// Empty uacc_values -> validate() emits "articulation list must not be empty".
+await p.evaluate(() => { cfg.banks[0].uacc_values = []; renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+const cc = await visibleSectionErrors();
+P('cc mode: exactly one visible roller error', cc.count === 1, `${cc.count}: ${cc.text}`);
+P('cc mode: roller error text is non-empty', cc.text.length > 0, JSON.stringify(cc.text));
+P('cc mode: roller error sits inside the roller section', cc.insideRoller, String(cc.insideRoller));
+
+// Height invariance, same technique as the fader-conflict test at the top of
+// this file: trigger the error without otherwise changing the section's
+// rendered content. Emptying/editing uacc_values itself is not usable here —
+// it reflows the chip grid's own wrapping regardless of any error (removing
+// or shortening chip labels changes row count on its own). Instead, restore
+// a valid uacc list and push the roller's own MIDI channel stepper out of
+// range: that lands a 'b0.encoder' error — the shared site's OTHER field —
+// in a fixed-width numeric input that cannot reflow the grid.
+await p.evaluate(() => { cfg.banks[0].uacc_values = [1,2,3,20,21,22,40,41,42,43,50]; renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+const ccHeightBefore = await rollerSectionH();
+await p.evaluate(() => { cfg.banks[0].encoder.channel = 20; renderPanels(); runValidation(); });
+await new Promise(r => setTimeout(r, 150));
+const ccHeightAfter = await rollerSectionH();
+P('cc mode: roller section height is unchanged when the error appears',
+  Math.abs(ccHeightAfter - ccHeightBefore) < 1, `before ${ccHeightBefore.toFixed(1)} / after ${ccHeightAfter.toFixed(1)}`);
+await p.evaluate(() => { cfg.banks[0].encoder.channel = 0; renderPanels(); runValidation(); });
+
+// Leave bank 0 in a valid state.
+await p.evaluate(() => { cfg.banks[0].uacc_values = [1,2,3,20,21,22,40,41,42,43,50]; renderPanels(); runValidation(); });
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
