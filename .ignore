@@ -1,0 +1,5 @@
+.superpowers/
+node_modules/
+docs/superpowers/
+docs/feel-fader-*-audit*.md
+scratch/mobile-ux-output/

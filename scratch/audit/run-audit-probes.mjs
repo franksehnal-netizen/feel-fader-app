@@ -13,6 +13,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..', '..');
 const PORT = 8100;
 
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json; charset=utf-8',
+};
+
 const AUDIT_PROBES = [
   'p1-xss-config-import.mjs',
   'p1-proto-pollution.mjs',
@@ -32,7 +41,8 @@ function startServer() {
       const reqPath = req.url === '/' ? '/feel-fader.html' : req.url.split('?')[0];
       fs.readFile(path.join(root, decodeURIComponent(reqPath)), (err, data) => {
         if (err) { res.writeHead(404); res.end(); return; }
-        res.writeHead(200, { 'Content-Type': reqPath.endsWith('.html') ? 'text/html' : 'application/octet-stream' });
+        const type = CONTENT_TYPES[path.extname(reqPath).toLowerCase()] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': type });
         res.end(data);
       });
     });
