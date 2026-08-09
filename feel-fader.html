@@ -3073,21 +3073,31 @@ function trackNavBody(bi){
   </div>`;
 }
 
-function macroSectionContent(bi = activeBank) {   // global long-press macro; always visible, HID gates only runtime
+function macroSectionContent(bi = activeBank) {   // long-press macro; per bank or shared, HID gates only runtime
   const open = isSectionOpen('macro');
-  const combo = keyComboLabel(cfg.macro_keys || []);
-  const summary = DEVICE_INFO.hid_enabled ? (combo === '—' ? {label:'Not assigned'} : {meta:combo}) : {label:'Keyboard off'};
+  const isGlobal = cfg.macro_global !== false;
+  const combo = keyComboLabel(activeMacroKeys(bi));
+  const summary = DEVICE_INFO.hid_enabled
+    ? (combo === '—' ? {label:'Not assigned'} : {label: isGlobal ? 'All banks' : 'This bank', meta: combo})
+    : {label:'Keyboard off'};
+  const scopeNote = isGlobal
+    ? 'One key combo shared by every bank.'
+    : 'This bank has its own key combo; other banks keep theirs.';
   return `
     ${sectionHeaderHtml(bi,'macro','BUTTON','Macro',summary)}
     <div class="section-collapse-body" id="section-body-${bi}-macro" ${open?'':'hidden'}>
     <div class="section-fields">
       ${hidEnableNotice('Button Macro')}
-      <div class="uacc-note" style="margin:0 0 8px">Long-press the device button (≥0.5 s) to send this key combo — e.g. play/stop or a DAW shortcut. Applies to all banks; a short press still switches banks.</div>
+      <div class="uacc-note" style="margin:0 0 8px">Long-press the device button (≥0.5 s) to send this key combo — e.g. play/stop or a DAW shortcut. A short press still switches banks. ${escHtml(scopeNote)}</div>
       <div class="field-block">
         <span class="field-label">LONG-PRESS KEY</span>
-        <button id="macro-capture" class="step-btn" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
-          onclick="startMacroCapture()">${keyComboLabel(cfg.macro_keys || [])}</button>
+        <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
+          onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
       </div>
+      <label class="uacc-note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;cursor:pointer">
+        <input type="checkbox" id="macro-global-toggle" ${isGlobal?'checked':''} onchange="setMacroGlobal(this.checked)"/>
+        <span>Global — same macro for all banks</span>
+      </label>
     </div></div>`;
 }
 
@@ -3204,7 +3214,7 @@ function updateDeviceInfo() {
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
   if (!el) return;
-  el.textContent = keyComboLabel(cfg.macro_keys || []);
+  el.textContent = keyComboLabel(activeMacroKeys(Number(el.getAttribute('data-bank')) || activeBank));
   el.disabled = !DEVICE_INFO.hid_enabled;
   el.style.opacity = DEVICE_INFO.hid_enabled ? '1' : '0.45';
   el.title = DEVICE_INFO.hid_enabled ? 'Click and press a key (incl. Ctrl/Shift/Alt/Cmd)' : 'Requires HID enabled';
@@ -3318,9 +3328,9 @@ function cancelKeyCapture(){   // Esc / klik mimo / blur (audit I4)
   render();   // vrátí původní label z cfg
 }
 function startKeyCapture(bi, which){ _captureBegin({ bi, which }); }
-function startMacroCapture(){
+function startMacroCapture(bi = activeBank){
   if (!DEVICE_INFO.hid_enabled) { toast('i','Macro requires Keyboard (HID) — enable it in Device & Settings'); return; }
-  _captureBegin({ macro: true });
+  _captureBegin({ macro: true, bi });
 }
 window.addEventListener('keydown', e => {
   if (!_keyCapture) return;
@@ -3341,7 +3351,7 @@ window.addEventListener('keydown', e => {
   if (main >= 0xE0 && main <= 0xE3) return;
   const keys = [...mods, main];
   if (_keyCapture.macro) {
-    cfg.macro_keys = keys;
+    setActiveMacroKeys(_keyCapture.bi ?? activeBank, keys);
   } else {
     const { bi, which } = _keyCapture;
     cfg.banks[bi][which === 'cw' ? 'nav_keys_cw' : 'nav_keys_ccw'] = keys;

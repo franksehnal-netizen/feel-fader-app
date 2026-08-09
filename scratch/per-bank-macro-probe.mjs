@@ -48,5 +48,24 @@ P('Global on adopts the displayed bank\'s macro',
 const empty = await p.evaluate(() => { setMacroGlobal(false); setActiveMacroKeys(0, []); return activeMacroKeys(0); });
 P('empty per-bank macro stays empty (no fallback to global)', empty.length === 0, JSON.stringify(empty));
 
+await p.evaluate(() => { toggleSection('macro'); });
+await new Promise(r => setTimeout(r, 200));
+
+const ui = await p.evaluate(() => {
+  const box = document.getElementById('macro-global-toggle');
+  const cap = document.getElementById('macro-capture');
+  return { hasBox: !!box, checked: box ? box.checked : null,
+           capLabel: cap ? cap.textContent.trim() : null,
+           capBank: cap ? cap.getAttribute('data-bank') : null };
+});
+P('BUTTON section has a Global checkbox', ui.hasBox, String(ui.hasBox));
+P('checkbox reflects cfg.macro_global (currently false)', ui.checked === false, String(ui.checked));
+P('capture button is bound to the displayed bank', ui.capBank === String(await p.evaluate(() => activeBank)), ui.capBank);
+
+await p.evaluate(() => { document.getElementById('macro-global-toggle').click(); });
+await new Promise(r => setTimeout(r, 200));
+const afterToggle = await p.evaluate(() => ({ flag: cfg.macro_global, checked: document.getElementById('macro-global-toggle').checked }));
+P('clicking the checkbox flips cfg.macro_global', afterToggle.flag === true && afterToggle.checked === true, JSON.stringify(afterToggle));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
