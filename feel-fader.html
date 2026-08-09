@@ -360,6 +360,10 @@ main{width:100%;}
    Tečka je čistě vizuální; znění chyby nese inline hláška a #vbar pro
    odečítač obrazovky, proto aria-hidden. */
 .section-issue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:2px}
+/* .warn = amber variant, reused for non-validation warnings (e.g. BUTTON section's
+   old-firmware notice) — not driven by markSectionIssues()/validate(), so it can't
+   block Send; see macroSectionContent() (final whole-branch review, 2026-08-08, F1). */
+.section-issue-dot.warn{background:var(--amber)}
 .bank-tab-issue{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:4px}
 .send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--glass-border))}
 .send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
@@ -2196,7 +2200,7 @@ function setSectionSummary(id, summary) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = sectionSummaryHtml(summary);
 }
-function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
+function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor, extra) {
   const open = isSectionOpen(key);
   const helpBtn = helpAnchor ? `<button type="button" class="tx" onclick="event.stopPropagation();openHelpAt('${helpAnchor}')" aria-label="Help: ${escHtml(title)}" title="Help">?</button>` : '';
   if (key === 'fader1' || key === 'fader2') {
@@ -2219,7 +2223,7 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
     onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
-      <span class="section-toggle-meta">${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
+      <span class="section-toggle-meta">${extra||''}${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;
 }
 function refreshSectionSemantics(bi, key) {
@@ -2299,6 +2303,13 @@ function setMacroGlobal(on) {
   if (on) {
     // Zapnutí: globální hodnotou se stane makro právě zobrazené banky.
     cfg.macro_keys = clampHidList((cfg.banks[activeBank] && cfg.banks[activeBank].macro_keys) || []);
+    // Vyčistit per-bank macro_keys — po Global ON se stejně nepoužívají
+    // (activeMacroKeys() čte cfg.macro_keys), takže by jen zbytečně visely
+    // v configu, posílaly se, ukládaly a měnily config_hash / change summary
+    // ("Bank N: button macro" pro každou banku bez funkční změny). Vypnutí
+    // Global naopak všechny banky znovu naseje z globální hodnoty, takže tu
+    // není co zachovávat (final whole-branch review, 2026-08-08, Finding 5).
+    cfg.banks.forEach(b => { b.macro_keys = []; });
     cfg.macro_global = true;
   } else {
     // Vypnutí: každá banka dostane dosavadní globální hodnotu, takže se
@@ -3084,8 +3095,24 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
   const scopeNote = isGlobal
     ? 'One key combo shared by every bank.'
     : 'This bank has its own key combo; other banks keep theirs.';
+  // schema_version === null covers both "never connected" and "connected but
+  // the device didn't report schema_version" (Number(info.schema_version) ||
+  // null in handleSysEx/serialReadInfo folds a missing/0 field to null) —
+  // staying silent in that case is intentional, not an oversight: we can't
+  // warn about a firmware version the app doesn't actually know (final
+  // whole-branch review, 2026-08-08, Finding 1).
+  const schemaStale = !isGlobal && _ffConnected && DEVICE_INFO.schema_version !== null && DEVICE_INFO.schema_version < 3;
+  // Header-level marker: sections start collapsed on load (final whole-branch
+  // review, 2026-08-08, Finding 1), so the body notice below can be
+  // completely invisible when it matters most. Mirror it in the header —
+  // same idiom as markSectionIssues()'s .section-issue-dot, amber ".warn"
+  // variant so it reads as a heads-up, not a blocking error (this is NOT
+  // wired into validate() — the config is valid and Send stays enabled).
+  const headerWarn = schemaStale
+    ? `<span class="section-issue-dot warn" aria-hidden="true" title="Connected firmware only supports one macro for all banks"></span><span class="sr-only">Warning: connected firmware only supports one macro for all banks — this bank's macro will be ignored until it's updated.</span>`
+    : '';
   return `
-    ${sectionHeaderHtml(bi,'macro','BUTTON','Macro',summary)}
+    ${sectionHeaderHtml(bi,'macro','BUTTON','Macro',summary,null,headerWarn)}
     <div class="section-collapse-body" id="section-body-${bi}-macro" ${open?'':'hidden'}>
     <div class="section-fields">
       ${hidEnableNotice('Button Macro')}
@@ -3095,7 +3122,7 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
         <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
           onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
       </div>
-      ${(!isGlobal && _ffConnected && DEVICE_INFO.schema_version !== null && DEVICE_INFO.schema_version < 3)
+      ${schemaStale
         ? `<div id="macro-schema-notice" class="section-error" style="min-height:auto">Connected device runs an older firmware (schema ${escHtml(String(DEVICE_INFO.schema_version))}) that only supports one macro for all banks — per-bank macros will be ignored until you update it.</div>`
         : ''}
       <label class="uacc-note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;cursor:pointer">

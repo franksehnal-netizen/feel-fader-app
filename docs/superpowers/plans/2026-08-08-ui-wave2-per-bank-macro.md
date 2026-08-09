@@ -21,7 +21,7 @@
 - **Branch v `feel-fader-app`:** `per-bank-macro-2026-08` (odbočená z `main` po mergi vlny 1). **Branch v `feel-fader-firmware`:** `per-bank-macro-2026-08`, vytvořená z `main` v Tasku 1, Step 0.
 - **Zpětná kompatibilita je tvrdý požadavek:** config bez `macro_global` = `true` (dosavadní globální chování); bank bez `macro_keys` = prázdný seznam.
 - **Prázdný per-bank seznam znamená „žádná akce", ne fallback na globální makro.** Jinak by nešlo makro pro jednu banku vypnout.
-- **`serialize_state()` je jediná kanonická serializace** — používá ji save, `CMD_R` i hash. Její výstup určuje `config_hash`, takže každá změna tvaru se projeví jako jednorázový sync banner „differs" v appce. To je očekávané.
+- **`serialize_state()` je jediná kanonická serializace** — používá ji save, `CMD_R` i hash. Je záměrně sparse (`macro_global` se vynechává, když je `true`; prázdné per-bank `macro_keys` taky), takže `config_hash` configů, které existovaly před touto vlnou, se NEMĚNÍ. Po upgradu se tedy **neočekává** žádný jednorázový sync banner „differs" — pokud se objeví, je to signál skutečného hash bugu, ne očekávané chování.
 - **Nikdy neposílat SysEx přes MIDI out** — na Windows to zasekne MIDI endpoint a vyžaduje replug (HW nález 2026-07-07). Config jde výhradně přes Web Serial.
 - **MCP nikdy nesahá na reálný HW.** Automatizované ověřování běží přes interní-stav-poke jako probes; reálný HW test dělá Frank ručně.
 - **Nezapisovat na zařízení bez Frankova pokynu.** Flashování firmwaru a HW test jsou jeho kroky (Task 6).
@@ -1133,7 +1133,7 @@ Expected: obojí exit 0.
 Automatizace končí tady. Nahlas Frankovi, že je vlna připravená, a předej mu tento checklist — **firmware neflashuj a na zařízení nezapisuj sám**:
 
 1. Flashnout `code.py` + `ff_config.py` na CIRCUITPY (byte-exact, `ff_config` před `code.py`), `Write-VolumeCache` + Eject, power-cycle.
-2. Připojit appku → očekávej **jednorázový** sync banner „differs" (mění se tvar `config_hash`). Potvrdit načtení ze zařízení.
+2. Připojit appku → `config_hash` zůstává pro stávající config STEJNÝ (sparse serializace), takže se **neočekává** žádný sync banner „differs". Pokud se přesto objeví, je to bug — nahlásit, ne odkliknout. Potvrdit načtení ze zařízení.
 3. `Global` nechat zapnutý → long-press v Bank 1 i Bank 3 pošle stejnou kombinaci.
 4. Vypnout `Global`, nastavit Bank 2 jiné makro než Bank 3, Send → long-press v Bank 2 a Bank 3 pošle různé kombinace.
 5. Bank 2 makro vymazat → long-press v Bank 2 nepošle nic, Bank 3 pořád funguje.

@@ -141,5 +141,58 @@ P('notice shows before disconnect (sanity check on stub)', staleSchema.shownBefo
 P('schema_version resets to null on disconnect', staleSchema.schemaAfterDisconnect === null, String(staleSchema.schemaAfterDisconnect));
 P('no stale warning after reconnect without a fresh CMD_INFO', !staleSchema.shownAfterReconnect, String(staleSchema.shownAfterReconnect));
 
+// Final whole-branch review, 2026-08-08, Finding 5: turning Global ON must not
+// leave stale per-bank macro_keys sitting around (they'd churn config_hash and
+// spam the change summary with "Bank N: button macro" for banks that didn't
+// actually change). Self-contained setup — doesn't rely on state left by
+// earlier steps.
+const globalOnClears = await p.evaluate(() => {
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [0xE0, 0x16];
+  cfg.banks[1].macro_keys = [0x2C];
+  selectBank(1);
+  setMacroGlobal(true);
+  return { adoptedGlobal: cfg.macro_keys, perBank: cfg.banks.map(x => x.macro_keys) };
+});
+P('Global on adopts the displayed bank\'s macro into the shared slot',
+  JSON.stringify(globalOnClears.adoptedGlobal) === JSON.stringify([44]), JSON.stringify(globalOnClears.adoptedGlobal));
+P('Global on clears every bank\'s per-bank macro_keys (no stale leftovers)',
+  globalOnClears.perBank.every(k => Array.isArray(k) && k.length === 0), JSON.stringify(globalOnClears.perBank));
+
+// Final whole-branch review, 2026-08-08, Finding 1: the old-firmware warning must
+// be visible from the collapsed BUTTON header, not only inside the (hidden)
+// section body — sections start collapsed on every page load. Must also stay
+// completely silent when schema_version is unknown (null), and never register
+// as a validate() error (Send has to stay enabled).
+await p.evaluate(() => { setMacroGlobal(false); if (isSectionOpen('macro')) toggleSection('macro'); });
+await new Promise(r => setTimeout(r, 200));
+
+const collapsedWarn = await p.evaluate(() => {
+  _ffConnected = true; DEVICE_INFO.schema_version = 2; cfg.macro_global = false;
+  renderPanels();
+  const body = document.getElementById(`section-body-${activeBank}-macro`);
+  const dot = document.querySelector('.bank-section-macro .section-head .section-issue-dot.warn');
+  return { bodyHidden: body ? body.hidden : null, dotVisible: !!dot };
+});
+P('BUTTON section is actually collapsed for this check', collapsedWarn.bodyHidden === true, String(collapsedWarn.bodyHidden));
+P('old-firmware warning is visible in the collapsed header', collapsedWarn.dotVisible, String(collapsedWarn.dotVisible));
+
+const macroValidationErr = await p.evaluate(() => validate().some(e => /macro/i.test(e.field || '')));
+P('schema-mismatch warning is not a validate() error (Send stays enabled)', macroValidationErr === false, String(macroValidationErr));
+
+const silentWhenUnknownSchema = await p.evaluate(() => {
+  DEVICE_INFO.schema_version = null;   // device omitted schema_version — must stay silent, not guess
+  renderPanels();
+  return !!document.querySelector('.bank-section-macro .section-head .section-issue-dot.warn');
+});
+P('header marker stays silent when schema_version is unknown (null)', silentWhenUnknownSchema === false, String(silentWhenUnknownSchema));
+
+const noHeaderWarnWhenGlobal = await p.evaluate(() => {
+  DEVICE_INFO.schema_version = 2; cfg.macro_global = true;
+  renderPanels();
+  return !!document.querySelector('.bank-section-macro .section-head .section-issue-dot.warn');
+});
+P('header marker hidden while Global is on', noHeaderWarnWhenGlobal === false, String(noHeaderWarnWhenGlobal));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
