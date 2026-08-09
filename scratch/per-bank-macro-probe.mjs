@@ -194,5 +194,79 @@ const noHeaderWarnWhenGlobal = await p.evaluate(() => {
 });
 P('header marker hidden while Global is on', noHeaderWarnWhenGlobal === false, String(noHeaderWarnWhenGlobal));
 
+// UI wave 2: a control to actually clear a macro. Before this, the design's
+// "empty per-bank macro_keys means no macro for this bank — deliberately not
+// a fallback to global" rule was unreachable from the UI: Escape during
+// capture cancels (keeps the old value) and every mapped key assigns a new
+// combo, so there was never a path to []. Adds a "Clear macro" (X) button
+// next to #macro-capture, visible only when activeMacroKeys(bi) is non-empty,
+// clearing via setActiveMacroKeys(bi, []) (never writes cfg directly), and
+// not gated on HID (config edit, not a runtime key capture — same rationale
+// as the Global checkbox in this section).
+const clearAbsentWhenEmpty = await p.evaluate(() => {
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [];
+  selectBank(0);
+  renderPanels();
+  return !!document.getElementById('macro-clear');
+});
+P('clear control absent when no macro is set', clearAbsentWhenEmpty === false, String(clearAbsentWhenEmpty));
+
+const clearPresentWhenSet = await p.evaluate(() => {
+  cfg.banks[0].macro_keys = [0x04];
+  renderPanels();
+  return !!document.getElementById('macro-clear');
+});
+P('clear control present when a macro is set', clearPresentWhenSet === true, String(clearPresentWhenSet));
+
+const clearedNonGlobal = await p.evaluate(() => {
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [0x04];
+  cfg.banks[1].macro_keys = [0x05];
+  selectBank(0);
+  dirty = false;
+  renderPanels();
+  document.getElementById('macro-clear').click();
+  return {
+    b0: activeMacroKeys(0), b1: activeMacroKeys(1),
+    capLabel: document.getElementById('macro-capture').textContent.trim(),
+    clearGone: !document.getElementById('macro-clear'),
+    dirty,
+  };
+});
+P('Global off: clearing bank 0 empties only that bank',
+  clearedNonGlobal.b0.length === 0 && JSON.stringify(clearedNonGlobal.b1) === JSON.stringify([5]),
+  JSON.stringify(clearedNonGlobal));
+P('activeMacroKeys(0) is an empty array after clear (no-macro state now reachable from the UI)',
+  Array.isArray(clearedNonGlobal.b0) && clearedNonGlobal.b0.length === 0, JSON.stringify(clearedNonGlobal.b0));
+P('capture button shows the "not assigned" label after clear', clearedNonGlobal.capLabel === '—', clearedNonGlobal.capLabel);
+P('clear control disappears once its macro is empty (re-rendered)', clearedNonGlobal.clearGone, String(clearedNonGlobal.clearGone));
+P('clearing marks the config dirty like any other edit', clearedNonGlobal.dirty === true, String(clearedNonGlobal.dirty));
+
+const clearedGlobal = await p.evaluate(() => {
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [0x04];
+  cfg.banks[1].macro_keys = [0x04];
+  selectBank(0);
+  setMacroGlobal(true);   // adopts bank 0's macro into the shared cfg.macro_keys
+  document.getElementById('macro-clear').click();
+  return { global: cfg.macro_keys, b0: activeMacroKeys(0), b1: activeMacroKeys(1) };
+});
+P('Global on: clearing empties the shared value for every bank',
+  clearedGlobal.global.length === 0 && clearedGlobal.b0.length === 0 && clearedGlobal.b1.length === 0,
+  JSON.stringify(clearedGlobal));
+
+const notGatedOnHid = await p.evaluate(() => {
+  setMacroGlobal(false);
+  cfg.banks[0].macro_keys = [0x04];
+  selectBank(0);
+  DEVICE_INFO.hid_enabled = false;
+  renderPanels();
+  const clear = document.getElementById('macro-clear');
+  return { present: !!clear, disabled: clear ? clear.disabled : null };
+});
+P('clear control is not gated on HID (unlike the capture button)',
+  notGatedOnHid.present === true && notGatedOnHid.disabled !== true, JSON.stringify(notGatedOnHid));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

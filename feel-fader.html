@@ -2299,6 +2299,15 @@ function setActiveMacroKeys(bi, keys) {
   if (cfg.macro_global !== false) cfg.macro_keys = list;
   else cfg.banks[bi].macro_keys = list;
 }
+function clearActiveMacro(bi = activeBank) {
+  // Config edit, not a runtime key capture — not gated on HID (same
+  // rationale as the Global checkbox in this section). With Global on this
+  // empties the shared value; with it off, only this bank's — mirrors
+  // whatever startMacroCapture's keydown handler would have written.
+  setActiveMacroKeys(bi, []);
+  dirty = true;
+  render();
+}
 function setMacroGlobal(on) {
   if (on) {
     // Zapnutí: globální hodnotou se stane makro právě zobrazené banky.
@@ -3119,8 +3128,13 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
       <div class="uacc-note" style="margin:0 0 8px">Long-press the device button (≥0.5 s) to send this key combo — e.g. play/stop or a DAW shortcut. A short press still switches banks. ${escHtml(scopeNote)}</div>
       <div class="field-block">
         <span class="field-label">LONG-PRESS KEY</span>
-        <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
-          onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
+            onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
+          ${combo !== '—'
+            ? `<button type="button" id="macro-clear" class="btn-remove-bank ui-control ui-pill" onclick="clearActiveMacro(${bi})" title="Clear macro" aria-label="Clear macro">✕</button>`
+            : ''}
+        </div>
       </div>
       ${schemaStale
         ? `<div id="macro-schema-notice" class="section-error" style="min-height:auto">Connected device runs an older firmware (schema ${escHtml(String(DEVICE_INFO.schema_version))}) that only supports one macro for all banks — per-bank macros will be ignored until you update it.</div>`
