@@ -42,5 +42,163 @@ await new Promise(r => setTimeout(r, 100));
 s = await readBtn();
 P('confirmed-sent state: "sent", not idle', s.sent && !s.idle && s.disabled, JSON.stringify(s));
 
+// --- Issue 1 (2026-08-09): clicking Send while nothing changed must not
+// celebrate with green "✓ Sent" — the button stays clickable (Frank
+// 2026-07-20: "muted, not disabled"), but a no-op send gets a sober inline
+// confirmation ("Already in sync") instead of the success color. A real,
+// dirty send must still go green — that's the normal path and must not
+// regress. Uses the same fake-serial-port poke pattern as
+// scratch/audit/p2-serial-robustness.mjs; protocolVersion stays at its
+// page-load default of 1 (legacy), so serialRequest('CMD_W', …) resolves
+// immediately after write() without needing a fake reply frame.
+async function pokeFakeSerialPort() {
+  return p.evaluate(() => {
+    class FakePort {
+      get readable() { return { getReader() { return { read() { return new Promise(() => {}); }, releaseLock() {} }; } }; }
+      get writable() { return { getWriter() { return { write() { return Promise.resolve(); }, releaseLock() {} }; } }; }
+    }
+    protocolVersion = 1;
+    _serialPort = new FakePort();
+  });
+}
+
+await pokeFakeSerialPort();
+let sendRes = await p.evaluate(async () => {
+  cfg.banks[0].fader1.cc = 55; dirty = true; _sendConfirmed = false; render();
+  await doSend();
+  const btn = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return { sent: btn.classList.contains('sent'), idle: btn.classList.contains('idle'), text: btn.textContent, disabled: btn.disabled, noteText: note.textContent };
+});
+P('sending a genuinely dirty config still turns green "✓ Sent" (normal path unaffected)',
+  sendRes.sent && !sendRes.idle && sendRes.text === '✓ Sent' && sendRes.disabled, JSON.stringify(sendRes));
+
+// Return to a synced (nothing-to-send) state the same way the earlier
+// "reverted back to matching the synced snapshot" step does, then send again.
+await p.evaluate(() => { dirty = false; _sendConfirmed = false; render(); });
+s = await readBtn();
+const startedIdle = s.idle && !s.disabled;
+await pokeFakeSerialPort();
+await p.evaluate(async () => { await doSend(); });
+// setSendChangeNoteText() swaps an already-visible note's text via a short
+// (SEND_NOTE_SWAP_MS = 180ms) fade-out/in rather than an instant textContent
+// write, so the readback must happen after that settles, not in the same
+// tick doSend() resolves.
+await new Promise(r => setTimeout(r, 300));
+let noopRes = await p.evaluate(() => {
+  const btn = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return {
+    sent: btn.classList.contains('sent'), idle: btn.classList.contains('idle'),
+    text: btn.textContent, disabled: btn.disabled,
+    noteText: note.textContent, noteVisible: note.classList.contains('is-visible'),
+    noteFeedback: note.classList.contains('is-feedback'),
+  };
+});
+P('no-op send starts from the idle (nothing-to-send) state', startedIdle, JSON.stringify(s));
+P('no-op send does NOT produce the green "✓ Sent" state', !noopRes.sent && noopRes.text !== '✓ Sent', JSON.stringify(noopRes));
+P('no-op send surfaces a quiet "Already in sync" inline confirmation instead',
+  noopRes.noteVisible && noopRes.noteFeedback && /already in sync/i.test(noopRes.noteText), JSON.stringify(noopRes));
+
+// --- Fix round 1 (2026-08-09): syncSendMine() ("Overwrite device" in the
+// sync banner) only ever runs from the !dirty branch of onDeviceConnected()
+// — that's precisely the scenario the no-op suppression above was blind to,
+// since `dirty` answers "edited locally", not "device already has this".
+// The banner exists BECAUSE the device's config_hash drifted from the last
+// one we confirmed, so overwriting it is a real, meaningful write and must
+// still get the green "✓ Sent" confirmation, never "Already in sync". Drives
+// the real path: protocolVersion 2, a stored (last-confirmed) hash that
+// disagrees with the device's current config_hash — the exact condition
+// showSyncBanner('differs') is raised under in onDeviceConnected() — then
+// calls syncSendMine() itself (the sync banner's "Overwrite device" button's
+// own onclick), not doSend() directly.
+async function pokeFakeSerialPortV2WithAck() {
+  return p.evaluate(() => {
+    class FakePort {
+      constructor() { this._chunks = []; this._resolvers = []; this.onWrite = null; }
+      push(str) {
+        const bytes = new TextEncoder().encode(str);
+        if (this._resolvers.length) this._resolvers.shift()({ value: bytes, done: false });
+        else this._chunks.push(bytes);
+      }
+      get readable() {
+        const self = this;
+        return { getReader() { return {
+          read() {
+            if (self._chunks.length) return Promise.resolve({ value: self._chunks.shift(), done: false });
+            return new Promise((resolve) => { self._resolvers.push(resolve); });
+          },
+          releaseLock() {},
+        }; } };
+      }
+      get writable() {
+        const self = this;
+        return { getWriter() { return { write(chunk) { self.onWrite && self.onWrite(chunk); return Promise.resolve(); }, releaseLock() {} }; } };
+      }
+    }
+    const port = new FakePort();
+    port.onWrite = (chunk) => {
+      const rid = new TextDecoder().decode(chunk).trim().split(':')[1];
+      port.push(`ACK:${rid}:new-hash-after-overwrite\n`);
+    };
+    protocolVersion = 2;
+    _serialPort = port;
+  });
+}
+
+await pokeFakeSerialPortV2WithAck();
+let overwriteRes = await p.evaluate(async () => {
+  // Same shape onDeviceConnected() builds for the 'differs' sync banner:
+  // dirty is false (no local edits — that's the whole reason `dirty` alone
+  // used to misclassify this as a no-op), but the last device-confirmed
+  // hash disagrees with the device's current one.
+  dirty = false; _sendConfirmed = false;
+  DEVICE_INFO.config_hash = 'device-current-hash';
+  localStorage.setItem('ff-last-hash', 'stale-confirmed-hash');
+  render();
+  await syncSendMine();   // the sync banner's "Overwrite device" button's own onclick
+  return null;
+});
+await new Promise(r => setTimeout(r, 300));
+overwriteRes = await p.evaluate(() => {
+  const btn = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return {
+    sent: btn.classList.contains('sent'), idle: btn.classList.contains('idle'),
+    text: btn.textContent, disabled: btn.disabled,
+    noteText: note.textContent,
+  };
+});
+P('"Overwrite device" (sync banner, hashes disagree) still turns green "✓ Sent", not "Already in sync"',
+  overwriteRes.sent && !overwriteRes.idle && overwriteRes.text === '✓ Sent' && overwriteRes.disabled && !/already in sync/i.test(overwriteRes.noteText),
+  JSON.stringify(overwriteRes));
+
+// --- Issue 2 (2026-08-09): .blocked's hover must read the same as .idle's —
+// only the resting-state border stays as the quiet differentiator. Parsed
+// against the live stylesheet (not string-matched, not forced via :hover)
+// so this fails honestly if either rule's selector or color ever drifts.
+const hoverAndBorder = await p.evaluate(() => {
+  const rules = [...document.styleSheets].flatMap(sheet => {
+    try { return [...sheet.cssRules]; } catch (_) { return []; }
+  });
+  const find = (selectorText) => rules.find(r => r.selectorText === selectorText);
+  const idleHover = find('.send-btn.idle:hover');
+  const blockedHover = find('.send-btn.blocked:hover');
+  const idleRest = find('.send-btn.idle');
+  const blockedRest = find('.send-btn.blocked');
+  return {
+    idleHoverColor: idleHover ? idleHover.style.color : null,
+    blockedHoverColor: blockedHover ? blockedHover.style.color : null,
+    idleRestBorder: idleRest ? idleRest.style.border : '',
+    blockedRestBorder: blockedRest ? blockedRest.style.border : '',
+  };
+});
+P('.send-btn.blocked:hover color matches .send-btn.idle:hover color',
+  !!hoverAndBorder.blockedHoverColor && hoverAndBorder.blockedHoverColor === hoverAndBorder.idleHoverColor,
+  JSON.stringify(hoverAndBorder));
+P('.send-btn.blocked resting border is still present and distinct from .idle (quiet differentiator survives)',
+  !!hoverAndBorder.blockedRestBorder && hoverAndBorder.blockedRestBorder !== hoverAndBorder.idleRestBorder,
+  JSON.stringify(hoverAndBorder));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
