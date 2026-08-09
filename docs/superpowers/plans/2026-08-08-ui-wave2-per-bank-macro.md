@@ -18,7 +18,7 @@
 - **Veškeré změny appky jdou výhradně do `feel-fader.html`.** `app.js`, `styles.css` a `assets/` v pracovní kopii jsou zastaralé necommitnuté zbytky Codexova refaktoru — neupravovat, necommitovat, nemazat.
 - **Odkazy typu `app.js:171` jsou navigační pomůcka**; identický text žije v inline `<script>` bloku `feel-fader.html`.
 - **Nikdy `git add -A` ani `git add .`** v `feel-fader-app` — pracovní strom obsahuje nesouvisející necommitnuté změny. Vždy konkrétní cesty.
-- **Branch v `feel-fader-app`:** `ui-backlog-2026-08`. **Branch v `feel-fader-firmware`:** vytvoř `per-bank-macro-2026-08` z `main` (Task 1, Step 0).
+- **Branch v `feel-fader-app`:** `per-bank-macro-2026-08` (odbočená z `main` po mergi vlny 1). **Branch v `feel-fader-firmware`:** `per-bank-macro-2026-08`, vytvořená z `main` v Tasku 1, Step 0.
 - **Zpětná kompatibilita je tvrdý požadavek:** config bez `macro_global` = `true` (dosavadní globální chování); bank bez `macro_keys` = prázdný seznam.
 - **Prázdný per-bank seznam znamená „žádná akce", ne fallback na globální makro.** Jinak by nešlo makro pro jednu banku vypnout.
 - **`serialize_state()` je jediná kanonická serializace** — používá ji save, `CMD_R` i hash. Její výstup určuje `config_hash`, takže každá změna tvaru se projeví jako jednorázový sync banner „differs" v appce. To je očekávané.
