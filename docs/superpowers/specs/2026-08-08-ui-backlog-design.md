@@ -208,7 +208,7 @@ LEFT FADER / RIGHT FADER / ROLLER (`app.js:577–578`, `917–930`), což čte j
 
 ### Dopady
 
-- **`config_hash` mění tvar** → po upgradu jednou blikne sync banner „differs". Očekávané, zdokumentovat.
+- **`config_hash` se pro configy, které existovaly před touto vlnou, NEMĚNÍ** — `serialize_state()` vynechává `macro_global`, když je `true` (default), a prázdné per-bank `macro_keys` (viz sparse-serializace výše), takže hash starého configu je bajtově stejný. Po upgradu se tedy **žádný sync banner „differs" neočekává**. Pokud se přesto objeví, je to bug v serializaci/hashi, ne očekávaný jev — vyšetřit, ne odkliknout.
 - **Appka hlásí nesoulad**, když zařízení reportuje `schema_version < 3` a `macro_global` je vypnuté.
   Bez toho si uživatel nastaví per-bank makra a starý firmware je tiše ignoruje. ~5 řádků na každé straně.
 
