@@ -94,5 +94,23 @@ P('Program Change mid-capture cancels the in-flight capture', pcMidCapture.captu
 P('Program Change mid-capture: no macro written to bank 0', pcMidCapture.b0.length === 0, JSON.stringify(pcMidCapture.b0));
 P('Program Change mid-capture: no macro written to bank 1', pcMidCapture.b1.length === 0, JSON.stringify(pcMidCapture.b1));
 
+const notice = await p.evaluate(() => {
+  _ffConnected = true; DEVICE_INFO.schema_version = 2;
+  cfg.macro_global = false; renderPanels();
+  const n = document.getElementById('macro-schema-notice');
+  return { shown: !!n, text: n ? n.textContent.trim() : '' };
+});
+P('old firmware warning shows for per-bank macros', notice.shown, notice.text);
+
+const noNotice = await p.evaluate(() => {
+  DEVICE_INFO.schema_version = 3; renderPanels();
+  const a = !!document.getElementById('macro-schema-notice');
+  DEVICE_INFO.schema_version = 2; cfg.macro_global = true; renderPanels();
+  const b = !!document.getElementById('macro-schema-notice');
+  return { onNewFw: a, onGlobal: b };
+});
+P('no warning on schema_version 3', !noNotice.onNewFw, String(noNotice.onNewFw));
+P('no warning while Global is on', !noNotice.onGlobal, String(noNotice.onGlobal));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

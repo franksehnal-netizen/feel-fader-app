@@ -2332,6 +2332,7 @@ const DEVICE_INFO = {
   mode:          null,
   hid_available: false,
   hid_enabled:   false,
+  schema_version: null,   // z CMD_INFO; < 3 = firmware neumí per-bank makra
 };
 
 const LS_CFG_KEY        = 'ff-cfg';
@@ -3094,6 +3095,9 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
         <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
           onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
       </div>
+      ${(!isGlobal && _ffConnected && DEVICE_INFO.schema_version !== null && DEVICE_INFO.schema_version < 3)
+        ? `<div id="macro-schema-notice" class="section-error" style="min-height:auto">Connected device runs an older firmware (schema ${escHtml(String(DEVICE_INFO.schema_version))}) that only supports one macro for all banks — per-bank macros will be ignored until you update it.</div>`
+        : ''}
       <label class="uacc-note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;cursor:pointer">
         <input type="checkbox" id="macro-global-toggle" ${isGlobal?'checked':''} onchange="setMacroGlobal(this.checked)"/>
         <span>Global — same macro for all banks</span>
@@ -4501,6 +4505,7 @@ function handleSysEx(data){
       if(info.mode)DEVICE_INFO.mode=info.mode;
       if(info.firmware)DEVICE_INFO.firmware=info.firmware;
       if(typeof info.hid_available==='boolean') DEVICE_INFO.hid_available=info.hid_available;
+      DEVICE_INFO.schema_version = Number(info.schema_version) || null;
       if(typeof info.hid_enabled==='boolean')   DEVICE_INFO.hid_enabled=info.hid_enabled;
       if(typeof info.bank==='number' && info.bank>=0) liveBank=info.bank|0;   // sync live-bank indicator on info push
       updateHidToggle();
@@ -4620,6 +4625,7 @@ async function serialReadInfo() {
   if (info.serial)   DEVICE_INFO.serial   = info.serial;
   if (typeof info.hid_available === 'boolean') DEVICE_INFO.hid_available = info.hid_available;
   if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
+  DEVICE_INFO.schema_version = Number(info.schema_version) || null;
   // Sync live-bank indicator to the device's actual current bank on (re)connect,
   // so it isn't stuck at Bank 1 until the next Program Change (firmware reports
   // its bank_index in CMD_INFO; liveBank sync-on-load 2026-07-29).
