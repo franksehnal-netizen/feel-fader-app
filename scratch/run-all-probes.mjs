@@ -60,6 +60,7 @@ const PROBES = [
   'send-dock-gap-symmetry-probe.mjs',
   'controller-toggle-speed-probe.mjs',
   'sections-independent-probe.mjs',
+  'fader-name-input-width-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
