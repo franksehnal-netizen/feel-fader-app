@@ -2282,16 +2282,46 @@ function hidLabel(code){
   return '0x'+code.toString(16);
 }
 function keyComboLabel(keys){ return (keys&&keys.length) ? keys.map(hidLabel).join('+') : '—'; }
+// Long-press makro: buď jedna globální hodnota (cfg.macro_keys), nebo vlastní
+// pro každou banku (cfg.banks[i].macro_keys). Přechodová pravidla jsou
+// záměrně "co vidíš, to zůstane" — přepnutí checkboxu nikdy tiše nezmění,
+// co zařízení udělá (spec 2026-08-08 §D).
+function activeMacroKeys(bi = activeBank) {
+  if (cfg.macro_global !== false) return cfg.macro_keys || [];
+  return (cfg.banks[bi] && cfg.banks[bi].macro_keys) || [];
+}
+function setActiveMacroKeys(bi, keys) {
+  const list = clampHidList(keys);
+  if (cfg.macro_global !== false) cfg.macro_keys = list;
+  else cfg.banks[bi].macro_keys = list;
+}
+function setMacroGlobal(on) {
+  if (on) {
+    // Zapnutí: globální hodnotou se stane makro právě zobrazené banky.
+    cfg.macro_keys = clampHidList((cfg.banks[activeBank] && cfg.banks[activeBank].macro_keys) || []);
+    cfg.macro_global = true;
+  } else {
+    // Vypnutí: každá banka dostane dosavadní globální hodnotu, takže se
+    // chování nezmění, dokud uživatel něco nepřepíše.
+    const seed = clampHidList(cfg.macro_keys || []);
+    cfg.banks.forEach(b => { b.macro_keys = seed.slice(); });
+    cfg.macro_global = false;
+  }
+  dirty = true;
+  renderPanels();
+  runValidation();
+}
 
 const DEFAULT_UACC = [1,2,3,4,5,20,21,22,23,26,31,32,40,41,42,43,44,45,46,47,49,50,52,70,71,72,73,74,75,90,91,100,101,110,112];
 const MAX_BANKS = 8;
 
 const DEFAULT_CFG = {
   macro_keys: [],
+  macro_global: true,   // false = každá banka má vlastní macro_keys
   banks: [
-    { name:'Bank 1', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
-    { name:'Bank 2', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
-    { name:'Bank 3', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false },
+    { name:'Bank 1', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false, macro_keys:[] },
+    { name:'Bank 2', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false, macro_keys:[] },
+    { name:'Bank 3', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:21,channel:2,label:'Expression'}, fader2:{cc:22,channel:2,label:'Dynamics'}, encoder:{cc:32,channel:2}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false, macro_keys:[] },
   ]
 };
 
@@ -2411,6 +2441,11 @@ function configChangeItems(base = _syncedConfigSnapshot, current = cfg) {
     if (!same(articulationsNow,articulationsBefore)) items.push(`${label}: articulations / keyswitches`);
   });
   if (!same(base?.macro_keys || [],current?.macro_keys || [])) items.push('Button macro');
+  if ((base?.macro_global !== false) !== (current?.macro_global !== false)) items.push('Button macro scope');
+  (current?.banks || []).forEach((b,i) => {
+    if (!same(base?.banks?.[i]?.macro_keys || [], b.macro_keys || []))
+      items.push(`${b.name || 'Bank '+(i+1)}: button macro`);
+  });
   return [...new Set(items)];
 }
 function updateChangeSummary() {
@@ -3536,6 +3571,7 @@ function addBank() {
     nav_keys_cw:  [0x52],
     nav_keys_ccw: [0x51],
     nav_invert:   false,
+    macro_keys:   [],
   });
   dirty = true; render();
 }
@@ -4400,14 +4436,17 @@ function normalizeFwConfig(p) {
       bank.ks_notes = clampCcList(bank.ks_notes);
       bank.nav_keys_cw = clampHidList(bank.nav_keys_cw).length ? clampHidList(bank.nav_keys_cw) : [0x52];
       bank.nav_keys_ccw = clampHidList(bank.nav_keys_ccw).length ? clampHidList(bank.nav_keys_ccw) : [0x51];
+      bank.macro_keys = clampHidList(bank.macro_keys);   // prázdné je platné = "žádné makro pro tuhle banku"
       bank.fader1.label = faderDisplayName(bank.fader1,'fader1');
       bank.fader2.label = faderDisplayName(bank.fader2,'fader2');
     });
     p.macro_keys = clampHidList(p.macro_keys);
+    p.macro_global = p.macro_global !== false;   // chybí = true (starý config)
     return p;
   }
   return {
     macro_keys: clampHidList(p.macro_keys),
+    macro_global: p.macro_global !== false,
     banks: p.banks.map((raw, i) => {
       // A malformed bank entry (null/string/array/etc.) must not throw when its
       // fields are read below — coerce to a bare object first (P2-1).
@@ -4431,6 +4470,7 @@ function normalizeFwConfig(p) {
       nav_keys_cw:  (clampHidList(b.nav_keys_cw).length  ? clampHidList(b.nav_keys_cw)  : [0x52]),
       nav_keys_ccw: (clampHidList(b.nav_keys_ccw).length ? clampHidList(b.nav_keys_ccw) : [0x51]),
       nav_invert:   !!b.nav_invert,
+      macro_keys:   clampHidList(b.macro_keys),
       });
     })
   };
