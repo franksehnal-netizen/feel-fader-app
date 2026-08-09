@@ -10,10 +10,17 @@ const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const htmlPath = path.join(root, 'feel-fader.html');
 const outputDir = path.join(here, 'mobile-ux-output');
-const html = fs.readFileSync(htmlPath);
 const remoteUrl = process.env.MOBILE_TEST_URL || '';
+
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json; charset=utf-8',
+};
 
 const profiles = [
   {
@@ -49,16 +56,25 @@ function startServer() {
       response.end();
       return;
     }
-    if (url.pathname !== '/' && url.pathname !== '/feel-fader.html') {
-      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Not found');
+    const requestPath = url.pathname === '/' ? '/feel-fader.html' : url.pathname;
+    const filePath = path.resolve(root, `.${decodeURIComponent(requestPath)}`);
+    if (!filePath.startsWith(`${root}${path.sep}`)) {
+      response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Forbidden');
       return;
     }
-    response.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
+    fs.readFile(filePath, (error, data) => {
+      if (error) {
+        response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        response.end('Not found');
+        return;
+      }
+      response.writeHead(200, {
+        'Content-Type': CONTENT_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
+        'Cache-Control': 'no-store',
+      });
+      response.end(data);
     });
-    response.end(html);
   });
   return new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -102,6 +118,8 @@ async function runDesktopFlow(browser, url) {
     finalizeWelcomeExit();
     document.getElementById('welcome-screen').classList.add('hidden');
     render();
+    toggleSection('fader1');   // Task A: sections start closed now — open one so the
+                                // heading/sticky-header checks below have something to measure
     window.scrollTo(0, 0);
   });
   await settle(page, 120);
@@ -172,7 +190,7 @@ async function runDesktopFlow(browser, url) {
   await page.evaluate(() => {
     cfg.banks[0].roller_mode = 'keyswitch';
     cfg.banks[0].ks_notes = Array.from({length: 72}, (_, index) => index + 24);
-    _openBankSections.set(0, 'roller');
+    _openSections.add('roller');   // Task A: sections are a shared Set now, not per-bank
     // Advanced keyswitch settings opened too: with the page's trailing empty
     // space now gone (2026-07-20 footer-pin fix) and the dead .panel-wide
     // flex:1 stretch removed (2026-07-21), the page is a few px too short for
@@ -746,6 +764,11 @@ async function runProfile(browser, url, profile) {
     encLiveVal = 44;
     dirty = false;
     renderConnState();
+    // Task A: sections start closed, so the page is shorter than before by
+    // default — open one so there is enough content for the tall viewport to
+    // actually scroll the Send anchor out of view below (needed for the
+    // dirty-dock check further down).
+    if (!isSectionOpen('fader1')) toggleSection('fader1');
     window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
   });
   await settle(page, 420);

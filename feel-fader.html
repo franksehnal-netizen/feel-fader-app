@@ -352,7 +352,17 @@ main{width:100%;}
 .send-change-note.is-visible{
   opacity:1;visibility:visible;filter:blur(0);transform:translate(0,-50%) scale(1);transition-delay:0s;
 }
-.send-change-note.has-issues{color:var(--danger)}
+/* Neplatná konfigurace: tlačítko si nechá svůj text "Send to device" a jen
+   zesládne — nikdy "Show error". Klik pořád funguje a skočí na první chybu
+   (handleDirtyAction), protože disabled tlačítko uživateli neřekne proč.
+   Vizuální jazyk převzatý ze .send-btn.idle o pár řádků výš. */
+/* Lokace chyby bez věty navíc — nahrazuje zrušené tlačítko "Show" v #vbar.
+   Tečka je čistě vizuální; znění chyby nese inline hláška a #vbar pro
+   odečítač obrazovky, proto aria-hidden. */
+.section-issue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:2px}
+.bank-tab-issue{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;margin-right:4px}
+.send-btn.blocked{background:var(--control-glass-bg);color:var(--t2);box-shadow:var(--control-glass-shadow);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--glass-border))}
+.send-btn.blocked:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--danger)}
 .send-change-note.is-feedback,.send-change-note.is-feedback:disabled{
   max-width:190px;color:var(--green-text);cursor:default;opacity:1
 }
@@ -845,8 +855,18 @@ html.dark #device-settings-chevron{color:var(--t3)}
 }
 
 /* VBAR */
-.vbar{display:none}
-.vbar.err{display:block}
+/* Výška je rezervovaná pořád, i když je hláška prázdná: jinak by zobrazení
+   chyby posunulo sekce pod sebou. Po zrušení akordeonu je otevřených sekcí
+   víc naráz, takže by to bylo vidět častěji (spec §C-navíc). */
+.section-error{font-size:12px;color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
+/* #vbar už není vizuální prvek. Jedna chyba měla čtyři signály naráz
+   (banner, "N issues to fix", "Show error" na tlačítku, inline věta);
+   viditelná zůstává jen inline věta u pole a tečky v hlavičce sekce /
+   na tabu banky. Element zůstává jako assertive live region, aby odečítač
+   obrazovky o chybě dál věděl. Vedlejší efekt: nic nevstupuje do flow,
+   takže se pod ním nehne stepper (Frank, HW test 2026-08-08). */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.vbar{display:block}
 .vbar-jump{
   width:100%;padding:8px 10px 8px 12px;border-radius:var(--r-sm);font:600 12px 'Mulish',sans-serif;
   display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;color:var(--danger);
@@ -1403,7 +1423,13 @@ html.dark .lib-badge-sm{background:#555}
 .section-head-editable .section-toggle-title{flex:1}
 .section-toggle-action{display:flex;align-items:center;gap:12px;min-width:0;margin-left:auto;padding:5px 0 5px 12px;border:0;background:transparent;color:inherit;cursor:pointer;font-family:'Mulish',sans-serif}
 .section-toggle-action:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
-.fader-title-input{width:min(190px,100%);font-size:13px;padding:0;flex:0 1 auto;cursor:text}
+/* Šířka podle obsahu, ne pevných 190 px: prázdné místo napravo od názvu
+   patří hlavičce sekce (= rozbalí ji), ne inputu (Frank, HW test 2026-08-08).
+   field-sizing je Chrome 123+/Edge — appka je stejně Chrome-only kvůli
+   Web Serial. max-width drží nejhorší případ na dosavadní šířce.
+   align-self:flex-start zabraňuje flex-parent stretch (section-toggle-title
+   je flex column s align-items:stretch, které by input natáhlo na 190px). */
+.fader-title-input{field-sizing:content;width:auto;min-width:5ch;max-width:min(190px,100%);font-size:13px;padding:0;flex:0 1 auto;align-self:flex-start;cursor:text}
 .section-summary{display:inline-flex;align-items:baseline;gap:5px;min-width:0;max-width:260px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.25}
 .section-summary-label{font:600 11px 'Mulish',sans-serif;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
 .section-summary-meta{font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
@@ -1790,7 +1816,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <main>
 <div class="center-col">
 
-  <div id="vbar" class="vbar" role="alert" aria-live="assertive"></div>
+  <div id="vbar" class="vbar sr-only" role="alert" aria-live="assertive"></div>
 
   <!-- STAGE -->
   <div class="stage-collapse" id="stage-collapse">
@@ -2147,14 +2173,17 @@ function defaultFaderName(key) { return key === 'fader1' ? 'Expression' : 'Dynam
 function faderDisplayName(ctrl, key) { return String(ctrl?.label || '').trim() || defaultFaderName(key); }
 function liveArticulationName(value) { return uaccName(value); }
 
-const _openBankSections = new Map();
-function openBankSection(bi) { return _openBankSections.has(bi) ? _openBankSections.get(bi) : 'fader1'; }
-function isBankSectionOpen(bi, key) { return openBankSection(bi) === key; }
-function toggleBankSection(bi, key) {
-  _openBankSections.set(bi, isBankSectionOpen(bi,key) ? null : key);
+// Otevřené sekce jsou JEDEN sdílený Set klíčů, ne mapa per banka: sekce
+// togglují nezávisle (žádný akordeon) a stav zůstává stejný i po přepnutí
+// banky — patří sekci, ne bance (Frank, HW test 2026-08-08). Výchozí stav
+// je "všechno zavřené"; stav se záměrně nepersistuje do localStorage.
+const _openSections = new Set();
+function isSectionOpen(key) { return _openSections.has(key); }
+function toggleSection(key) {
+  if (_openSections.has(key)) _openSections.delete(key); else _openSections.add(key);
   renderPanels();
   runValidation();
-  requestAnimationFrame(() => document.getElementById(`section-toggle-${bi}-${key}`)?.focus());
+  requestAnimationFrame(() => document.getElementById(`section-toggle-${activeBank}-${key}`)?.focus());
 }
 function sectionSummaryHtml(summary) {
   const parts = typeof summary === 'string' ? {meta:summary} : (summary || {});
@@ -2168,12 +2197,12 @@ function setSectionSummary(id, summary) {
   if (el) el.innerHTML = sectionSummaryHtml(summary);
 }
 function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
-  const open = isBankSectionOpen(bi,key);
+  const open = isSectionOpen(key);
   const helpBtn = helpAnchor ? `<button type="button" class="tx" onclick="event.stopPropagation();openHelpAt('${helpAnchor}')" aria-label="Help: ${escHtml(title)}" title="Help">?</button>` : '';
   if (key === 'fader1' || key === 'fader2') {
     const side = key === 'fader1' ? 'Left' : 'Right';
     return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"
-      onclick="if(!event.target.closest('input,button'))toggleBankSection(${bi},'${key}')">
+      onclick="if(!event.target.closest('input,button'))toggleSection('${key}')">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
         <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
           oninput="onFaderName(${bi},'${key}',this.value)"
@@ -2182,13 +2211,13 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor) {
       </span>
       ${helpBtn}
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
-        onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
+        onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
         ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
       </button>
     </div>`;
   }
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
-    onclick="toggleBankSection(${bi},'${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
+    onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
       <span class="section-toggle-meta">${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;
@@ -2203,7 +2232,7 @@ function refreshSectionSemantics(bi, key) {
     const title = document.getElementById(`section-title-${bi}-${key}`);
     if (title && title !== document.activeElement) title.value = name;
     const toggle = document.getElementById(`section-toggle-${bi}-${key}`);
-    if (toggle) toggle.setAttribute('aria-label', `${isBankSectionOpen(bi,key)?'Collapse':'Expand'} ${name} settings`);
+    if (toggle) toggle.setAttribute('aria-label', `${isSectionOpen(key)?'Collapse':'Expand'} ${name} settings`);
     setSectionSummary(`section-summary-${bi}-${key}`, {meta:`Ch ${ctrl.channel+1} · CC${ctrl.cc}`});
     setTxt(`cc-meaning-${bi}-${key}`, musicalCcName(ctrl.cc,`CC ${ctrl.cc}`));
   }
@@ -2573,6 +2602,7 @@ function setActiveTab(i){
       btn.insertBefore(s, btn.children[0]||null);
     }
   });
+  markSectionIssues();   // live marker se přestavuje tady, chybová tečka se musí obnovit s ním
   const act=el.querySelector('.bank-block-tab.active');
   if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'nearest'});
   _updateTabsFade(el);
@@ -2652,26 +2682,26 @@ function renderPanels() {
     <!-- Single bank card containing all sections -->
     <div class="bank-card${bankChanged ? ' bank-anim' : ''}">
       ${bankNameRowHtml}
-      <div class="bank-section ${isBankSectionOpen(bi,'fader1')?'is-open':'is-collapsed'}" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
+      <div class="bank-section ${isSectionOpen('fader1')?'is-open':'is-collapsed'}" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
         ${faderSectionContent('fader1', b.fader1, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section ${isBankSectionOpen(bi,'fader2')?'is-open':'is-collapsed'}" data-fader="fader2" onmouseenter="hoverFaderLink('fader2',true)" onmouseleave="hoverFaderLink('fader2',false)">
+      <div class="bank-section ${isSectionOpen('fader2')?'is-open':'is-collapsed'}" data-fader="fader2" onmouseenter="hoverFaderLink('fader2',true)" onmouseleave="hoverFaderLink('fader2',false)">
         ${faderSectionContent('fader2', b.fader2, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section bank-section-encoder ${isBankSectionOpen(bi,'roller')?'is-open':'is-collapsed'}" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
+      <div class="bank-section bank-section-encoder ${isSectionOpen('roller')?'is-open':'is-collapsed'}" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
         ${encoderSectionContent(b.encoder, bi)}
       </div>
       <div class="bank-section-divider"></div>
-      <div class="bank-section bank-section-macro ${isBankSectionOpen(bi,'macro')?'is-open':'is-collapsed'}" data-fader="macro" onmouseenter="hoverFaderLink('macro',true)" onmouseleave="hoverFaderLink('macro',false)">
+      <div class="bank-section bank-section-macro ${isSectionOpen('macro')?'is-open':'is-collapsed'}" data-fader="macro" onmouseenter="hoverFaderLink('macro',true)" onmouseleave="hoverFaderLink('macro',false)">
         ${macroSectionContent(bi)}
       </div>
     </div>
   `;
   const zm = document.getElementById('zone-macro');
   if (zm) zm.classList.toggle('zone-hidden', !DEVICE_INFO.hid_enabled);
-  if ((b.roller_mode || 'cc') === 'keyswitch' && isBankSectionOpen(bi,'roller')) {
+  if ((b.roller_mode || 'cc') === 'keyswitch' && isSectionOpen('roller')) {
     requestAnimationFrame(() => ksRevealRange(bi, false));
   }
   updateStickySectionHeads();
@@ -2684,7 +2714,7 @@ function faderSectionContent(key, ctrl, bi) {
   const ariaDisplayLabel = escHtml(displayLabel);
   const ccMeaning = musicalCcName(ctrl.cc,`CC ${ctrl.cc}`);
   const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
-  const open = isBankSectionOpen(bi,key);
+  const open = isSectionOpen(key);
   return `
     ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null,'help-faders')}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
@@ -2713,14 +2743,13 @@ function faderSectionContent(key, ctrl, bi) {
         </div>
 
       </div>
-      <div id="err-b${bi}-${key}" style="font-size:12px;color:var(--danger);margin-top:4px;display:${err?'block':'none'}">${escHtml(err)}</div>
+      <div id="err-b${bi}-${key}" class="section-error">${escHtml(err)}</div>
     </div></div>`;
 }
 
 function ccEncoderBody(ctrl, bi) {
   const errs    = validate();
   const encErr  = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
-  const uaccErr = errs.find(e => e.field === `b${bi}.uacc`)?.msg || '';
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
@@ -2749,7 +2778,7 @@ function ccEncoderBody(ctrl, bi) {
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',-1)" aria-label="Decrease roller MIDI channel">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-ch" value="${ctrl.channel+1}" min="1" max="16"
                 oninput="onCtrl(${bi},'encoder','channel',+this.value-1)" aria-label="Roller MIDI channel"
-                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','channel',1)" aria-label="Increase roller MIDI channel">+</button>
             </div>
           </div>
@@ -2759,12 +2788,11 @@ function ccEncoderBody(ctrl, bi) {
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',-1)" aria-label="Decrease roller MIDI CC">−</button><div class="stepper-sep"></div>
               <input type="number" id="b${bi}-encoder-cc" value="${ctrl.cc}" min="0" max="127"
                 oninput="onCtrl(${bi},'encoder','cc',+this.value)" aria-label="Roller MIDI CC"
-                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-encoder"/>
+                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"/>
               <button class="step-btn" onclick="stepCtrl(${bi},'encoder','cc',1)" aria-label="Increase roller MIDI CC">+</button>
             </div>
           </div>
         </div>
-        <div id="err-b${bi}-encoder" style="font-size:12px;color:var(--danger);margin-top:6px;display:${encErr?'block':'none'}">${escHtml(encErr)}</div>
       </div>
 
       <!-- Divider -->
@@ -2774,7 +2802,6 @@ function ccEncoderBody(ctrl, bi) {
       <div class="enc-right">
         <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
         <div class="uacc-grid ks-sequence-grid" id="uacc-grid">${uaccTags}</div>
-        ${uaccErr ? `<div style="font-size:12px;color:var(--danger);margin-top:6px">${escHtml(uaccErr)}</div>` : ''}
         <div class="uacc-add-row" style="margin-top:10px">
           <input type="number" id="uacc-input" min="0" max="127" placeholder="CC 0–127" aria-label="Articulation MIDI CC"
             onkeydown="if(event.key==='Enter')addUacc()"/>
@@ -2949,7 +2976,13 @@ function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc') 
 }
 function encoderPanel(ctrl, bi) {
   const rmode = cfg.banks[bi].roller_mode || 'cc';
-  const open = isBankSectionOpen(bi,'roller');
+  const open = isSectionOpen('roller');
+  // Single error site for the whole roller section, rendered in every mode
+  // (cc/keyswitch/track_nav) — see runValidation(). Before this, keyswitch
+  // mode rendered no error element at all and cc mode's uacc error was a
+  // conditional, id-less div; both left roller errors invisible once #vbar
+  // stopped being shown (final whole-branch review, 2026-08-08).
+  const rollerErr = validate().find(e => e.field === `b${bi}.encoder` || e.field === `b${bi}.uacc`)?.msg || '';
 
   return `
   <div class="panel panel-wide">
@@ -2965,6 +2998,7 @@ function encoderPanel(ctrl, bi) {
         }).join('')}
       </div>
       <div class="roller-mode-content" id="roller-mode-content-${bi}">${rollerModeBodyHtml(ctrl, bi, rmode)}</div>
+      <div id="err-b${bi}-roller" class="section-error">${escHtml(rollerErr)}</div>
     </div>
   </div>`;
 }
@@ -3005,7 +3039,7 @@ function trackNavBody(bi){
 }
 
 function macroSectionContent(bi = activeBank) {   // global long-press macro; always visible, HID gates only runtime
-  const open = isBankSectionOpen(bi,'macro');
+  const open = isSectionOpen('macro');
   const combo = keyComboLabel(cfg.macro_keys || []);
   const summary = DEVICE_INFO.hid_enabled ? (combo === '—' ? {label:'Not assigned'} : {meta:combo}) : {label:'Keyboard off'};
   return `
@@ -3300,21 +3334,13 @@ function onBankRename(bi, val) {
   runValidation();
 }
 
-function snapshotBankSectionState() {
-  return cfg.banks.map((_, i) => ({ has:_openBankSections.has(i), value:_openBankSections.get(i) }));
-}
-function restoreBankSectionState(states) {
-  _openBankSections.clear();
-  states.forEach((state, i) => { if (state.has) _openBankSections.set(i, state.value); });
-}
+// Otevřené sekce jsou od Task A globální (_openSections), ne per-bank, takže
+// je při reorder/duplicate banky není potřeba nikam přenášet — snapshot/
+// restore mechanismus tu dřív byl jen kvůli staré Map<bankIndex,key>.
 function reorderBank(from, to, focusAction = '') {
   if (from === to || from < 0 || to < 0 || from >= cfg.banks.length || to >= cfg.banks.length) return;
-  const states = snapshotBankSectionState();
   const [bank] = cfg.banks.splice(from, 1);
-  const [sectionState] = states.splice(from, 1);
   cfg.banks.splice(to, 0, bank);
-  states.splice(to, 0, sectionState);
-  restoreBankSectionState(states);
 
   if (activeBank === from) activeBank = to;
   else if (from < activeBank && activeBank <= to) activeBank--;
@@ -3346,13 +3372,10 @@ function duplicateBankName(sourceName) {
 }
 function duplicateBank(bi) {
   if (cfg.banks.length >= MAX_BANKS) { toast('i', t('toast.bank_max')); return; }
-  const states = snapshotBankSectionState();
   const copy = JSON.parse(JSON.stringify(cfg.banks[bi]));
   copy.name = duplicateBankName(copy.name || `Bank ${bi+1}`);
   const insertAt = bi + 1;
   cfg.banks.splice(insertAt, 0, copy);
-  states.splice(insertAt, 0, { ...states[bi] });
-  restoreBankSectionState(states);
   activeBank = insertAt;
   dirty = true;
   _lastRenderedBank = -1;
@@ -3903,7 +3926,7 @@ function focusValidationError(index = 0) {
   const bi = Math.max(0, Math.min(cfg.banks.length - 1, Number(match[1])));
   const field = match[2];
   const section = field === 'encoder' || field === 'uacc' ? 'roller' : field;
-  _openBankSections.set(bi, section);
+  _openSections.add(section);   // add, ne set — skok na chybu nesmí zavřít ostatní sekce (zpět akordeon)
   selectBank(bi);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const target = document.getElementById(err.target) || document.getElementById(`section-toggle-${bi}-${section}`);
@@ -3943,33 +3966,33 @@ function runValidation() {
   // already removed this class, so it's unaffected by the guard.
   const skipBtnUpdate = btn?.classList.contains('welcome-floating');
   if(errs.length===0){
-    bar.className='vbar';bar.innerHTML='';
+    bar.className='vbar sr-only';bar.textContent='';
     if (!skipBtnUpdate) {
       if(_sendConfirmed&&!dirty){
-        btn.disabled=true;btn.textContent='✓ Sent';btn.classList.add('sent');btn.classList.remove('review','idle');
+        btn.disabled=true;btn.textContent='✓ Sent';btn.classList.add('sent');btn.classList.remove('review','idle','blocked');
       }else if(!dirty){
         // Nothing to send (fresh load, or already matches the device) — same
         // label/enabled state as normal, just visually quiet. See .send-btn.idle.
-        btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('idle');btn.classList.remove('review','sent');
+        btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('idle');btn.classList.remove('review','sent','blocked');
       }else{
-        btn.disabled=false;btn.textContent=t('btn.send');btn.classList.remove('review','sent','idle');
+        btn.disabled=false;btn.textContent=t('btn.send');btn.classList.remove('review','sent','idle','blocked');
       }
     }
-    if(changeNote)changeNote.classList.remove('has-issues');
   } else {
     const more=errs.length>1?` (+${errs.length-1} more)`:'';
-    bar.className='vbar err';
-    bar.innerHTML=`<button class="vbar-jump" type="button" onclick="focusValidationError(0)" aria-label="Show first configuration error"><span aria-hidden="true">⚠</span><span class="vbar-message">${escHtml(errs[0].msg)}${more}</span><span class="vbar-go">Show</span></button>`;
-    if (!skipBtnUpdate) { btn.disabled=false;btn.textContent='Show error';btn.classList.add('review');btn.classList.remove('sent','idle'); }
-    if(changeNote){setSendChangeNoteText(`${errs.length} issue${errs.length===1?'':'s'} to fix`);changeNote.classList.add('has-issues');}
+    // Jen text pro odečítač obrazovky — žádné tlačítko "Show". Lokaci nese
+    // tečka v hlavičce sekce a na tabu banky (markSectionIssues), samotné
+    // znění chyby inline hláška u pole.
+    bar.className='vbar sr-only';
+    bar.textContent=`${errs[0].msg}${more}`;
+    if (!skipBtnUpdate) { btn.disabled=false;btn.textContent=t('btn.send');btn.classList.add('blocked');btn.classList.remove('sent','idle','review'); }
   }
   cfg.banks.forEach((b,bi) => {
-    ['fader1','fader2','encoder'].forEach(key => {
+    ['fader1','fader2'].forEach(key => {
       const el = document.getElementById(`err-b${bi}-${key}`);
       if (!el) return;
       const e = errs.find(x => x.field === `b${bi}.${key}`);
       el.textContent = e ? e.msg : '';
-      el.style.display = e ? 'block' : 'none';
       // F-02 (functional-audit 2026-07-20): the error text was screen-reader
       // accessible via #vbar (A9) but the individual cc/channel inputs never
       // reflected their own error state — a screen reader user tabbing
@@ -3980,6 +4003,65 @@ function runValidation() {
       if (ccEl) ccEl.setAttribute('aria-invalid', e ? 'true' : 'false');
       if (chEl) chEl.setAttribute('aria-invalid', e ? 'true' : 'false');
     });
+    // Roller section: one error site regardless of mode (cc/keyswitch/
+    // track_nav) — 'encoder' and 'uacc' fields both live here (final
+    // whole-branch review, 2026-08-08, Finding 1).
+    const rollerEl = document.getElementById(`err-b${bi}-roller`);
+    if (rollerEl) {
+      const rollerErrEntry = errs.find(x => x.field === `b${bi}.encoder` || x.field === `b${bi}.uacc`);
+      rollerEl.textContent = rollerErrEntry ? rollerErrEntry.msg : '';
+    }
+    // The cc/channel inputs only exist in Articulation (cc) mode, and their
+    // aria-invalid must reflect the 'encoder' error specifically (not uacc).
+    const encErrEntry = errs.find(x => x.field === `b${bi}.encoder`);
+    const encCcEl = document.getElementById(`b${bi}-encoder-cc`);
+    const encChEl = document.getElementById(`b${bi}-encoder-ch`);
+    if (encCcEl) encCcEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
+    if (encChEl) encChEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
+  });
+  markSectionIssues();
+}
+
+// Mapa validačního `field` -> klíč sekce. 'encoder' i 'uacc' bydlí v roller
+// sekci; 'macro' zatím nemá vlastní validaci, ale klíč je v seznamu níž
+// kvůli symetrii a kvůli tomu, aby se stará tečka uklidila.
+function _issueFieldToSection(field) {
+  const m = /^b(\d+)\.(fader1|fader2|encoder|uacc)$/.exec(field || '');
+  if (!m) return null;
+  return { bi: Number(m[1]), key: (m[2] === 'encoder' || m[2] === 'uacc') ? 'roller' : m[2] };
+}
+function sectionIssueKeys(bi) {
+  const out = new Set();
+  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s && s.bi === bi) out.add(s.key); });
+  return out;
+}
+function banksWithIssues() {
+  const out = new Set();
+  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s) out.add(s.bi); });
+  return out;
+}
+function markSectionIssues() {
+  const keys = sectionIssueKeys(activeBank);
+  ['fader1','fader2','roller','macro'].forEach(key => {
+    const section = document.querySelector(`.bank-section[data-fader="${key}"]`);
+    const head = section && section.querySelector('.section-head');
+    if (!head) return;
+    head.querySelector('.section-issue-dot')?.remove();
+    if (keys.has(key)) {
+      const d = document.createElement('span');
+      d.className = 'section-issue-dot'; d.setAttribute('aria-hidden','true');
+      const slot = head.querySelector('.section-toggle-meta') || head.querySelector('.section-toggle-action') || head;
+      slot.insertBefore(d, slot.firstChild);
+    }
+  });
+  const bad = banksWithIssues();
+  document.querySelectorAll('#bank-tabs .bank-block-tab').forEach((btn, idx) => {
+    btn.querySelector('.bank-tab-issue')?.remove();
+    if (bad.has(idx)) {
+      const d = document.createElement('span');
+      d.className = 'bank-tab-issue'; d.setAttribute('aria-hidden','true');
+      btn.insertBefore(d, btn.children[0] || null);
+    }
   });
 }
 
@@ -4265,7 +4347,6 @@ function showDeviceLoadedFeedback() {
   btn.disabled = false;
   btn.textContent = t('btn.send');
   btn.classList.remove('sent','review');
-  document.getElementById('send-change-note')?.classList.remove('has-issues');
   showSendInlineFeedback('✓ Device loaded');
 }
 async function syncLoadFromDevice() {
@@ -5763,7 +5844,7 @@ function showWelcome() {
     textBlock.classList.remove('welcome-onboarding','welcome-wordmark-beat');
   }
   const btn = document.getElementById('send-btn');
-  btn?.classList.remove('sent','review');
+  btn?.classList.remove('sent','review','blocked');
   btn?.classList.add('welcome-floating','welcome-start');
   // Reset to the normal welcome state first — beats may have hidden these in an
   // earlier first-run this session, and a later reconnect must show normal copy.

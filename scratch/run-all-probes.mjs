@@ -12,6 +12,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const PORT = 8100;
 
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json; charset=utf-8',
+};
+
 const PROBES = [
   'connstate-probe.mjs',
   'connstate-flow-probe.mjs',
@@ -50,6 +59,9 @@ const PROBES = [
   'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
   'controller-toggle-speed-probe.mjs',
+  'sections-independent-probe.mjs',
+  'fader-name-input-width-probe.mjs',
+  'validation-single-signal-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
@@ -61,13 +73,23 @@ const PROBES = [
   'audit/p5-heap-growth.mjs',
 ];
 
+const requestedProbes = process.argv.slice(2);
+const probesToRun = requestedProbes.length ? requestedProbes : PROBES;
+const unknownProbes = probesToRun.filter((name) => !PROBES.includes(name));
+if (unknownProbes.length) {
+  console.error(`Unknown probe(s): ${unknownProbes.join(', ')}`);
+  console.error('Use a path exactly as listed in scratch/run-all-probes.mjs.');
+  process.exit(2);
+}
+
 function startServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const reqPath = req.url === '/' ? '/feel-fader.html' : req.url.split('?')[0];
       fs.readFile(path.join(root, decodeURIComponent(reqPath)), (err, data) => {
         if (err) { res.writeHead(404); res.end(); return; }
-        res.writeHead(200, { 'Content-Type': reqPath.endsWith('.html') ? 'text/html' : 'application/octet-stream' });
+        const type = CONTENT_TYPES[path.extname(reqPath).toLowerCase()] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': type });
         res.end(data);
       });
     });
@@ -88,7 +110,7 @@ function runProbe(name) {
 const server = await startServer();
 let totalPass = 0, totalFail = 0, crashed = [];
 
-for (const probe of PROBES) {
+for (const probe of probesToRun) {
   const { code, out } = await runProbe(probe);
   const pass = (out.match(/^\s*PASS /gm) || []).length;
   const fail = (out.match(/^\s*FAIL /gm) || []).length;
@@ -99,9 +121,11 @@ for (const probe of PROBES) {
     console.log(out.split('\n').slice(0, 6).join('\n'));
   } else {
     console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} — ${pass} pass, ${fail} fail`);
+    if (fail > 0) console.log(out.trim());
   }
 }
 
 server.close();
-console.log(`\n${totalPass} passed, ${totalFail} failed, ${crashed.length} crashed (${PROBES.length} probes)`);
+const probeLabel = probesToRun.length === 1 ? 'probe' : 'probes';
+console.log(`\n${totalPass} passed, ${totalFail} failed, ${crashed.length} crashed (${probesToRun.length} ${probeLabel})`);
 process.exit(totalFail > 0 || crashed.length > 0 ? 1 : 0);
