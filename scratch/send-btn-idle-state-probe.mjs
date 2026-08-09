@@ -100,6 +100,79 @@ P('no-op send does NOT produce the green "✓ Sent" state', !noopRes.sent && noo
 P('no-op send surfaces a quiet "Already in sync" inline confirmation instead',
   noopRes.noteVisible && noopRes.noteFeedback && /already in sync/i.test(noopRes.noteText), JSON.stringify(noopRes));
 
+// --- Fix round 1 (2026-08-09): syncSendMine() ("Overwrite device" in the
+// sync banner) only ever runs from the !dirty branch of onDeviceConnected()
+// — that's precisely the scenario the no-op suppression above was blind to,
+// since `dirty` answers "edited locally", not "device already has this".
+// The banner exists BECAUSE the device's config_hash drifted from the last
+// one we confirmed, so overwriting it is a real, meaningful write and must
+// still get the green "✓ Sent" confirmation, never "Already in sync". Drives
+// the real path: protocolVersion 2, a stored (last-confirmed) hash that
+// disagrees with the device's current config_hash — the exact condition
+// showSyncBanner('differs') is raised under in onDeviceConnected() — then
+// calls syncSendMine() itself (the sync banner's "Overwrite device" button's
+// own onclick), not doSend() directly.
+async function pokeFakeSerialPortV2WithAck() {
+  return p.evaluate(() => {
+    class FakePort {
+      constructor() { this._chunks = []; this._resolvers = []; this.onWrite = null; }
+      push(str) {
+        const bytes = new TextEncoder().encode(str);
+        if (this._resolvers.length) this._resolvers.shift()({ value: bytes, done: false });
+        else this._chunks.push(bytes);
+      }
+      get readable() {
+        const self = this;
+        return { getReader() { return {
+          read() {
+            if (self._chunks.length) return Promise.resolve({ value: self._chunks.shift(), done: false });
+            return new Promise((resolve) => { self._resolvers.push(resolve); });
+          },
+          releaseLock() {},
+        }; } };
+      }
+      get writable() {
+        const self = this;
+        return { getWriter() { return { write(chunk) { self.onWrite && self.onWrite(chunk); return Promise.resolve(); }, releaseLock() {} }; } };
+      }
+    }
+    const port = new FakePort();
+    port.onWrite = (chunk) => {
+      const rid = new TextDecoder().decode(chunk).trim().split(':')[1];
+      port.push(`ACK:${rid}:new-hash-after-overwrite\n`);
+    };
+    protocolVersion = 2;
+    _serialPort = port;
+  });
+}
+
+await pokeFakeSerialPortV2WithAck();
+let overwriteRes = await p.evaluate(async () => {
+  // Same shape onDeviceConnected() builds for the 'differs' sync banner:
+  // dirty is false (no local edits — that's the whole reason `dirty` alone
+  // used to misclassify this as a no-op), but the last device-confirmed
+  // hash disagrees with the device's current one.
+  dirty = false; _sendConfirmed = false;
+  DEVICE_INFO.config_hash = 'device-current-hash';
+  localStorage.setItem('ff-last-hash', 'stale-confirmed-hash');
+  render();
+  await syncSendMine();   // the sync banner's "Overwrite device" button's own onclick
+  return null;
+});
+await new Promise(r => setTimeout(r, 300));
+overwriteRes = await p.evaluate(() => {
+  const btn = document.getElementById('send-btn');
+  const note = document.getElementById('send-change-note');
+  return {
+    sent: btn.classList.contains('sent'), idle: btn.classList.contains('idle'),
+    text: btn.textContent, disabled: btn.disabled,
+    noteText: note.textContent,
+  };
+});
+P('"Overwrite device" (sync banner, hashes disagree) still turns green "✓ Sent", not "Already in sync"',
+  overwriteRes.sent && !overwriteRes.idle && overwriteRes.text === '✓ Sent' && overwriteRes.disabled && !/already in sync/i.test(overwriteRes.noteText),
+  JSON.stringify(overwriteRes));
+
 // --- Issue 2 (2026-08-09): .blocked's hover must read the same as .idle's —
 // only the resting-state border stays as the quiet differentiator. Parsed
 // against the live stylesheet (not string-matched, not forced via :hover)

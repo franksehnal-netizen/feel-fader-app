@@ -4797,12 +4797,29 @@ async function doSend() {
   if (validate().length) { toast('e', t('toast.fix_errors')); return; }
   if (!navigator.serial) { toast('e', 'Web Serial not supported in this browser — use Chrome or Edge to send to your device.'); return; }
   if (!_ffConnected && !_serialPort) toast('i', "No device on MIDI — choose your Feel Fader's USB serial port to continue.");
-  // Captured before the send resolves: the .idle button is deliberately still
-  // clickable (Frank 2026-07-20, "muted, not disabled") so re-sending an
-  // unchanged config is a legitimate, useful action — but it didn't actually
-  // change anything on the device, so it must not get the same green "✓ Sent"
-  // celebration as a real write. See the branch below and .send-btn.idle.
+  // Captured before the send resolves. `dirty` alone answers "has the user
+  // edited anything since the last sync" — NOT "does the device already
+  // have this exact config". Those usually coincide (the docked button:
+  // .idle button is deliberately still clickable, Frank 2026-07-20, "muted,
+  // not disabled", so re-sending an unchanged config is legitimate but must
+  // not get the same green celebration as a real write) but they diverge
+  // for syncSendMine() ("Overwrite device" in the sync banner): it only
+  // ever fires from the !dirty branch of onDeviceConnected(), yet exists
+  // specifically because the device's config_hash has drifted from the
+  // last one we confirmed — that IS a real, meaningful write and must get
+  // the normal "✓ Sent" confirmation. So: no-op requires BOTH !dirty AND a
+  // known-matching hash; an unknown hash (either side null, or legacy
+  // protocolVersion 1 with no hash reporting at all) never counts as a
+  // match on its own — protocolVersion 1 falls back to trusting `dirty`
+  // alone, same as before hash tracking existed, since it has no hash to
+  // compare in the first place. Bug found in fix-round-1 review, 2026-08-09.
   const wasDirty = dirty;
+  let storedHash = null;
+  try { storedHash = localStorage.getItem(LS_HASH_KEY); } catch(_) {}
+  const deviceConfirmedMatch = protocolVersion === 2
+    ? (!!storedHash && !!DEVICE_INFO.config_hash && storedHash === DEVICE_INFO.config_hash)
+    : true;
+  const isNoOpSend = !wasDirty && deviceConfirmedMatch;
   const sendButtons = [...document.querySelectorAll('[data-send-button]')];
   sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '…sending'; btn.classList.remove('sent','review','idle'); });
   try {
@@ -4814,15 +4831,15 @@ async function doSend() {
     }
     cfgSave();
     dirty = false;
-    _sendConfirmed = wasDirty;
+    _sendConfirmed = !isNoOpSend;
     markConfigSynced();
-    showSendInlineFeedback(wasDirty ? ('✓ ' + t('toast.config_sent')) : t('toast.already_in_sync'));
+    showSendInlineFeedback(isNoOpSend ? t('toast.already_in_sync') : ('✓ ' + t('toast.config_sent')));
     reflectDirty();
     renderMidiDiagnostics();
-    if (wasDirty) {
-      sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '✓ Sent'; btn.classList.add('sent'); btn.classList.remove('idle'); });
-    } else {
+    if (isNoOpSend) {
       sendButtons.forEach(btn => { btn.disabled = false; btn.textContent = t('btn.send'); btn.classList.add('idle'); btn.classList.remove('sent'); });
+    } else {
+      sendButtons.forEach(btn => { btn.disabled = true; btn.textContent = '✓ Sent'; btn.classList.add('sent'); btn.classList.remove('idle'); });
     }
   } catch(e) {
     console.warn('[Send] failed:', e);
