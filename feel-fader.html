@@ -1120,8 +1120,8 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .device-wrap.welcome-mode .device-img{box-shadow:none;position:relative;z-index:1}
 .device-wrap.welcome-mode .ctrl-zone{display:none}
 .welcome-copy-stage{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  position:relative;width:100%;height:50px;flex:0 0 50px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
+  position:relative;width:100%;height:74px;flex:0 0 74px;
 }
 #welcome-text-block.welcome-onboarding .welcome-copy-stage{
   position:fixed;
@@ -1152,7 +1152,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .welcome-action-slot{display:flex;align-items:center;justify-content:center;width:100%;height:38px;margin:4px 0 2px}
 @media(min-width:601px){
   .welcome-inner{gap:2px}
-  .welcome-copy-stage{height:32px;flex-basis:32px}
+  .welcome-copy-stage{height:56px;flex-basis:56px}
   .welcome-action-slot{margin:0}
 }
 .welcome-start{
