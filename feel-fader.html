@@ -204,6 +204,7 @@ header{
 .live-hud-item:not(.live-hud-roller) .live-hud-meter-fill{position:absolute;right:0;bottom:0;left:0;width:100%;height:var(--live-level,0%);background:linear-gradient(0deg,#8e8e93,#aeaeb2);transition:height .06s linear}
 .live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
 .live-hud-tech{color:var(--t3);font:600 6.25px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+.live-hud-tech.has-issue{color:var(--danger)}
 .live-hud-roller{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(16px,1fr) minmax(0,48px);grid-template-rows:auto auto;align-items:center;column-gap:5px;row-gap:2px;padding-top:5px;border-top:1px solid var(--border)}
 .live-hud-roller .live-hud-tech{grid-column:1/-1;justify-self:center}
 .live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:9px;line-height:11px;letter-spacing:-.02em}
@@ -4113,6 +4114,7 @@ function runValidation() {
     if (encChEl) encChEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
   });
   markSectionIssues();
+  renderLiveStrip();
 }
 
 // Mapa validačního `field` -> klíč sekce. 'encoder' i 'uacc' bydlí v roller
@@ -5196,6 +5198,9 @@ function renderLiveStrip(){
   setTxt('live-f2-label-short', 'R');
   setTxt('live-f1-tech', `Ch${bank.fader1.channel+1}·CC${bank.fader1.cc}`);
   setTxt('live-f2-tech', `Ch${bank.fader2.channel+1}·CC${bank.fader2.cc}`);
+  const liveIssues = sectionIssueKeys(liveBank);
+  document.getElementById('live-f1-tech')?.classList.toggle('has-issue', liveIssues.has('fader1'));
+  document.getElementById('live-f2-tech')?.classList.toggle('has-issue', liveIssues.has('fader2'));
   setLiveValue('live-f1-value', 'live-f1-meter', liveValues.f1, liveSeen.f1);
   setLiveValue('live-f2-value', 'live-f2-meter', liveValues.f2, liveSeen.f2);
 
