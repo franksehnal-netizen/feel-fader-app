@@ -70,6 +70,7 @@ const PROBES = [
   'serial-utf8-chunk-probe.mjs',
   'connect-reveal-sync-probe.mjs',
   'live-note-centered-probe.mjs',
+  'nav-hid-live-combo-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

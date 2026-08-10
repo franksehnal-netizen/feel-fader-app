@@ -5210,6 +5210,12 @@ function renderLiveStrip(){
     rollerValue = liveArticulationName(encLiveVal); rollerMeter = encLiveVal;
   } else if (allowed && mode === 'keyswitch' && ksLiveNote !== null) {
     rollerValue = noteName(ksLiveNote); rollerMeter = ksLiveNote;
+  } else if (allowed && mode === 'track_nav') {
+    // No live "key just triggered" signal exists (track_nav sends raw HID
+    // keystrokes straight to the OS, never over the MIDI/Serial link this
+    // app listens on) — show the configured combo instead (TODO #1, reduced
+    // scope, confirmed 2026-08-10).
+    rollerValue = `${keyComboLabel(bank.nav_keys_cw || [0x52])} / ${keyComboLabel(bank.nav_keys_ccw || [0x51])}`;
   }
   setTxt('live-roller-label', mode === 'keyswitch' ? 'ROLLER · KEYSWITCH' : mode === 'track_nav' ? 'ROLLER · NAVIGATION' : 'ROLLER · ARTICULATION');
   setTxt('live-roller-label-short', mode === 'keyswitch' ? 'KS' : mode === 'track_nav' ? 'NAV' : 'ART');
