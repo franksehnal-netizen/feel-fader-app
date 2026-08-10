@@ -102,27 +102,38 @@ signál s tabem/řádkem. Znovupoužívá existující validační mechanismus 1
 
 ## 4. Nadpis "Feel Fader" padá dolů bez tipů (TODO #6)
 
-### Problém
+### Problém — přeměřeno empiricky 2026-08-10, spec revidována
 
-`positionWelcomeAnchor()` (řádek ~5917) dopočítává `--welcome-anchor-top`, aby `#send-btn` zůstal
-na pevné obrazovkové pozici bez ohledu na výšku obsahu nad `#welcome-action-slot`. Když
-`#onb-beats` chybí (`ff-onboarded` už v `localStorage`, `onbShouldRun()` vrací false, `display:none`
-zůstává), karta je kratší → algoritmus zvětší `padding-top`, aby button zůstal na místě → nadpis
-(první element v kartě) vizuálně klesne.
+Původní hypotéza (padding-top kompenzace v `positionWelcomeAnchor()` reaguje na chybějící výšku
+`#onb-beats`) byla vyvrácena měřením v reálném browseru (`skipWelcome`/`showWelcome()` přes
+Puppeteer, 1280×900):
+
+| Stav | `#welcome-wordmark` top | `.welcome-copy-stage` layout |
+|---|---|---|
+| Bez tipů (`ff-onboarded` v localStorage) | **569px** | normální flow, fixní výška 32px (desktop media query, řádek ~1154) |
+| S tipy (`.welcome-onboarding` aktivní) | **262px** | `position:fixed`, vycentrovaný nad controllerem (řádek ~1125-1136) — **mimo flow úplně** |
+
+Rozdíl 307px není layout shift v rámci jednoho systému — jsou to dva **zcela nezávislé** layout
+módy. `.welcome-copy-stage`'s výška je v "bez tipů" stavu už dnes fixní (32px na desktopu,
+50px mobil) bez ohledu na to, jestli je `#onb-beats` `display:none` nebo `block` — žádná
+kompenzace v `positionWelcomeAnchor()` na to nereaguje, protože `#welcome-action-slot`'s pozice
+vůči `.welcome-copy-stage`'s vlastnímu top je konstantní. Reservace místa pro `#onb-beats` (původní
+plán) by tedy nic neopravila, protože nic reálně nekolabuje.
+
+**Rozhodnutí (Frank, 2026-08-10):** nejde o to doslova replikovat fixed/centered-nad-controllerem
+pozici z onboardingu (to by vyžadovalo přepsat layout i pro vracející se uživatele — mimo rozsah).
+Cíl je jednodušší: nadpis v "bez tipů" stavu má mít víc prostoru nad tlačítkem, ať nepůsobí
+nalepený těsně nad ním. Izolovaná CSS změna, `.welcome-onboarding` větev se nedotýká.
 
 ### Řešení
 
-Rezervovat prostor pro `#onb-beats` bez ohledu na viditelnost: dát `.welcome-copy-stage` (nebo
-`#onb-beats` samotnému) pevnou `min-height` odpovídající jeho typické vykreslené výšce (title +
-sub + dots), i když je obsah `display:none`/prázdný — např. místo `display:none` použít
-`visibility:hidden` s `height:0` nahrazenou fixní rezervovanou výškou, nebo jednodušeji: nikdy
-neměnit `.welcome-copy-stage`'s výšku a jen skrýt vnitřní obsah `#onb-beats` (`opacity:0`,
-`pointer-events:none`) místo `display:none`.
-
-**Ověřit při implementaci:** `.welcome-onboarding` větev (řádek ~1132) přepíná
-`.welcome-copy-stage` na `position:fixed`, controller-centered layout, dokud onboarding běží — to
-je nezávislý layout mód, tahle oprava se ho netýká (platí jen pro non-onboarding/"tips hidden"
-stav). Zkontrolovat, že fixní min-height nerozbije přechod mezi oběma módy.
+Přidat fixní odstup nad `.welcome-copy-stage`, aktivní jen když `#onb-beats` je `display:none`
+(tj. mimo onboarding) — např. zvětšit `#welcome-screen`'s efektivní horní mezeru o pevnou konstantu
+pro tenhle stav, nebo dát `#welcome-text-block:not(.welcome-onboarding) .welcome-copy-stage`
+`margin-top` (řádově +40-60px, doladit vizuálně proti aktuálním 569px, kde start karty sedí hned
+pod `--welcome-anchor-top` paddingem). Ověřit, že `positionWelcomeAnchor()`'s pozicování tlačítka
+(`--welcome-anchor-top`) navazuje beze změny — margin je uvnitř karty, nemění, kam se `padding-top`
+počítá vůči `#welcome-action-slot`.
 
 ---
 
