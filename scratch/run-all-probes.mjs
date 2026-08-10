@@ -72,6 +72,7 @@ const PROBES = [
   'live-note-centered-probe.mjs',
   'nav-hid-live-combo-probe.mjs',
   'hover-tip-probe.mjs',
+  'onb-swipe-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
