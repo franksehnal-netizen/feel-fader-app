@@ -937,6 +937,9 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .toast.e .toast-message{color:color-mix(in srgb,var(--danger) 72%,var(--t1))}
 .tx{display:grid;width:26px;height:26px;flex:0 0 26px;margin-left:1px;padding:0;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--t2);cursor:pointer;font:600 11px 'Mulish',sans-serif;transition:background-color .16s ease,color .16s ease,opacity .16s ease,transform .12s ease}
 .tx:hover,.tx:focus-visible{background:var(--control-glass-bg);color:var(--t1);opacity:1}.tx:active{transform:scale(.92)}
+.hover-tip{position:fixed;z-index:300;max-width:220px;padding:6px 10px;border-radius:8px;font:12px/1.4 'Mulish',sans-serif;color:var(--t1);background:var(--chrome-glass-bg);backdrop-filter:var(--chrome-glass-filter);-webkit-backdrop-filter:var(--chrome-glass-filter);border:1px solid var(--chrome-float-border);box-shadow:var(--chrome-glass-shadow);opacity:0;pointer-events:none;transition:opacity .15s ease;}
+.hover-tip.show{opacity:1;}
+.hover-tip[hidden]{display:none;}
 .toast-action{min-height:26px;border:1px solid var(--control-glass-border);background:var(--control-glass-bg);color:var(--t1);border-radius:var(--r-pill);padding:4px 9px;font:600 10px 'Mulish',sans-serif;cursor:pointer;box-shadow:var(--control-glass-shadow)}
 @media(max-width:600px){#toasts{right:16px;bottom:calc(14px + env(safe-area-inset-bottom));left:16px;width:auto;align-items:center}.toast{max-width:min(100%,340px);transform-origin:center bottom}}
 @media(prefers-reduced-motion:reduce){.toast{animation:none;transition:none}.toast.is-leaving{display:none}}
@@ -1885,9 +1888,8 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
         <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t2)">—</span></div>
         <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t2)">—</span></div>
-        <div class="info-row info-row-action">
+        <div class="info-row info-row-action" data-tip="Enable HID to let the device send keystrokes — required for the Navigation roller mode and the button long-press macro.">
           <span class="info-lbl">Keyboard (HID)</span>
-          <button type="button" class="tx" onclick="openHelpAt('help-hid')" aria-label="Help: Keyboard (HID)" title="Help">?</button>
           <label class="hid-switch" title="Required for Navigation and Button Macro">
             <input type="checkbox" id="hid-toggle" onchange="onHidToggle(this.checked)" aria-label="Enable keyboard HID">
             <span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span>
@@ -1994,6 +1996,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 
 <input type="file" id="fi" accept=".json" style="display:none" onchange="onImport(event)"/>
 <div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<div id="hover-tip" class="hover-tip" role="tooltip" hidden></div>
 <div id="sync-banner" class="sync-banner" hidden>
   <span id="sync-banner-text"></span>
   <button class="sync-btn ui-control ui-pill" onclick="syncLoadFromDevice()">Use device version</button>
@@ -2203,12 +2206,12 @@ function setSectionSummary(id, summary) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = sectionSummaryHtml(summary);
 }
-function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor, extra) {
+function sectionHeaderHtml(bi, key, cap, title, summary, tip, extra) {
   const open = isSectionOpen(key);
-  const helpBtn = helpAnchor ? `<button type="button" class="tx" onclick="event.stopPropagation();openHelpAt('${helpAnchor}')" aria-label="Help: ${escHtml(title)}" title="Help">?</button>` : '';
+  const tipAttr = tip ? ` data-tip="${escHtml(tip)}"` : '';
   if (key === 'fader1' || key === 'fader2') {
     const side = key === 'fader1' ? 'Left' : 'Right';
-    return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"
+    return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"${tipAttr}
       onclick="if(!event.target.closest('input,button'))toggleSection('${key}',event)">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
         <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
@@ -2216,7 +2219,6 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor, extra) {
           onblur="if(!this.value.trim()){this.value='${defaultFaderName(key)}';onFaderName(${bi},'${key}',this.value)}"
           onkeydown="if(event.key==='Enter')this.blur()" aria-label="${side} fader display name" />
       </span>
-      ${helpBtn}
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
         onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
         ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
@@ -2775,7 +2777,7 @@ function faderSectionContent(key, ctrl, bi) {
   const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
   const open = isSectionOpen(key);
   return `
-    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null,'help-faders')}
+    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null,'Sends a MIDI CC on a channel you choose. The on-screen fader mirrors the hardware and can\'t be dragged.')}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
     <div class="section-fields">
       <div class="section-field-row">
@@ -6675,6 +6677,42 @@ window.addEventListener('scroll', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', updateMobileSendDock, {passive:true});
 window.addEventListener('resize', updateContextualLiveStrip, {passive:true});
 window.addEventListener('resize', positionLiveNote, {passive:true});
+let _hoverTipTimer = null, _hoverTipEl = null;
+function showHoverTip(el) {
+  const tip = document.getElementById('hover-tip');
+  const text = el.getAttribute('data-tip');
+  if (!tip || !text) return;
+  tip.textContent = text;
+  tip.hidden = false;
+  tip.style.left = '0px'; tip.style.top = '0px';
+  const r = el.getBoundingClientRect();
+  const tr = tip.getBoundingClientRect();
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - tr.width / 2), window.innerWidth - tr.width - 8);
+  tip.style.left = `${left}px`;
+  tip.style.top = `${r.bottom + 8}px`;
+  requestAnimationFrame(() => tip.classList.add('show'));
+}
+function hideHoverTip() {
+  clearTimeout(_hoverTipTimer);
+  _hoverTipEl = null;
+  const tip = document.getElementById('hover-tip');
+  if (!tip) return;
+  tip.classList.remove('show');
+  tip.hidden = true;
+}
+document.addEventListener('mouseover', event => {
+  const el = event.target.closest('[data-tip]');
+  if (!el || el === _hoverTipEl) return;
+  hideHoverTip();
+  _hoverTipEl = el;
+  clearTimeout(_hoverTipTimer);
+  _hoverTipTimer = setTimeout(() => showHoverTip(el), 2000);
+});
+document.addEventListener('mouseout', event => {
+  const el = event.target.closest('[data-tip]');
+  if (!el || (event.relatedTarget && el.contains(event.relatedTarget))) return;
+  hideHoverTip();
+});
 window.addEventListener('resize', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', () => applyLiveHudState(), {passive:true}); // re-clamp custom pos to the new viewport
 window.addEventListener('resize', () => { positionWelcomeAnchor(); positionWelcomeFloatingButton(); }, {passive:true});
