@@ -27,8 +27,10 @@ P('má nějaké Referrer-Policy', !!h.get('referrer-policy'), h.get('referrer-po
 P('má Content-Security-Policy HTTP header', !!h.get('content-security-policy'), h.get('content-security-policy') || 'chybí (GH Pages neumožňuje custom response headers — očekávané, viz report)');
 
 const body = await main.text();
-P('žádné zjevné secrets v served HTML', !/(api[_-]?key|secret|token|-----BEGIN)/i.test(body), 'grep hit — prověřit ručně');
-P('má <meta http-equiv="Content-Security-Policy"> tag v HTML', /<meta[^>]+http-equiv=["']content-security-policy["']/i.test(body), 'chybí meta CSP tag (jediný mechanismus dostupný na GH Pages)');
+const secretsHit = /(api[_-]?key|secret|token|-----BEGIN)/i.test(body);
+P('žádné zjevné secrets v served HTML', !secretsHit, secretsHit ? 'grep hit — prověřit ručně' : 'žádný hit');
+const hasCspMeta = /<meta[^>]+http-equiv=["']content-security-policy["']/i.test(body);
+P('má <meta http-equiv="Content-Security-Policy"> tag v HTML', hasCspMeta, hasCspMeta ? 'přítomný' : 'chybí meta CSP tag (jediný mechanismus dostupný na GH Pages)');
 
 const sensitivePaths = ['/.git/config', '/.superpowers/', '/scratch/', '/docs/', '/package.json', '/node_modules/'];
 for (const path of sensitivePaths) {
