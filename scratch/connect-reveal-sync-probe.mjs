@@ -1,10 +1,22 @@
-// Regression: after connectTransitionWelcome() runs, the live-status HUD and
-// the Send-to-device button must become visible at (very nearly) the same
-// moment. Before this fix: HUD's opacity transition started at T+1100ms
-// (.28s), the button's reveal animation started at T+1450ms (.6s) — a 350ms
-// gap plus a longer total animation, so the button visibly lagged.
-// TODO #3 explicitly overrides an earlier decision (2026-07-21 code comment)
-// to keep them as separate beats — confirmed by Frank 2026-08-10.
+// Regression: after connectTransitionWelcome() runs, the reveal of the
+// live-status HUD and the reveal of the Send-to-device button must be
+// scheduled with the same delay. Before this fix they weren't (HUD's
+// trigger at T+1100ms, button's at T+1450ms) — TODO #3 explicitly overrides
+// an earlier decision (2026-07-21 code comment) to keep them as separate
+// beats, confirmed by Frank 2026-08-10.
+//
+// This does NOT poll rendered opacity to detect "visible" — verified
+// empirically 2026-08-10 that doesn't work here: #send-btn is already
+// opacity:1 (from the earlier "Connect & load" CTA reveal, via the
+// unrelated .welcome-start.show class) before connectTransitionWelcome()
+// ever runs, and the button's later hide-then-reveal happens through a
+// separate body.welcome-connecting CSS-driven fade layered on top of that
+// — so a plain "poll until opacity>=0.99" check reports "visible" at ~20ms
+// regardless of either the old 1450ms delay or the new 1100ms one; it
+// can't discriminate the change at all. Instead this spies on the actual
+// setTimeout call the code makes for revealPostConnectUI — the exact,
+// deterministic thing this task changes — and separately checks the
+// animation-duration change by calling revealPostConnectUI() directly.
 // Spec: 2026-08-10-todo-batch-design.md §5.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -16,30 +28,26 @@ const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
 await p.setViewport({ width: 1280, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 
-const timings = await p.evaluate(() => new Promise(resolve => {
+const r = await p.evaluate(async () => {
   showWelcome();
-  const strip = document.getElementById('live-strip');
-  const btn = document.getElementById('send-btn');
-  let stripVisibleAt = null, btnVisibleAt = null;
-  const t0 = performance.now();
-  const poll = setInterval(() => {
-    if (stripVisibleAt === null && strip.classList.contains('is-contextual-visible') && getComputedStyle(strip).opacity === '1') {
-      stripVisibleAt = performance.now() - t0;
-    }
-    if (btnVisibleAt === null && parseFloat(getComputedStyle(btn).opacity) >= 0.99) {
-      btnVisibleAt = performance.now() - t0;
-    }
-    if (stripVisibleAt !== null && btnVisibleAt !== null) { clearInterval(poll); resolve({ stripVisibleAt, btnVisibleAt }); }
-  }, 20);
-  setTimeout(() => { clearInterval(poll); resolve({ stripVisibleAt, btnVisibleAt }); }, 3000);
+  const captured = [];
+  const origSetTimeout = window.setTimeout;
+  window.setTimeout = function(fn, delay, ...args) {
+    if (fn === revealPostConnectUI) captured.push(delay);
+    return origSetTimeout.call(window, fn, delay, ...args);
+  };
   connectTransitionWelcome();
-}));
+  window.setTimeout = origSetTimeout;
+  await new Promise(res => origSetTimeout(res, 50));
 
-P('both HUD and Send button became visible within 3s', timings.stripVisibleAt !== null && timings.btnVisibleAt !== null, JSON.stringify(timings));
-if (timings.stripVisibleAt !== null && timings.btnVisibleAt !== null) {
-  const gap = Math.abs(timings.btnVisibleAt - timings.stripVisibleAt);
-  P('HUD and Send button reveal within 150ms of each other', gap < 150, `gap=${gap.toFixed(0)}ms strip=${timings.stripVisibleAt.toFixed(0)}ms btn=${timings.btnVisibleAt.toFixed(0)}ms`);
-}
+  const btn = document.getElementById('send-btn');
+  revealPostConnectUI();
+  const animationStr = btn.style.animation;
 
+  return { revealDelay: captured[0], animationStr };
+});
+
+P('revealPostConnectUI is scheduled at the same T+1100ms delay as the HUD reveal', r.revealDelay === 1100, `delay=${r.revealDelay}`);
+P('welcome-btn-reveal animation duration is .3s (matches the HUD\'s .28s opacity transition)', /welcome-btn-reveal/.test(r.animationStr) && /^0?\.3s/.test(r.animationStr), r.animationStr);
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
