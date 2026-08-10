@@ -50,5 +50,23 @@ await new Promise(r => setTimeout(r, 100));
 const neverShown = await p.evaluate(() => document.getElementById('hover-tip').hidden);
 P('tooltip does not appear before 2s of hover', neverShown, String(neverShown));
 
+// Regression: tooltip near the bottom of the viewport must flip above the
+// trigger instead of rendering fully offscreen below it.
+await p.setViewport({ width: 1280, height: 400 });
+await target.evaluate(el => el.scrollIntoView({ block: 'end' }));
+await new Promise(r => setTimeout(r, 100));
+const box2 = await target.boundingBox();
+await p.mouse.move(box2.x + box2.width / 2, box2.y + box2.height / 2);
+await new Promise(r => setTimeout(r, 2100));
+const inViewport = await p.evaluate(() => {
+  const tip = document.getElementById('hover-tip');
+  const r = tip.getBoundingClientRect();
+  return { hidden: tip.hidden, top: r.top, bottom: r.bottom, innerHeight: window.innerHeight, within: r.bottom <= window.innerHeight && r.top >= 0 };
+});
+P('tooltip near viewport bottom stays within the viewport', !inViewport.hidden && inViewport.within, JSON.stringify(inViewport));
+await p.mouse.move(10, 10);
+await new Promise(r => setTimeout(r, 100));
+await p.setViewport({ width: 800, height: 600 });
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

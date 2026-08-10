@@ -2225,6 +2225,7 @@ function sectionHeaderHtml(bi, key, cap, title, summary, tip, extra) {
       </button>
     </div>`;
   }
+  // tipAttr (tooltip text) is intentionally not wired into this branch — only the fader-section branch above uses it today; a future roller/macro tooltip caller would need to add it here.
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
     onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
@@ -5299,7 +5300,7 @@ function positionLiveNote() {
   const headerBottom = header.getBoundingClientRect().bottom;
   const deviceTop = deviceHome.getBoundingClientRect().top;
   const mid = (headerBottom + deviceTop) / 2;
-  note.style.top = `${mid - stageTop - note.offsetHeight / 2}px`;
+  note.style.top = `${Math.max(0, mid - stageTop - note.offsetHeight / 2)}px`;
 }
 function toggleStatusReveal(event) {
   const status = document.getElementById('h-status');
@@ -6250,7 +6251,10 @@ function onbBeatNext() { onbBeatGo(_onbBeat + 1); }
     if (dragStartX === null) return;
     const dx = event.clientX - dragStartX;
     dragStartX = null;
-    if (Math.abs(dx) < 40) return;
+    if (Math.abs(dx) < 40) {
+      if (_onbBeat < 2) _onbBeatTimer = setTimeout(onbBeatNext, 4000);
+      return;
+    }
     onbBeatGo(_onbBeat + (dx < 0 ? 1 : -1));
   });
   beats.addEventListener('pointercancel', () => { dragStartX = null; });
@@ -6701,6 +6705,7 @@ function showHoverTip(el) {
   const tip = document.getElementById('hover-tip');
   const text = el.getAttribute('data-tip');
   if (!tip || !text) return;
+  if (!el.isConnected) return;
   tip.textContent = text;
   tip.hidden = false;
   tip.style.left = '0px'; tip.style.top = '0px';
@@ -6708,7 +6713,8 @@ function showHoverTip(el) {
   const tr = tip.getBoundingClientRect();
   const left = Math.min(Math.max(8, r.left + r.width / 2 - tr.width / 2), window.innerWidth - tr.width - 8);
   tip.style.left = `${left}px`;
-  tip.style.top = `${r.bottom + 8}px`;
+  const below = r.bottom + 8;
+  tip.style.top = `${below + tr.height + 8 > window.innerHeight ? Math.max(8, r.top - tr.height - 8) : below}px`;
   requestAnimationFrame(() => tip.classList.add('show'));
 }
 function hideHoverTip() {
@@ -6728,6 +6734,19 @@ document.addEventListener('mouseover', event => {
   _hoverTipTimer = setTimeout(() => showHoverTip(el), 2000);
 });
 document.addEventListener('mouseout', event => {
+  const el = event.target.closest('[data-tip]');
+  if (!el || (event.relatedTarget && el.contains(event.relatedTarget))) return;
+  hideHoverTip();
+});
+document.addEventListener('focusin', event => {
+  const el = event.target.closest('[data-tip]');
+  if (!el || el === _hoverTipEl) return;
+  hideHoverTip();
+  _hoverTipEl = el;
+  clearTimeout(_hoverTipTimer);
+  _hoverTipTimer = setTimeout(() => showHoverTip(el), 2000);
+});
+document.addEventListener('focusout', event => {
   const el = event.target.closest('[data-tip]');
   if (!el || (event.relatedTarget && el.contains(event.relatedTarget))) return;
   hideHoverTip();
