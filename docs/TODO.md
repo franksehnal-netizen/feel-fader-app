@@ -46,7 +46,11 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 Testy: 9 nových probes (`art-row-stable-height`, `section-toggle-focus-ring`,
 `live-strip-validation-signal`, `welcome-heading-gap`, `connect-reveal-sync`,
 `live-note-centered`, `nav-hid-live-combo`, `hover-tip`, `onb-swipe`), registrované v
-`scratch/run-all-probes.mjs`. Celá sada: `npm test` zelená.
+`scratch/run-all-probes.mjs`. Celá sada: `npm test` — 504 passed, 4 failed, 0 crashed.
+4 selhání jsou předexistující a nesouvisí se žádnou z 9 položek výše:
+`send-dock-gap-symmetry-probe.mjs` (2×, 2px asymetrie dockovaného Send tlačítka,
+zaznamenáno už před touto vlnou) a `mobile-ux-probe.mjs` (2×, pravděpodobně
+`prefers-reduced-motion` závislé na OS nastavení stroje, ne na kódu appky).
 
 ### 2026-08-09 — Send to device: klik na neaktivní stav a hover na blocked
 
