@@ -2179,11 +2179,17 @@ function liveArticulationName(value) { return uaccName(value); }
 // je "všechno zavřené"; stav se záměrně nepersistuje do localStorage.
 const _openSections = new Set();
 function isSectionOpen(key) { return _openSections.has(key); }
-function toggleSection(key) {
+function toggleSection(key, event) {
   if (_openSections.has(key)) _openSections.delete(key); else _openSections.add(key);
   renderPanels();
   runValidation();
-  requestAnimationFrame(() => document.getElementById(`section-toggle-${activeBank}-${key}`)?.focus());
+  // event.detail === 0 identifies a keyboard/Enter-triggered click (real
+  // mouse clicks report detail >= 1) — only steal focus for keyboard nav,
+  // so a mouse click doesn't leave a programmatic-focus ring behind on the
+  // freshly re-rendered button (TODO #8).
+  if (!event || event.detail === 0) {
+    requestAnimationFrame(() => document.getElementById(`section-toggle-${activeBank}-${key}`)?.focus());
+  }
 }
 function sectionSummaryHtml(summary) {
   const parts = typeof summary === 'string' ? {meta:summary} : (summary || {});
@@ -2202,7 +2208,7 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor, extra) {
   if (key === 'fader1' || key === 'fader2') {
     const side = key === 'fader1' ? 'Left' : 'Right';
     return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"
-      onclick="if(!event.target.closest('input,button'))toggleSection('${key}')">
+      onclick="if(!event.target.closest('input,button'))toggleSection('${key}',event)">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
         <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
           oninput="onFaderName(${bi},'${key}',this.value)"
@@ -2211,13 +2217,13 @@ function sectionHeaderHtml(bi, key, cap, title, summary, helpAnchor, extra) {
       </span>
       ${helpBtn}
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
-        onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
+        onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
         ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
       </button>
     </div>`;
   }
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"
-    onclick="toggleSection('${key}')" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
+    onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
       <span class="section-toggle-meta">${extra||''}${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;

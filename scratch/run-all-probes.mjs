@@ -60,6 +60,7 @@ const PROBES = [
   'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
   'controller-toggle-speed-probe.mjs',
+  'section-toggle-focus-ring-probe.mjs',
   'sections-independent-probe.mjs',
   'fader-name-input-width-probe.mjs',
   'validation-single-signal-probe.mjs',
