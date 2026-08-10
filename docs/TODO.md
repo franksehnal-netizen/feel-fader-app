@@ -52,6 +52,48 @@ Testy: 9 nových probes (`art-row-stable-height`, `section-toggle-focus-ring`,
 zaznamenáno už před touto vlnou) a `mobile-ux-probe.mjs` (2×, pravděpodobně
 `prefers-reduced-motion` závislé na OS nastavení stroje, ne na kódu appky).
 
+### 2026-08-10 — Živý HW test: doladění + 3 další nálezy
+
+Nálezy z Frankova ručního testu na reálném zařízení (COM4), po dávce výše.
+
+1. **ART řádek (roller live-hud): zbytečný vodorovný indikátor.** Odstraněn
+   `.live-hud-meter` z roller řádku (HTML i JS), text zarovnán doleva místo na
+   střed (deskop i mobilní breakpoint). Font-size navíc přestal per-délku
+   zmenšovat (`.is-long`/`.is-very-long` už nemění velikost, jen ellipsis) —
+   viditelná změna velikosti při každé nové artikulaci působila rušivě.
+2. **Send-to-device reveal: krátké probliknutí.** Dva samostatné
+   `setTimeout(...,1100)` (HUD reveal + button reveal) mohly zřídka závodit —
+   pokud prohlížeč stihl vykreslit snímek mezi nimi, tlačítko na okamžik
+   naskočilo na plnou viditelnost a hned zase spadlo na 0 při startu vlastní
+   animace. Sloučeno do jednoho callbacku. Na Frankovu žádost navíc obě
+   animace 2× pomalejší (HUD .28s→.56s, tlačítko .3s→.6s), stále v lockstepu.
+3. **Hover tooltips: chyběly pro Roller/Button.** `sectionHeaderHtml()` mělo
+   dvě větve pro hlavičku sekce — `data-tip` atribut byl zapojený jen ve větvi
+   pro FADER sekce, ne v obecné větvi, kterou používá Roller i Button. Opraveno.
+   Tooltips navíc rozšířeny i na diagram nahoře (fader tracky, roller a button
+   zóna) a přepnuty na pozici vždy vpravo dole od kurzoru (dřív se pozicovaly
+   podle prvku, což bylo nekonzistentní).
+4. **Bank tab: modrý focus rám po scrollu.** Stejná třída bugu jako položka 8
+   výše, tentokrát na bank tabu: klik myší → scroll kolečkem → rám se objevil,
+   i když se nic nepřekreslilo. `selectBank()` teď po skutečném myším kliku
+   (`event.detail!==0`, stejný test jako u `toggleSection`) tab odfokusuje;
+   klávesnicová aktivace fokus drží dál.
+5. **`.step-btn:active` červená barva u +/- tlačítek.** Čtena jako chybový
+   stav, přitom to je běžný tap. `--red` → `--green` (stejná paleta jako
+   `.send-btn.sent`).
+6. **"Couldn't sync with device" po reloadu, i když je zařízení v pořádku.**
+   `onDeviceConnected()`'s auto-reconnect (port už dřív povolený) posílal
+   `CMD_INFO` jen jednou; těsně po reloadu mohl první pokus zkolidovat s tím,
+   že OS/prohlížeč ještě doklízí serial reader z předchozí instance stránky.
+   Přidán jeden tichý retry (400ms) před zobrazením chybové hlášky — skutečný
+   výpadek zařízení pořád selže i podruhé a hlášku ukáže.
+
+Testy: 3 nové probes (`step-btn-active-color`, `bank-tab-blur`,
+`reconnect-info-retry`) + úprava `connect-reveal-sync-probe.mjs` na nový tvar
+(jeden konsolidovaný callback místo dvou závodících timerů, .6s/.56s timing).
+Celá sada: `npm test` — 522 passed, 2 failed, 0 crashed (stejná 2 pre-existing
+mobile-ux selhání jako výše).
+
 ### 2026-08-09 — Send to device: klik na neaktivní stav a hover na blocked
 
 1. **Klik na "neaktivní" Send to device zezelená na "✓ Sent", i když se nic
