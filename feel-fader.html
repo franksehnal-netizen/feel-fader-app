@@ -291,7 +291,7 @@ main{width:100%;}
 
 
 /* SEND / LOAD */
-.live-note{margin:6px 0 0;font-size:12px;color:var(--t3);text-align:center;line-height:1.4;}
+.live-note{position:absolute;left:50%;transform:translateX(-50%);margin:0;font-size:12px;color:var(--t3);text-align:center;line-height:1.4;width:max-content;max-width:calc(100% - 32px);}
 .live-note[hidden]{display:none;}
 .send-callout{
   display:flex;
@@ -5268,7 +5268,7 @@ function renderConnState(){
   }
   if (note) {
     note.hidden = (s !== 'CONNECTED_BLIND');
-    if (s === 'CONNECTED_BLIND') note.textContent = t('live.note_unavailable');
+    if (s === 'CONNECTED_BLIND') { note.textContent = t('live.note_unavailable'); positionLiveNote(); }
   }
   if (s === 'MIDI_BLOCKED') {
     txt.title = _midiState === 'unsupported' ? t('midi.unavailable_help') : t('midi.denied_help');
@@ -5280,6 +5280,18 @@ function renderConnState(){
   renderLiveStrip();
   renderMidiDiagnostics();
   updateNvmDegradedNotice();
+}
+function positionLiveNote() {
+  const note = document.getElementById('live-note');
+  const stage = document.querySelector('.stage');
+  const header = document.querySelector('header');
+  const deviceHome = document.getElementById('device-home');
+  if (!note || !stage || !header || !deviceHome || note.hidden) return;
+  const stageTop = stage.getBoundingClientRect().top;
+  const headerBottom = header.getBoundingClientRect().bottom;
+  const deviceTop = deviceHome.getBoundingClientRect().top;
+  const mid = (headerBottom + deviceTop) / 2;
+  note.style.top = `${mid - stageTop - note.offsetHeight / 2}px`;
 }
 function toggleStatusReveal(event) {
   const status = document.getElementById('h-status');
@@ -6656,6 +6668,7 @@ window.addEventListener('scroll', updateContextualLiveStrip, {passive:true});
 window.addEventListener('scroll', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', updateMobileSendDock, {passive:true});
 window.addEventListener('resize', updateContextualLiveStrip, {passive:true});
+window.addEventListener('resize', positionLiveNote, {passive:true});
 window.addEventListener('resize', updateStickySectionHeads, {passive:true});
 window.addEventListener('resize', () => applyLiveHudState(), {passive:true}); // re-clamp custom pos to the new viewport
 window.addEventListener('resize', () => { positionWelcomeAnchor(); positionWelcomeFloatingButton(); }, {passive:true});
