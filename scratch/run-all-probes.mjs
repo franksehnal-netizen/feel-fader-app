@@ -68,6 +68,7 @@ const PROBES = [
   'live-strip-validation-signal-probe.mjs',
   'per-bank-macro-probe.mjs',
   'serial-utf8-chunk-probe.mjs',
+  'connect-reveal-sync-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

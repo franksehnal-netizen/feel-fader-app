@@ -5881,7 +5881,7 @@ function revealPostConnectUI() {
     if (reduced) {
       btn.style.opacity = '1';
     } else {
-      btn.style.animation = 'welcome-btn-reveal .6s ease';
+      btn.style.animation = 'welcome-btn-reveal .3s ease';
       btn.addEventListener('animationend', () => { btn.style.animation = ''; btn.style.opacity = ''; }, { once: true });
     }
   }
@@ -6093,10 +6093,10 @@ function connectTransitionWelcome() {
     // after the user scrolled down (Frank 2026-07-27).
     updateContextualLiveStrip();
   }, 1100);
-  // 6. Reveal the button once the app has actually finished opening, as its
-  // own distinct beat — not bundled into the moment above (Frank, 2026-07-21:
-  // "at se tam to send to device objevi az plynule po otevreni te appky").
-  setTimeout(revealPostConnectUI, 1450);
+  // 6. Reveal the button in lockstep with the live HUD above (both start at
+  // T+1100ms) — previously a separate, later beat at T+1450ms (Frank,
+  // 2026-07-21); revised 2026-08-10 (TODO #3) so the two read as one moment.
+  setTimeout(revealPostConnectUI, 1100);
 }
 
 function hideWelcome() {

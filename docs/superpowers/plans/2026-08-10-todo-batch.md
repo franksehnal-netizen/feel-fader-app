@@ -57,17 +57,24 @@ await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0
 const r = await p.evaluate(async () => {
   skipWelcome();
   _ffConnected = true; _midiState = 'granted';
-  encLiveVal = 44; // a plain, short articulation name first
+  // Drive both states through the real renderLiveStrip() code path (not by
+  // hand-writing textContent/classList afterward — that bypasses the actual
+  // is-long/is-very-long computation and can mask or fake the bug). Use real
+  // UACC_NAMES entries: value 1 = 'Legato' (6 chars, plain), value 26 =
+  // 'Long — Sul Ponticello' (22 chars, triggers is-very-long) — the exact
+  // pairing TODO #2 itself names ("Short — D…" ↔ "Long — Sul...").
+  // .live-hud has CSS transitions up to .38s (width/height/padding/border-radius)
+  // and .36s (transform/top/left) — wait 600ms after each render, comfortably
+  // past all of them, or the measurement catches the HUD's own reveal/reposition
+  // transition mid-flight and reports a false difference unrelated to row height.
+  encLiveVal = 1;
   renderLiveStrip();
-  await new Promise(res => setTimeout(res, 100));
+  await new Promise(res => setTimeout(res, 600));
   const techShort = document.getElementById('live-roller-tech').getBoundingClientRect().top;
 
-  // Force the longest label variant by writing a long name directly onto the
-  // value element the way renderLiveStrip() would for a long UACC name.
-  const valueEl = document.getElementById('live-roller-value');
-  valueEl.textContent = 'A very long articulation name indeed';
-  valueEl.classList.add('is-very-long');
-  await new Promise(res => setTimeout(res, 100));
+  encLiveVal = 26;
+  renderLiveStrip();
+  await new Promise(res => setTimeout(res, 600));
   const techLong = document.getElementById('live-roller-tech').getBoundingClientRect().top;
 
   return { techShort, techLong };
@@ -82,7 +89,7 @@ await b.close();
 - [ ] **Step 2: Run it to confirm it fails**
 
 Run: `npm test -- art-row-stable-height-probe.mjs`
-Expected: `FAIL  live-roller-tech row does not move...` (row shifts by ~1-2px because `is-very-long` drops font-size, shrinking the 'normal' line-height).
+Expected: `FAIL  live-roller-tech row does not move...` (row shifts by ~2.4px because `is-very-long` drops font-size, shrinking the 'normal' line-height — verified 2026-08-10 via direct measurement: `.live-hud-roller`'s internal `grid-template-rows` stays byte-identical between states once `line-height` is fixed, so this is purely the value cell's line-height collapsing with font-size, not a grid/track issue).
 
 - [ ] **Step 3: Fix the CSS**
 
@@ -134,11 +141,21 @@ Create `scratch/section-toggle-focus-ring-probe.mjs`:
 
 ```js
 // Regression: clicking a section header's expand/collapse control with the
-// mouse must not leave a visible :focus-visible ring on it — toggleSection()
-// re-focuses the (freshly re-rendered) toggle button on every call, and a
-// programmatic .focus() following a real mouse click was showing the ring
-// anyway (Chromium's :focus-visible heuristic treats it as non-mouse-derived
-// once the DOM node has been swapped by renderPanels()).
+// mouse must not steal focus onto the freshly re-rendered toggle button —
+// toggleSection() re-focuses it unconditionally on every call today, which
+// moves focus to the button after ANY click, mouse or keyboard alike
+// (confirmed empirically 2026-08-10: document.activeElement becomes the
+// toggle button after a plain Puppeteer .click() on unmodified code). The
+// fix only re-focuses on keyboard-driven activation — a click event with
+// detail === 0 (verified empirically: a real Puppeteer mouse click reports
+// event.detail === 1; a keyboard Enter press on a focused button reports
+// event.detail === 0). This probe checks document.activeElement directly
+// rather than the :focus-visible CSS pseudo-class: :focus-visible did not
+// reliably distinguish mouse vs. keyboard focus for CDP-dispatched clicks
+// in headless Chrome during manual verification (it read false in both
+// cases, before AND after the fix), so it can't discriminate this bug —
+// activeElement identity is the concrete, deterministic thing the fix
+// actually changes.
 // Spec: 2026-08-10-todo-batch-design.md §2.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -151,27 +168,23 @@ await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0
 await p.evaluate(() => { skipWelcome(); });
 await new Promise(r => setTimeout(r, 300));
 
-// Real mouse click on the macro section's expand button.
+// Real mouse click on the macro section's expand button. Nothing should be
+// focused beforehand, so a positive result can't be a leftover from setup.
+await p.evaluate(() => document.activeElement?.blur());
 const macroToggle = await p.$('#section-toggle-0-macro');
 await macroToggle.click();
 await new Promise(r => setTimeout(r, 100));
-const mouseClickHasRing = await p.evaluate(() => {
-  const el = document.getElementById('section-toggle-0-macro');
-  return el === document.activeElement && el.matches(':focus-visible');
-});
-P('mouse click on section toggle does not show :focus-visible', !mouseClickHasRing, String(mouseClickHasRing));
+const afterMouseClick = await p.evaluate(() => document.activeElement?.id || null);
+P('mouse click does not move focus onto the section toggle', afterMouseClick !== 'section-toggle-0-macro', `activeElement=${afterMouseClick}`);
 
-// Keyboard activation (Tab + Enter) must still show the ring and move focus.
-await macroToggle.click(); // close it again first (toggle back to collapsed)
-await p.evaluate(() => document.getElementById('section-toggle-0-macro').blur());
-await p.evaluate(() => document.getElementById('section-toggle-0-macro').focus());
+// Keyboard activation must still move focus there (no regression). Focus
+// the button via JS first (simulating arrival by Tab), then press Enter —
+// a real Enter-on-a-focused-button click, which reports event.detail === 0.
+await p.evaluate(() => { document.activeElement?.blur(); document.getElementById('section-toggle-0-macro').focus(); });
 await p.keyboard.press('Enter');
 await new Promise(r => setTimeout(r, 100));
-const keyboardHasRing = await p.evaluate(() => {
-  const el = document.getElementById('section-toggle-0-macro');
-  return el === document.activeElement && el.matches(':focus-visible');
-});
-P('keyboard activation (Enter) still shows :focus-visible and keeps focus', keyboardHasRing, String(keyboardHasRing));
+const afterEnter = await p.evaluate(() => document.activeElement?.id || null);
+P('keyboard Enter still moves focus onto the section toggle', afterEnter === 'section-toggle-0-macro', `activeElement=${afterEnter}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
@@ -180,7 +193,7 @@ await b.close();
 - [ ] **Step 2: Run it to confirm the first assertion fails**
 
 Run: `npm test -- section-toggle-focus-ring-probe.mjs`
-Expected: `FAIL  mouse click on section toggle does not show :focus-visible`.
+Expected: `FAIL  mouse click does not move focus onto the section toggle` — `activeElement=section-toggle-0-macro` (unmodified `toggleSection()` always re-focuses, regardless of input source). The second assertion (keyboard Enter) already passes on unmodified code — that's expected, it's the no-regression check.
 
 - [ ] **Step 3: Pass the triggering event through and gate the re-focus**
 
