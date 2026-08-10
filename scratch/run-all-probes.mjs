@@ -44,6 +44,7 @@ const PROBES = [
   'a3-nvm-degraded-notice-probe.mjs',
   'send-without-web-serial-probe.mjs',
   'live-hud-meter-value-gap-probe.mjs',
+  'art-row-stable-height-probe.mjs',
   'footer-pinned-to-bottom-probe.mjs',
   'hide-controller-toggle-probe.mjs',
   'status-pill-polish-probe.mjs',
