@@ -8,60 +8,45 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-1. **Live status bar nezobrazuje triggerované klávesy v HID módu.** Když je
-   aktivní HID (label "HID・keys" u NAV řádku), hodnota vedle NAV zůstává
-   prázdná/pomlčka (`—`) místo toho, aby ukázala skutečné klávesy, které se
-   právě triggerují (analogicky k tomu, jak L/R sloupce ukazují CC hodnotu).
-
-2. **Skok layoutu při přepnutí artikulace.** V ART řádku live status baru se
-   při přepnutí mezi artikulacemi (např. "Short — D…" ↔ "Long — Sul…") mění
-   velikost fontu textu artikulace, což způsobí i drobný svislý odskok řádku
-   "Ch1・CC32" pod ním. Text by měl mít stabilní font-size bez ohledu na
-   délku/obsah názvu artikulace.
-
-3. **Nesouběžný nástup live status baru a "Send to device" po connectu.** Po
-   "Connect & load" a načtení hlavní aplikace se live status bar a tlačítko
-   "Send to device" každé zobrazí zvlášť plynulým fade/transition efektem, ale
-   ne ve stejný okamžik — nejdřív status bar, pak tlačítko. Mají se objevit
-   současně (sladit timing přechodů).
-
-4. **Zrušit ikony s otazníkem odkazující na Help & guide, nahradit hover
-   tooltipy.** Ikony s "?" u funkčních prvků, které odkazují na sekci Help &
-   guide, jsou zbytečné — odstranit je. Místo toho: když uživatel nechá kurzor
-   nad funkčním prvkem cca 2 sekundy, má se objevit malé tooltip okno s
-   informací o daném prvku (inline nápověda místo prokliku do Help & guide).
-
-5. **Přepínání tipů na welcome screenu — nahradit tečky drag interakcí.**
-   Tipy na welcome screenu se teď přepínají klikáním na 3 tečky (dot
-   indikátory). Chtěl by místo/vedle toho, aby to reagovalo na kurzor —
-   uživatel by měl mít pocit, že tip může intuitivně "vzít a potáhnout"
-   (drag/swipe gesto) místo klikání na tečky.
-
-6. **Nadpis "Feel Fader" na welcome screenu spadne dolů, když chybí tipy.**
-   Když je v prohlížeči už zapamatované zařízení, sekce se 3 tipy se
-   nezobrazuje (to je OK) — ale nadpis "Feel Fader" pak spadne přímo nad
-   tlačítko "Connect & load", což nevypadá dobře. Pozice nadpisu má zůstat
-   stejná jako ve stavu, kdy tipy zobrazené jsou (rezervovat místo/nezávislé
-   pozicování, ne aby nadpis "padal" dolů podle přítomnosti tipů).
-
-7. **Text "Live positions unavailable — MIDI not connected" vycentrovat mezi
-   horní lištu a controller.** V hlavní aplikaci (bez připojeného MIDI) je
-   hláška "Live positions unavailable — MIDI not connected" zarovnaná hned pod
-   horní lištou, těsně nad fader controllerem. Chtěl by ji vizuálně vycentrovat
-   na výšku v prostoru mezi horní lištou a horním okrajem controlleru.
-
-8. **Nechtěný modrý focus rám kolem některých prvků.** U některých prvků
-   (např. rozbalený panel "BUTTON · Macro" v Bank editoru) se občas zobrazí
-   modrý ohraničující rám (focus outline). Chtěl by ho odstranit.
-
-9. **Přehledová kartička nereaguje na validační chybu.** Nastavil jsem levému
-   faderu Bank 1 neplatné CC (999, mimo 0–127 rozsah). Tab banky i řádek
-   LEFT FADER v panelu dostanou červenou tečku — konzistentní signál. Ale
-   kompaktní přehledová kartička vlevo nahoře, která je vidět pořád (i se
-   zavřeným panelem banky), dál vypisuje `Ch1-CC999` obyčejným šedým textem,
-   beze změny barvy nebo tečky.
-
 ## Hotovo
+
+### 2026-08-10 — 9 UX nálezů z provozu (batch)
+
+1. **Live status bar nezobrazuje triggerované klávesy v HID módu.** Appka nemá žádný datový
+   kanál pro "právě triggerovaná klávesa" v `track_nav` módu — roller posílá HID přímo do OS,
+   mimo MIDI/Serial spojení, které appka poslouchá. Místo prázdné pomlčky teď ROLLER řádek
+   ukazuje **nakonfigurovanou** kombinaci kláves (`keyComboLabel` pro roll-up/roll-down) —
+   není to live trigger, skutečné live zobrazení by vyžadovalo firmware změnu (mimo rozsah
+   této vlny). Redukovaný scope potvrzen Frankem 2026-08-10.
+2. **Skok layoutu při přepnutí artikulace.** `.live-hud-roller .live-hud-value` dostal pevný
+   `line-height`, takže `.is-long`/`.is-very-long` font-size varianty už neposouvají řádek pod
+   sebou.
+3. **Nesouběžný nástup live status baru a "Send to device" po connectu.** Oba reveal teď startují
+   ve stejném `setTimeout` (T+1100ms) se sladěnou délkou animace (~0.3s). Přepisuje dřívější
+   záměrné rozhodnutí z 2026-07-21 (samostatný beat) — potvrzeno Frankem 2026-08-10.
+4. **Zrušit ikony s otazníkem, nahradit hover tooltipy.** Obě "?" tlačítka (HID řádek, LEFT/RIGHT
+   FADER sekce) odstraněna; nová sdílená `#hover-tip` komponenta s 2s hover delay přes
+   `data-tip` atribut a document-level delegaci.
+5. **Přepínání tipů na welcome screenu — drag interakce.** Přidán pointer-drag/swipe gesto nad
+   `#onb-beats` (práh 40px) vedle stávajících teček — obojí funguje.
+6. **Nadpis "Feel Fader" na welcome screenu.** V "bez tipů" stavu byl nadpis změřením zjištěn
+   glued přímo na tlačítko (0px mezera) — `.welcome-copy-stage` dostal větší rezervovanou výšku
+   (top-aligned místo center), takže teď je mezi nadpisem a tlačítkem ~24px. `positionWelcomeAnchor()`
+   dál drží tlačítko na stejné obrazovkové pozici (ověřeno probem).
+7. **"Live positions unavailable" vycentrováno.** Nová `positionLiveNote()` měří `header`/
+   `#device-home` a `#live-note` pozicuje absolutně na střed mezi nimi (dřív seděl flush u
+   controlleru s celou mezerou nahoře).
+8. **Nechtěný modrý focus rám.** `toggleSection()` teď re-fokusuje jen při klávesové aktivaci
+   (`event.detail === 0`), ne po myším kliku — `renderPanels()` přestavuje DOM při každém
+   přepnutí a programmatic `.focus()` na nový node po myší kliku spouštěl `:focus-visible`.
+9. **Přehledová kartička nereaguje na validační chybu.** `renderLiveStrip()` teď volá
+   `sectionIssueKeys(liveBank)` a barví `#live-f1-tech`/`#live-f2-tech` přes `.has-issue`
+   (`var(--danger)`) — stejný zdroj pravdy jako tab/section tečky.
+
+Testy: 9 nových probes (`art-row-stable-height`, `section-toggle-focus-ring`,
+`live-strip-validation-signal`, `welcome-heading-gap`, `connect-reveal-sync`,
+`live-note-centered`, `nav-hid-live-combo`, `hover-tip`, `onb-swipe`), registrované v
+`scratch/run-all-probes.mjs`. Celá sada: `npm test` zelená.
 
 ### 2026-08-09 — Send to device: klik na neaktivní stav a hover na blocked
 
