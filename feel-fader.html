@@ -2085,7 +2085,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         </div>
       </div>
       <div>
-        <span class="field-label">MY PRESETS</span>
+        <span class="field-label">MY SETUPS</span>
         <div class="custom-preset-list" id="custom-preset-list"></div>
       </div>
     </div>
@@ -4008,7 +4008,7 @@ function validate() {
     ['fader1','fader2','encoder'].forEach(k => {
       const c = b[k];
       const friendly = controlFriendlyName(b,k);
-      if (!c) { console.warn('[V] bank',i,'missing',k,'| keys:',Object.keys(b).join(',')); errs.push({field:`b${i}.${k}`, target:`section-toggle-${i}-${k==='encoder'?'roller':k}`, msg:t('validate.missing_def').replace('{b}', i+1).replace('{k}', friendly)}); return; }
+      if (!c) { console.warn('[V] bank',i,'missing',k,'| keys:',Object.keys(b).join(',')); errs.push({field:`b${i}.${k}`, target:`section-toggle-${i}-${k==='encoder'?'roller':k}`, msg:t('validate.missing_def').replace('{b}', b.name||i+1).replace('{k}', friendly)}); return; }
       if (!Number.isFinite(c.cc) || c.cc < 0 || c.cc > 127)
         errs.push({field:`b${i}.${k}`, target:`b${i}-${k}-cc`, msg:t('validate.cc_range').replace('{b}', b.name||i+1).replace('{k}', friendly)});
       if (!Number.isFinite(c.channel) || c.channel < 0 || c.channel > 15)
@@ -4909,7 +4909,7 @@ function onImport(e){
       // could be written to localStorage even though render() then threw).
       const banksOk = p && typeof p==='object' && !Array.isArray(p) && Array.isArray(p.banks)
         && p.banks.every(b => b && typeof b==='object' && !Array.isArray(b));
-      if(!banksOk){ toast('e','Neplatný config soubor'); return; }
+      if(!banksOk){ toast('e','Invalid config file'); return; }
       p=normalizeFwConfig(p);
       const prevCfg=cfg, prevLoaded=loaded, prevDirty=dirty, prevActiveBank=activeBank;
       cfg=p;loaded=true;dirty=true;activeBank=0;
@@ -4921,7 +4921,7 @@ function onImport(e){
         // cfgSave() so the broken cfg is never persisted.
         cfg=prevCfg;loaded=prevLoaded;dirty=prevDirty;activeBank=prevActiveBank;
         try{render();}catch(_){}
-        toast('e','Neplatný config soubor');
+        toast('e','Invalid config file');
         return;
       }
       cfgSave();
@@ -5365,8 +5365,6 @@ function toast(t,m,action=null){
 // ════════════════════════════════════════════════════════════════
 var TRANSLATIONS = {
   en: {
-    // Header
-    'settings': 'Settings',
     // MIDI banner
     'midi.unavailable': 'MIDI unavailable',
     'midi.unavailable_help': 'Web MIDI is not available in this browser. Open the app in Chrome or Edge to use live device feedback.',
@@ -5375,27 +5373,16 @@ var TRANSLATIONS = {
     'status.no_device': 'no device',
     'status.no_live_view': 'connected · no live view',
     'live.note_unavailable': 'Live positions unavailable — MIDI not connected.',
-    // Panels
-    // Bank
-    // UACC
     // Buttons
     'btn.send': 'Send to device',
-    // Advanced section
-    // Device info
-    'device.show': '▼ show',
-    'device.hide': '▲ hide',
-    // Settings modal
     // Icon picker
     'icon.title': 'Instrument category',
-    // Welcome
-    'welcome.found': 'Device found',
     // Toasts
     'toast.config_sent': 'Configuration sent to device',
     'toast.already_in_sync': 'Already in sync',
     'toast.preset_exported': 'Device backup exported',
     'toast.preset_imported': 'Device backup imported',
     'toast.reset': 'Local configuration reset to factory defaults',
-    'toast.copied': 'Copied to clipboard',
     'toast.clear': 'Articulation list cleared',
     'toast.artic_exists': 'Articulation already exists in this bank',
     // Footer
@@ -5407,7 +5394,7 @@ var TRANSLATIONS = {
     'toast.bank_max': `Maximum ${MAX_BANKS} banks`,
     'midi.denied': 'MIDI blocked',
     'midi.denied_help': 'Allow MIDI devices in this site’s browser settings, then reload the page. Configuration over USB serial can still work without live fader feedback.',
-    'validate.missing_def': 'Bank {b} {k}: missing definition',
+    'validate.missing_def': 'Bank "{b}" {k}: missing definition',
     'validate.cc_range': 'Bank "{b}" {k}: CC must be 0–127',
     'validate.uacc_empty': 'Bank "{b}": articulation list must not be empty',
     'validate.ch_range': 'Bank "{b}" {k}: channel must be 0–15',
@@ -5419,19 +5406,15 @@ var TRANSLATIONS = {
     'onb.beat2.sub': 'This app sets up your device and mirrors it live. It is a configurator and display — not a controller.',
     'onb.beat3.title': 'Connect or explore',
     'onb.beat3.sub': 'Connect your Feel Fader to set it up — or explore the demo without one.',
-    'onb.demo_badge': 'Demo — no device',
     'onb.replay': '▶ Show intro again',
-    // Restored 2026-07-12 — these are referenced via data-i18n (applied by applyLang),
-    // not via t() in JS, so the f30cdb3 "unused keys" cleanup wrongly removed them,
-    // leaving raw keys visible across welcome / footer / advanced settings / device info / icon picker.
+    // Restored 2026-07-12 — referenced via data-i18n (applied by applyLang), not via
+    // t() in JS, so the f30cdb3 "unused keys" cleanup wrongly removed them, leaving
+    // raw keys visible across welcome / footer / device info / icon picker. (The
+    // Backup & reset buttons that used to sit in this same restored block were later
+    // redesigned to hardcoded text and lost their data-i18n hooks — their now-dead
+    // keys, 'btn.export'/'btn.import'/'btn.reset'/'btn.copy'/'advanced.*_desc', were
+    // removed 2026-08-11 launch-audit text pass, not restored here.)
     'welcome.skip': 'Continue without device',
-    'btn.export': '↓ Export preset',
-    'btn.import': '↑ Import preset',
-    'btn.reset': 'Reset',
-    'btn.copy': 'Copy to clipboard',
-    'advanced.export_desc': 'Save current configuration as a JSON file.',
-    'advanced.import_desc': 'Load a previously saved preset.',
-    'advanced.reset_desc': 'Reset all settings to factory defaults.',
     'device.product': 'Product',
     'icon.no_icon': 'No icon',
     'icon.close': 'Close',
@@ -6597,7 +6580,7 @@ function quickSetupMenuHtml(query = '') {
   if (builtIn.length) groups.push(['Libraries',builtIn.map(name => option(name,'Starting point')).join('')]);
   if (custom.length) groups.push(['My setups',custom.map(name => option(name,'My setup')).join('')]);
   return groups.length ? groups.map(([label,items]) => `<div class="quick-setup-group"><div class="quick-setup-group-label">${label}</div>${items}</div>`).join('')
-    : '<div class="quick-setup-empty">No matching presets</div>';
+    : '<div class="quick-setup-empty">No matching setups</div>';
 }
 function refreshBankMenuLayer() {
   const open = document.querySelector('.quick-setup-menu:not([hidden])');
