@@ -481,7 +481,7 @@ async function runProfile(browser, url, profile) {
       redundantSubtitleAbsent: !document.querySelector('#welcome-screen .welcome-sub'),
     };
   });
-  addCheck(checks, 'Normal welcome uses the compact copy slot', Math.abs(compactWelcome.stageHeight - 50) <= 1,
+  addCheck(checks, 'Normal welcome uses the intended breathing-room copy slot', Math.abs(compactWelcome.stageHeight - 74) <= 1,
     `${compactWelcome.stageHeight.toFixed(2)} px`);
   addCheck(checks, 'Normal welcome contains only the brand and essential actions',
     compactWelcome.redundantStatusAbsent && compactWelcome.redundantSubtitleAbsent

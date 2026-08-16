@@ -2,13 +2,16 @@
 
 Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funkční popis UI i technické detaily implementace.
 
-> ℹ️ **Stav (2026-07-20):** Appka roste rychle (3 466 → 5 821 řádků mezi 2026-07-12 a 2026-07-20), takže odkazy na konkrétní čísla řádků byly z tohoto dokumentu odstraněny — místo nich se dokument odkazuje na jména funkcí (dohledatelná greppem, přežijí refaktor). Výjimka: `## 6. Klíčové funkce` níže má sloupec Popis místo Řádek. Funkce odstraněné/přejmenované refaktorem od 06-27 jsou označené `⚠` s ukazatelem na náhradu. **§5 (transport) kompletně přepsána** podle reálného kódu — config jde přes line-based serial protokol, ne přes MIDI SysEx. §0 (design contract) je proti driftu imunní (popisuje `:root`, ne řádky).
+> ℹ️ **Stav (2026-08-16):** `feel-fader.html` je jediný zdroj pravdy a nemá
+> build krok. CSS, JS, fonty i obrázky jsou vložené přímo v něm. Odkazy používají
+> jména funkcí a selektorů, ne čísla řádků. **§5 (transport)** popisuje reálný
+> line-based serial protokol, ne historickou MIDI SysEx cestu.
 
 ---
 
 ## 0. Design System — Contract
 
-> **Invariant:** Barvy, radii a stíny **jen přes tokeny** (`var(--…)`), nikdy hardcoded hex/rgba v komponentě. Motion drží `ease` a durationy z tabulky níže. Kdo tohle poruší, rozbije vizuální jazyk — i když to lokálně „vypadá OK". Tokeny žijí v `:root` (světlý) + `html.dark` (tmavý) na začátku `<style>`.
+> **Invariant:** Barvy, radii a stíny **jen přes tokeny** (`var(--…)`), nikdy hardcoded hex/rgba v komponentě. Motion drží `ease` a durationy z tabulky níže. Kdo tohle poruší, rozbije vizuální jazyk — i když to lokálně „vypadá OK". Tokeny žijí v `:root` (světlý) + `html.dark` (tmavý) na začátku inline `<style>`.
 
 ### Barvy
 
@@ -70,14 +73,15 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 
 ## 1. Přehled
 
-**Soubor:** `feel-fader.html` — jedna HTML stránka (roste rychle, řádově tisíce řádků — přesný počet viz `wc -l feel-fader.html`), žádný build step, žádné závislosti (fonty z Google Fonts).
+**Soubor:** `feel-fader.html` — jediná samostatná HTML stránka bez build kroku.
+Obsahuje strukturu, vzhled, chování i vložené self-hosted fonty a obrázky.
 
 **Účel:** Webový konfigurátor pro hardwarový MIDI kontrolér Feel Fader. Umožňuje nastavit MIDI kanál a CC číslo pro každý fader a enkodér, spravovat presets (banky) a synchronizovat konfiguraci se zařízením.
 
 **Technologie:**
 | Vrstva | Co se používá |
 |---|---|
-| UI | Vanilla JS, CSS animace, IBM Plex Mono + Mulish (Google Fonts) |
+| UI | Vanilla JS, CSS animace, self-hosted IBM Plex Mono + Mulish |
 | MIDI | Web MIDI API (`navigator.requestMIDIAccess`) — detekce zařízení + příjem live hodnot (fader/encoder CC, bank Program Change, keyswitch NoteOn) |
 | Serial | Web Serial API — **jediný transport configu** (read i write); viz §5 |
 | Persistence | `localStorage` — klíč `ff-cfg` |
@@ -93,13 +97,13 @@ Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme 
 
 ```
 feel-fader.html
-├── <style>          CSS blok (na začátku souboru)
+├── <style>          CSS, design tokeny, layout a vložené fonty/obrázky
 ├── <body>
 │   ├── <header>     Stavový řádek + dark mode toggle
 │   ├── <main>       Hlavní obsah (center-col)
 │   ├── #welcome-screen  Uvítací obrazovka (fixed overlay)
 │   ├── #icon-picker Overlay — výběr ikony banku
-│   └── <script>     Veškerý JS (za CSS blokem, tvoří většinu souboru)
+│   └── <script>     Stav, render, MIDI/Serial a interakce
 ```
 
 (Poznámka: starší verze tohoto diagramu uváděla `#modal` — Settings modal byl nahrazen `toggleDeviceSettings()` sekcí, viz §3.9, a `#modal` element v HTML už neexistuje.)
@@ -364,7 +368,7 @@ Web appka rozlišuje dva nezávislé typy záloh:
 
 ### `DEFAULT_CFG`
 
-Definován v `<script>` bloku appky (`const DEFAULT_CFG`, dohledatelné greppem). Obsahuje 3 předdefinované banky (Bank 1–3) s různými CC čísly a kanály. Použije se při prvním spuštění nebo po factory resetu.
+Definován v inline `<script>` bloku appky (`const DEFAULT_CFG`, dohledatelné greppem). Obsahuje 3 předdefinované banky (Bank 1–3) s různými CC čísly a kanály. Použije se při prvním spuštění nebo po factory resetu.
 
 ### localStorage
 
@@ -550,7 +554,7 @@ App drží **web formát** (`cfg` — per-control, viz §4), device posílá **i
 
 ## 7. Fader Layout — Konstanty
 
-Definovány v `<script>` bloku appky, těsně před `layoutFaders()` (dohledatelné greppem po `const FLX`):
+Definovány v inline `<script>` bloku, těsně před `layoutFaders()` (dohledatelné greppem po `const FLX`):
 
 ```js
 const FLX = 0.2289;  // X střed levého faderu (podíl šířky device image)

@@ -2,9 +2,9 @@
 
 Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hotovo** s datem.
 
-> **Pozor na zdroj pravdy:** živý kód je inline `<script>` v
-> [feel-fader.html:2116](../feel-fader.html#L2116). Soubor `app.js` v rootu není
-> trackovaný v gitu a stránka ho nenačítá — je to zastaralý extrakt, needitovat.
+> **Pozor na zdroj pravdy:** živý kód je inline `<style>` a `<script>` v
+> [feel-fader.html](../feel-fader.html). Samostatné pracovní extrakty CSS/JS
+> nevytvářet ani needitovat.
 
 ## Otevřené
 
@@ -51,6 +51,9 @@ Testy: 9 nových probes (`art-row-stable-height`, `section-toggle-focus-ring`,
 `send-dock-gap-symmetry-probe.mjs` (2×, 2px asymetrie dockovaného Send tlačítka,
 zaznamenáno už před touto vlnou) a `mobile-ux-probe.mjs` (2×, pravděpodobně
 `prefers-reduced-motion` závislé na OS nastavení stroje, ne na kódu appky).
+Pozdější kontrola 2026-08-16 ukázala, že oba mobilní pády byly zastaralé očekávání
+50 px po záměrné změně `.welcome-copy-stage` na 74 px v commitu `e85f4c0`;
+očekávání probe bylo opraveno na 74 px.
 
 ### 2026-08-10 — Živý HW test: doladění + 3 další nálezy
 

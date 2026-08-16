@@ -1,16 +1,42 @@
-# Feel Fader Web App — Instrukce pro Claude
+# Feel Fader Web App — kontextový router
 
-## ⚠️ App ↔ Firmware jsou spřažené přes protokol — VŽDY měnit se znalostí OBOU
+## Rozpočet kontextu
 
-Web konfigurátor (`feel-fader-app/feel-fader.html`) a firmware (`feel-fader-firmware/code.py`)
-sdílí SysEx/serial protokol a formát konfigurace. **Jakákoli změna na jedné straně, která se
-dotýká protokolu, formátu configu nebo `enc7`/`dec7`, se MUSÍ promítnout i na druhé straně.**
+- Nikdy nenačítej celý zdrojový soubor. Nejdřív použij `rg -n` na jméno funkce,
+  selektor nebo viditelný text a pak čti jen okolní blok.
+- `WEBAPP.md`, `docs/`, `scratch/` a historii gitu načítej pouze pro konkrétní
+  otázku; nejsou povinným vstupním kontextem.
+- Historické Superpowers plány, audity a `.superpowers/` jsou archivní důkaz,
+  ne aktuální specifikace. Při jejich cíleném hledání použij `rg --no-ignore`.
+- Výchozí režim je jeden agent, jeden cílový výřez a jeden relevantní probe.
 
-Před úpravou kterékoli strany načti a zohledni druhou stranu:
-- **App** (`feel-fader.html`): `serialRequest`/`_readReply` (transaction manager, jediné místo čtoucí serial), `protocolVersion` (bootstrap z legacy CMD_INFO), `normalizeFwConfig` (vč. meta `m`), PC handler (0xC0 → bank sync), NoteOn handler (keyswitch live), `dec7`/`enc7`. Protokol v2 tabulka: `../feel-fader-firmware/CLAUDE.md`. POZOR: nikdy neposílat SysEx přes MIDI out (zasekává MIDI endpoint přes Windows MIDI Services — HW nález 2026-07-07).
-- **Firmware**: `apply_web_config` (`code.py`), `send_config_chunks` (`code.py`), serial `CMD_R`/`CMD_W` (`code.py`), `parse_banks` (`ff_config.py` — ne `code.py`), `dec7`/`enc7` (`code.py`)
+## Router podle tématu
 
-Nikdy needituj jen jednu stranu „naslepo" — rozbiješ round-trip config sync.
+| Téma | Otevři |
+|---|---|
+| HTML struktura / text | cílový výřez `feel-fader.html` |
+| Vzhled / responsivita | cílový selektor v inline `<style>` v `feel-fader.html` |
+| UI stav / render / interakce | cílovou funkci v inline `<script>` v `feel-fader.html` |
+| Regrese | jeden odpovídající `scratch/*-probe.mjs`; seznam viz `scratch/run-all-probes.mjs` |
+| Design contract nebo širší architektura | pouze relevantní sekci `WEBAPP.md` |
+| Protokol / config round-trip / MIDI / Serial | níže uvedený protocol gate + firmware protokol |
+
+`feel-fader.html` je jediný zdroj pravdy a stránka nemá build krok. Kvůli úspoře
+kontextu čti vždy jen cílový výřez; nevytvářej pracovní kopie `app.js`,
+`styles.css` ani extrahované assety.
+
+## Protocol gate — kdy je nutný firmware kontext
+
+Firmware (`../feel-fader-firmware`) načti pouze pokud změna zasahuje
+`serialRequest`, `_readReply`, `protocolVersion`, `normalizeFwConfig`, config schema,
+Program Change/NoteOn handlery nebo `dec7`/`enc7`. Pak otevři protokolovou část
+`../feel-fader-firmware/CLAUDE.md` a jen odpovídající symboly v `code.py` či
+`ff_config.py` (`apply_web_config`, `send_config_chunks`, `CMD_R`/`CMD_W`,
+`parse_banks`, `dec7`/`enc7`). Změna protokolu nebo config formátu se musí
+promítnout na obou stranách; cross-repo zápis ale vyžaduje explicitní scope.
+
+Nikdy neposílej SysEx přes MIDI out — na Windows MIDI Services zasekává endpoint
+a vyžaduje replug (HW nález 2026-07-07).
 
 ## Produktový kontext — appka je desktop-first
 
@@ -20,24 +46,23 @@ Feel Fader web app dává smysl **jen na desktopu s fyzicky připojeným control
 - Mobil držet jen regresně funkční a nerozbitý — **neoptimalizovat** ho jako samostatný pracovní workflow.
 - Konkrétně: mobilní překryv status baru není problém k řešení (Frank 2026-07-14).
 
-## Vývoj přes MCP (Chrome DevTools + Playwright)
+## Browser ověření — eskalační žebřík
 
-Tři vrstvy, jasně oddělené role. **MCP zkoumá živě, probe je důkaz.**
-
-| Nástroj | Role | Kdy |
-|---|---|---|
-| **Chrome DevTools MCP** | *oči* — live console/exceptions, network, performance, `evaluate` stavu | debug běžícího stavu („proč je to teď rozbité") |
-| **Playwright MCP** | *ruce* — a11y snapshot (levný strukturovaný sken UI), robustní klik/klávesnice/wait | budování a ověřování interakčních flow |
-| **`.mjs` puppeteer probe** (`scratch/`) | *důkaz* — committed, headless, deterministické PASS/FAIL | regrese: ověřené chování zakóduj sem a commitni |
-
-Smyčka: Chrome DevTools MCP debug → Playwright MCP vyzkouší flow → `.mjs` probe zakóduje regresi → commit.
+1. Statická kontrola cílového výřezu.
+2. Nejmenší existující `.mjs` Puppeteer probe přes
+   `npm test -- <probe.mjs>` (včetně případného prefixu `audit/`).
+3. Nový/rozšířený probe, pokud chybí regresní důkaz.
+4. `npm test` před předáním širší změny.
+5. Chrome DevTools MCP zapni pouze pro živý problém, který probe nevysvětluje
+   (console, network, performance nebo interaktivní stav).
 
 **Invariant — MCP nikdy nesahá na reálný HW.** MCP-driven session běží přes stejný interní-stav-poke vzor jako probes (`_midiState = 'granted'; _ffConnected = true; _serialPort = {}; connState(); renderConnState();` přes `evaluate`). **Nikdy** reálný `navigator.serial.requestPort()` + SysEx přes MCP → zasekne MIDI endpoint (chce replug, HW nález 2026-07-07). Reálný HW test zůstává ruční, mimo MCP.
 
-**Mechanika:** zapínat per-task přes `/mcp` (ne oba trvale — tokeny + dva browsery) · Playwright cílit na `channel: chrome` (appka je Chrome/Edge-only kvůli Web Serial) · server na `:8100` (`http://localhost:8100/feel-fader.html`).
+**Mechanika:** `.mcp.json` obsahuje jen Chrome DevTools a je cwd-scoped. Server
+pro probes běží na `:8100` (`http://localhost:8100/feel-fader.html`).
 
 ## Dokumentace
 
-- Architektura a protokol web appky: `WEBAPP.md`
+- Architektura a design contract web appky: `WEBAPP.md`
 - Firmware + protokolová tabulka a formát configu: `../feel-fader-firmware/CLAUDE.md`
 - GitHub: `github.com/franksehnal-netizen/feel-fader-app`
