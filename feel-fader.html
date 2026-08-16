@@ -2416,6 +2416,13 @@ let _welcomeStartTimer = null;  // fallback timer to reveal Start if device isn'
 let midiAccess = null;
 let _midiInputNames = [];
 let _lastMidiDiagnostic = null;
+let _midiDiagnosticRenderTimer = null;
+let _midiBacklogHits = 0;
+let _midiBacklogLastWarn = -Infinity;
+const MIDI_DIAGNOSTIC_RENDER_MS = 250;
+const MIDI_BACKLOG_WARN_MS = 250;
+const MIDI_BACKLOG_WARN_HITS = 3;
+const MIDI_BACKLOG_WARN_COOLDOWN_MS = 30000;
 let _ffConnected = false;   // true once Feel Fader input is live
 let _midiState = 'pending';   // 'pending'|'granted'|'denied'|'unsupported' — canonical MIDI health
 const cloneConfig = value => JSON.parse(JSON.stringify(value));
@@ -4226,7 +4233,10 @@ function flushFaderFrame(){
   _faderRafPending=false;
   if(_faderDirty.l){ _faderDirty.l=false; pF('track-l','thumb-l',liveValues.f1); }
   if(_faderDirty.r){ _faderDirty.r=false; pF('track-r','thumb-r',liveValues.f2); }
-  renderLiveStrip();
+  // High-rate fader CC must stay on a tiny fast path. Rebuilding every label,
+  // validation marker and contextual HUD position at up to 125 Hz lets other
+  // MIDI-heavy tabs push this page into a visible event backlog.
+  renderLiveFaderValues();
 }
 function pF(tid,thid,v){
   const th=document.getElementById(thid);
@@ -4263,6 +4273,9 @@ function diagnosticRollerMapping(bank) {
 function midiDiagnosticsData() {
   const bi = (_ffConnected && cfg.banks[liveBank]) ? liveBank : activeBank;
   const bank = cfg.banks[bi];
+  const lastTime = _lastMidiDiagnostic
+    ? new Date(_lastMidiDiagnostic.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})
+    : null;
   return {
     connection: diagnosticConnectionLabel(),
     input: _midiInputNames.length ? _midiInputNames.join(', ') : 'No Feel Fader MIDI input',
@@ -4270,7 +4283,7 @@ function midiDiagnosticsData() {
     left: bank?.fader1 ? `Ch ${bank.fader1.channel+1} · CC ${bank.fader1.cc} · ${faderDisplayName(bank.fader1,'fader1')}` : '—',
     right: bank?.fader2 ? `Ch ${bank.fader2.channel+1} · CC ${bank.fader2.cc} · ${faderDisplayName(bank.fader2,'fader2')}` : '—',
     roller: diagnosticRollerMapping(bank),
-    lastEvent: _lastMidiDiagnostic ? `${_lastMidiDiagnostic.text} · ${_lastMidiDiagnostic.time}` : 'Waiting for MIDI…',
+    lastEvent: _lastMidiDiagnostic ? `${_lastMidiDiagnostic.text} · ${lastTime}` : 'Waiting for MIDI…',
     device: `${DEVICE_INFO.firmware || 'Firmware unknown'} · HID ${DEVICE_INFO.hid_enabled?'on':'off'}`,
     hash: DEVICE_INFO.config_hash || 'Unavailable'
   };
@@ -4290,8 +4303,31 @@ function recordMidiDiagnostic(data) {
   else if (type === 0x80 || (type === 0x90 && bytes[2] === 0)) text = `Note Off · Ch ${ch} · ${noteName(bytes[1])}`;
   else if (type === 0xC0) text = `Bank change · B${(bytes[1] ?? 0)+1}`;
   else text = `MIDI 0x${status.toString(16).toUpperCase().padStart(2,'0')} · ${bytes.slice(1).join(' ')}`;
-  _lastMidiDiagnostic = {text,time:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})};
-  renderMidiDiagnostics();
+  _lastMidiDiagnostic = {text,at:Date.now()};
+  // Diagnostics are human-readable status, not a scope. Rendering them for
+  // every 125 Hz fader CC wastes main-thread/compositor time and can amplify
+  // contention caused by another open MIDI monitor.
+  if (_midiDiagnosticRenderTimer === null) {
+    _midiDiagnosticRenderTimer = setTimeout(() => {
+      _midiDiagnosticRenderTimer = null;
+      renderMidiDiagnostics();
+    }, MIDI_DIAGNOSTIC_RENDER_MS);
+  }
+}
+
+function monitorMidiBacklog(event) {
+  const rawStamp = Number.isFinite(event?.receivedTime) ? event.receivedTime : event?.timeStamp;
+  const stamp = Number(rawStamp);
+  if (!Number.isFinite(stamp) || stamp <= 0) return;
+  const now = performance.now();
+  const lag = now - stamp;
+  if (lag < 0 || lag < MIDI_BACKLOG_WARN_MS) { _midiBacklogHits = 0; return; }
+  _midiBacklogHits++;
+  if (_midiBacklogHits >= MIDI_BACKLOG_WARN_HITS && now - _midiBacklogLastWarn >= MIDI_BACKLOG_WARN_COOLDOWN_MS) {
+    _midiBacklogHits = 0;
+    _midiBacklogLastWarn = now;
+    toast('i','MIDI is delayed — close other MIDI monitor tabs or apps');
+  }
 }
 function copyMidiDiagnostics() {
   const d = midiDiagnosticsData();
@@ -4387,6 +4423,7 @@ function connectInputs(){
 
 function onMidiMsg(event){
   const data=event.data, st=data[0];
+  monitorMidiBacklog(event);
   recordMidiDiagnostic(data);
   if(st===0xF0){
     handleSysEx(data);return;
@@ -5200,6 +5237,18 @@ function updateContextualLiveStrip(){
   strip.classList.toggle('is-idle',!live);
   strip.setAttribute('aria-hidden',String(!visible));
 }
+function renderLiveFaderValues(){
+  const allowed = connState() === 'CONNECTED_LIVE';
+  const setLiveValue = (id, meterId, value, seen) => {
+    const valid = allowed && seen && Number.isFinite(value);
+    setTxt(id, valid ? value : '—');
+    const meter = document.getElementById(meterId);
+    if (meter) meter.style.setProperty('--live-level', valid ? (Math.max(0, Math.min(127, value)) / 127 * 100) + '%' : '0%');
+  };
+  setLiveValue('live-f1-value', 'live-f1-meter', liveValues.f1, liveSeen.f1);
+  setLiveValue('live-f2-value', 'live-f2-meter', liveValues.f2, liveSeen.f2);
+}
+
 function renderLiveStrip(){
   const strip = document.getElementById('live-strip');
   if (!strip) return;
@@ -5210,12 +5259,6 @@ function renderLiveStrip(){
     ? 'Live values received from the device · drag to move · corner button to resize'
     : 'Live values received from the device';
 
-  const setLiveValue = (id, meterId, value, seen) => {
-    const valid = allowed && seen && Number.isFinite(value);
-    setTxt(id, valid ? value : '—');
-    const meter = document.getElementById(meterId);
-    if (meter) meter.style.setProperty('--live-level', valid ? (Math.max(0, Math.min(127, value)) / 127 * 100) + '%' : '0%');
-  };
   const bank = cfg.banks[liveBank] || cfg.banks[activeBank];
   if (!bank) { updateContextualLiveStrip(); return; }
   setTxt('live-hud-bank', `${bank.icon ? bank.icon+' ' : ''}B${liveBank+1} · ${bank.name || `Bank ${liveBank+1}`}`);
@@ -5228,8 +5271,7 @@ function renderLiveStrip(){
   const liveIssues = sectionIssueKeys(liveBank);
   document.getElementById('live-f1-tech')?.classList.toggle('has-issue', liveIssues.has('fader1'));
   document.getElementById('live-f2-tech')?.classList.toggle('has-issue', liveIssues.has('fader2'));
-  setLiveValue('live-f1-value', 'live-f1-meter', liveValues.f1, liveSeen.f1);
-  setLiveValue('live-f2-value', 'live-f2-meter', liveValues.f2, liveSeen.f2);
+  renderLiveFaderValues();
 
   const mode = bank?.roller_mode || 'cc';
   let rollerValue = '—';

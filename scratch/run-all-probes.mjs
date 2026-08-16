@@ -51,6 +51,7 @@ const PROBES = [
   'faders-inert-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
+  'midi-backlog-guard-probe.mjs',
   'mobile-ux-probe.mjs',
   'onb-probe4.mjs',
   'welcome-no-box-probe.mjs',
