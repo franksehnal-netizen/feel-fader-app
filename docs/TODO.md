@@ -8,6 +8,7 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
+- **Toggle switch (Keyboard HID zapnuto) má být stejně zelený jako hlavní tlačítko "Sent", navázat na stejný barevný parametr (Frank 2026-08-18, screenshot):** "chci mít aplikaci konzistentní." Oba UŽ ODKAZUJÍ na stejnou proměnnou `--green:#34c759` (feel-fader.html ~68) — `.send-btn.sent{background:var(--green)}` (~379, plná, sytá barva) vs. `.hid-switch input:checked + .hid-switch-track{background:color-mix(in srgb,var(--green) 44%,transparent);...}` (~755, jen 44% mix → vybledlá/pastelová, proto vizuálně nesedí, i když je to nominálně "stejný parametr"). Řešit pravděpodobně zvýšením/odstraněním toho 44% mixu na tracku, ne změnou samotné `--green` proměnné.
 - **Sdílený "glass" gradient (`--control-glass-bg`) vypadá "cheap", ladit GLOBÁLNĚ (Frank 2026-08-18, screenshot Roller order UACC pilulek → rozhodnuto 2026-08-18):** "tyto tlačítka vypadají strašně cheap s tím gradientem" → "celý sdílený styl se mi nezdá, poladíme ho globálně." `--control-glass-bg:linear-gradient(145deg,rgba(255,255,255,.72),rgba(174,174,178,.34))` (feel-fader.html ~61, dark varianta ~131) — používá `.ui-glass`, `.send-btn.idle`, `.uacc-tag`, `.roller-mode-row`, `.stepper input`, `.ks-stepval` a další (celoaplikační token, ne jednotlivá komponenta). Rozsah potvrzen: řešit token samotný, ne jen `.uacc-tag`.
 - **Výrazněji zvýraznit banku aktivní na zařízení, ne jen malou ikonku (Frank 2026-08-18):** "zatím je tam ta malá ikonka na liště, ale chtěl bych tam přidat něco víc." Současný stav: `.bank-tab-device` (feel-fader.html ~1919-1920, 12×14px SVG ikonka ovladače, `opacity:.78`, barva `var(--t2)` — tichá/sekundární) se zobrazí v bank tabu, když je ta banka `isLive` (aktivní na hardwaru, ~2957-2980). `.bank-block-tab.is-live{box-shadow:none}` momentálně jen RUŠÍ stín, nepřidává žádný vlastní akcent. Návrh řešení (barva/okraj/glow/badge apod.) nechat na designové rozhodnutí při implementaci — zatím jen zaznamenat požadavek.
 - **"Enable Keyboard (HID)?" potvrzovací dialog — prověřit vizuální konzistenci s ostatními notifikacemi (Frank 2026-08-18, screenshot):** dialog vzniká přes sdílený `openConfirm()` helper (feel-fader.html ~3511-3520, `onHidToggle()`, `title:'Enable Keyboard (HID)?'`, `tone:'primary'`) — stejný mechanismus jako ostatní confirm dialogy v appce (`.overlay`/`.modal`), takže případná nekonzistence bude spíš v konkrétním stylingu (barva/tone tlačítka, formátování textu) než ve struktuře. Projít vedle sebe se zbytkem notifikací/dialogů a porovnat.
@@ -22,10 +23,24 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 - **Mobil — horní lišta: dark/light tlačítko kulaté, bank chipy na stejnou výšku jako jeho průměr (Frank 2026-08-17):** "chci aby tlačítko na horní liště pro přepínání mezi light/dark bylo kulaté. A chipy u bank na té liště aby měly stejnou výšku jako bude průměr toho light/dark tlačítka. Chci konzistenci a minimalismus." `.dark-toggle` (feel-fader.html ~1113, 30px base / 44px `@media(pointer:coarse)`) má třídu `ui-pill` (`border-radius:var(--r-pill)`) — na čtvercovém boxu by to už mělo dávat kruh, ověřit proč to tak nepůsobí (padding/ikona/header layout?) než se řeší. Bank chipy = `.bank-block-tab` (feel-fader.html ~2015, `padding:2px 9px`, žádná pevná výška — výška plyne z obsahu) — nastavit na výšku = průměr tlačítka.
 - **Mobil — bank karta: action tlačítka (‹ › ⧉ ✕) na stejnou výškovou úroveň jako Bank ikona, zmenšit (Frank 2026-08-17):** "na kartě s bankami bych chtěl mít buttony s šipkami, duplikací a křížkem na stejné výškové úrovni jako Bank ikonu, a tlačítka chci subtilnější, zmenšit." Aktuálně na `@media(max-width:540px)` `.bank-block-name-top{flex-wrap:wrap}` shazuje `.bank-actions` na vlastní řádek pod ikonu/jméno (feel-fader.html ~762). Velikost tlačítek `@media(pointer:coarse)` je 36px (feel-fader.html ~1039) — už jednou zmenšeno z 44px po Frankově zpětné vazbě 2026-08-16, teď chce dál dolů.
 - **Onboarding poslední krok — Next zmizí a glow "Connect & load" ať naskočí přesně současně (Frank 2026-08-17):** "v posledním kroku tlačítko next zmizí a já bych chtěl, aby se přesně jak tlačítko mizí, zobrazil glow kolem tlačítka connect & load. Časově ať je to navázané na stejný parametr." 17n už sjednotilo RYCHLOST obou (`--dur-glow`/`--ease-hero`, sdílený token) — tohle je o tom, jestli oba START ve stejný okamžik (`.onb-next.is-final` toggle vs. `data-onb-feature="configure"` toggle, oba by měly nastávat ve stejném volání `onbBeatGo()`, ale nekontrolováno). Ověřit na nasazeném demu, případně doladit spouštěcí moment.
-- **`welcome-heading-gap-probe.mjs` — "first-run #send-btn sits below the cardless onboarding copy" (pre-existing, nesouvisí s pracemi z 2026-08-17):** zastaralá asserce vůči jinému, dřívějšímu onboarding layoutu. Frank rozhodne, jestli test aktualizovat.
   (Dřívější pre-existing selhání `mobile-ux-probe.mjs` — "Normal welcome contains only the brand and essential actions" — samo spadlo jako vedlejší efekt 2026-08-17m: wordmark je teď záměrně vidět i v plain welcome stavu.)
 
 ## Hotovo
+
+### 2026-08-18 — `welcome-heading-gap-probe.mjs` opraven na aktuální onboarding layout
+
+Poslední pre-existing selhání ze session. Test tvrdil, že `#send-btn` musí
+být POD `#onb-beats` (tour text), podle `2026-08-10-todo-batch-design.md
+§4`. Ověřeno screenshotem + reálnými pozicemi (1280×900): aktuální layout
+je wordmark → controller → **Connect & load** → tour text → tečky/Next →
+Continue without device — tlačítko sedí NAD textem, ne pod ním. Prostředně
+v srpnu proběhlo rozsáhlé přeskládání onboardingu (wordmark/controller/
+notice cascade, 2026-08-17l a další), které pořadí otočilo; test nikdo
+neaktualizoval. Frank potvrdil, že aktuální layout je správný. Assertion
+přepsána na `beatsTop >= btnBottom + 16` (test dál hlídá stejnou třídu
+chyby — dva prvky slepené bez mezery — jen ve správném směru).
+
+`npm test`: zpět na plnou zelenou (0 pre-existing selhání).
 
 ### 2026-08-17o — Celoaplikační audit + sjednocení timing parametrů (sdílené CSS tokeny)
 
