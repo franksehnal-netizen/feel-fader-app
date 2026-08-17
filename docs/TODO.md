@@ -8,17 +8,34 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-- **Lišta barvy pozadí překrývá controller nahoře při scrollu nahoru.** Frank nahlásil
-  opakovaně (2026-08-17, po fixu bodu "controller zajíždí za lištu" v Hotovo 17c) —
-  z-index fix z 17c to nevyřešilo úplně, pořád se to děje. Čeká se na čerstvý
-  screenshot přesně toho momentu, abych identifikoval skutečnou příčinu (dosavadní
-  `.device-visual{z-index:1}` cascade bug byl reálný a opravený, ale zjevně není
-  jediná příčina).
 - **Jedno pre-existing selhání v `mobile-ux-probe.mjs`, nesouvisí s onboarding-scroll fixem (2026-08-17b):**
   "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování z jiné/předchozí session. Řešit: aktualizovat test expectations. Frank rozhodne.
   (Druhé dřívější selhání — "beats below controller" na velmi krátkém viewportu — vyřešeno jako vedlejší efekt dynamického scroll fallbacku, viz Hotovo 2026-08-17b.)
 
 ## Hotovo
+
+### 2026-08-17h — Tmavá lišta přes controller při scrollu: nebyla to appka, byl to Safari
+
+Frank poslal čerstvý screenshot přesně toho momentu — ukázal tmavou/černou
+lištu (ne růžové `--bg` appky!) přes horní část controlleru při scrollu.
+Barevný nesoulad okamžitě vyloučil moje předchozí CSS/z-index teorie.
+
+Kořen: appka nikdy neměla `<meta name="theme-color">` tag. Safari (iOS 15+
+"compact tab bar" tinting) si bez něj barvu adresní lišty ODHADUJE sama —
+a odhadla špatně (tmavě), takže při scrollu ta (nativní, ne-appková) lišta
+vizuálně "překryje" světlý controller, jak se posouvá pod ni. Není to bug
+v žádném CSS pravidle appky — proto se to nedalo najít v kódu ani
+reprodukovat v Chrome (Safari-only nativní chování).
+
+Fix: přidány `<meta name="theme-color">` tagy (light `#f5f5f7`, dark
+`#0f0f11` — shodné s `--bg`), gatované přes `media="(prefers-color-scheme)"`
+pro správnou barvu už při prvním vykreslení (dřív než JS stihne cokoliv
+udělat). Navíc `applyTheme()` teď synchronizuje `content` obou meta tagů
+při každém přepnutí světlý/tmavý režim appky — pokrývá i případ, kdy si
+uživatel přepne motiv appky nezávisle na systémovém nastavení.
+
+Celá sada: `npm test` — zpět na baseline (2 pre-existing nesouvisející
+selhání).
 
 ### 2026-08-17g — Onboarding scroll: tlačítko se během gesta "rozjíždělo" od textu
 
