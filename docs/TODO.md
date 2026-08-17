@@ -14,6 +14,60 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17j — Onboarding scroll: controller a tlačítko "se škubaly", teečky/text plynulé
+
+Po 17i (lišta pryč) Frank nahlásil: při scrollu se controller a "Connect &
+load" trhaně škubou, zatímco tečky a text (beats) scrollují plynule. Dvě
+příčiny — jedna vážnější, než čekáno:
+
+1. **Skutečná chyba, ne jen "pomalejší JS":** `.device-visual` transform
+   (`translateY(var(--welcome-onb-scroll-offset))`, řídí scroll-tracking
+   controlleru) byl definovaný JEN uvnitř `@media(max-height:820px)`. Když
+   se scrollovatelnost aktivovala přes DYNAMICKÝ fallback (17c,
+   `.welcome-scroll-fallback` třída pro viewporty NAD 820px, kde obsah
+   přesto nesedí) — pravidlo se vůbec neaplikovalo. Ověřeno: na 852px se
+   `deviceTop` po 150px scrollu nezměnil ani o pixel (`transform: none`).
+   Controller tedy na těchhle (běžných!) výškách stál úplně na místě, zatímco
+   vše ostatní kolem něj plynule odscrollovalo — přesně "jako by byl navázán
+   na jiný prvek". Fix: stejné pravidlo zrcadleno pro `.welcome-scroll-fallback`
+   (přes `body:has(#welcome-screen.welcome-scroll-fallback)`, protože
+   `.device-wrap` NENÍ potomek `#welcome-screen` — žije ve `.stage` hlavní
+   appky, ne uvnitř welcome overlay). Přidáno i `will-change:transform`
+   (GPU layer hint) do obou variant.
+
+2. **Tlačítko přesunuto do nativního scrollu.** `#send-btn` sledovalo scroll
+   přes JS (`requestAnimationFrame` + transform, viz 17g) — i s opraveným
+   (1) je to pořád jen APROXIMACE nativního scrollu, náchylná k main-thread
+   timingu na reálném zařízení. `#onb-beats` vedle něj scrolluje NATIVNĚ
+   (position:absolute uvnitř scrollovatelného `#welcome-screen`, žádný JS),
+   proto bylo plynulé. Nová dvojice funkcí `floatSendBtnNative()`/
+   `restoreSendBtnNative()` — stejný DOM-přesun vzor jako existující
+   `floatWelcomeSkip()`/`restoreWelcomeSkip()` pro "Continue without device"
+   odkaz — fyzicky přesune `#send-btn` vedle `#onb-beats` (jen když je
+   `#welcome-screen` skutečně scrollovatelné), kde `position:absolute` +
+   nativní scroll převezme veškerý pohyb, žádné sledování scroll-offsetu
+   potřeba. `--onb-cta-bottom`/`--onb-cta-height` (už existující, JS-počítané)
+   znovupoužity beze změny.
+   Controller (fadery, drag zóny, animace) zůstal NA existujícím
+   z-index+transform přístupu — bezpečnější, po opravě (1) a s `will-change`
+   dostatečně plynulý; plný přesun do nativního scrollu byl zvážen a
+   zamítnut jako příliš rizikový pro sdílený, komplexní prvek.
+
+Chyba při implementaci (odhalena testy, opravena před nasazením):
+`floatSendBtnNative()` zprvu selhávalo (`#onb-beats` není přímé dítě
+`#welcome-text-block`, je vnořené v `.welcome-copy-stage`) a
+`restoreSendBtnNative()` se nevolalo spolehlivě při odchodu z welcome
+(schované uvnitř `positionWelcomeFloatingButton()`, která se umí vrátit
+hned na prvním řádku) — tlačítko zůstávalo uvízlé, neviditelné (0×0) uvnitř
+`#welcome-screen`. Opraveno: `restoreSendBtnNative()` teď volá přímo
+`finalizeWelcomeExit()`, bezpodmínečně.
+
+Ověřeno na 3 scénářích (media-query scroll 700px, dynamický fallback 852px,
+bez scrollu 932px) — button/device/beats shift teď přesně sedí ve všech
+scrollovatelných případech, click handler funguje i po přesunu. Celá sada:
+`npm test` — baseline (2 pre-existing) + 1 už dříve zdokumentovaná flaky
+(`send-dock-gap-symmetry-probe.mjs` pod plnou zátěží, 3/3 čistě v izolaci).
+
 ### 2026-08-17i — Controller "za lištou" při scrollu: skutečná příčina, konečně
 
 Dvě předchozí opravy (theme-color meta, color-scheme) byly rozumné hypotézy,
