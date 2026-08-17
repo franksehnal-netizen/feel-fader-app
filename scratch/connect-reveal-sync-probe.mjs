@@ -68,12 +68,17 @@ const r = await p.evaluate(async () => {
   const btn = document.getElementById('send-btn');
   revealPostConnectUI();
   const animationStr = btn.style.animation;
+  const animationDuration = getComputedStyle(btn).animationDuration;
 
-  return { timerCount: timers1100.length, revealCalledInsideTimer, animationStr };
+  return { timerCount: timers1100.length, revealCalledInsideTimer, animationStr, animationDuration };
 });
 
 P('connectTransitionWelcome schedules exactly one T+1100ms timer (not two racing ones)', r.timerCount === 1, `timerCount=${r.timerCount}`);
 P('revealPostConnectUI runs inside that same T+1100ms callback', r.revealCalledInsideTimer);
-P('welcome-btn-reveal animation duration is .6s (2x the HUD\'s doubled .56s opacity transition, Frank 2026-08-10)', /welcome-btn-reveal/.test(r.animationStr) && /^0?\.6s/.test(r.animationStr), r.animationStr);
+// Checks the RESOLVED duration (via getComputedStyle), not the raw
+// btn.style.animation string, since that duration is now var(--dur-reveal)
+// -- shared with the live HUD reveal it must land together with (Frank
+// 2026-08-17 timing-consistency pass) -- rather than a literal ".6s".
+P('welcome-btn-reveal animation duration is .6s (shared --dur-reveal token, also used by the live HUD opacity transition, Frank 2026-08-10/17)', /welcome-btn-reveal/.test(r.animationStr) && r.animationDuration === '0.6s', r.animationStr + ' / ' + r.animationDuration);
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

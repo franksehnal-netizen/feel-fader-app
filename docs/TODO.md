@@ -13,6 +13,62 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17o — Celoaplikační audit + sjednocení timing parametrů (sdílené CSS tokeny)
+
+Frank po 17n: "chci aby ve všech místech, kde jsou nějaké automatizace
+zároveň, to bylo navázané vše na společný parametr. Chci mít seamless
+konzistentní user experience. Analyzuj celou aplikaci." Zvolil nejdůkladnější
+variantu — zavést sdílené tokeny všude, ne jen opravit top 3 nejvýraznější
+nálezy.
+
+**Analýza** (Explore subagent, celý soubor): 40+ CSS transition/animation
+deklarací + JS timing konstant. `cubic-bezier(.16,1,.3,1)` už byl de-facto
+"house" ease-out na 21 místech, `.46s cubic-bezier(.22,1,.36,1)` "hero" glow
+křivka na 5 místech — ale desítky krátkých UI-feedback tranzic (.12–.3s) byly
+roztroušené přes ~15 různých hodnot bez sdíleného jména, a našlo se 7 skupin,
+kde věci mění stav SOUČASNĚ na jednu akci, ale na různých rychlostech/
+křivkách — stejná třída chyby jako u Next tlačítka (17n).
+
+**Nové sdílené tokeny** (`:root`, feel-fader.html ~87-106):
+`--ease-out`/`--ease-hero`/`--ease-settle` (křivky), `--dur-press`/
+`--dur-fast`/`--dur-base`/`--dur-glow`/`--dur-settle`/`--dur-stage`/
+`--dur-reveal` (délky). Jednorázové dekorativní rytmy (idle fader dýchání,
+status pulse, capture pulse, setup cue) záměrně ponechány jako literály —
+nejsou součástí žádné souběžné skupiny, tokenizace by tam nic nesjednotila.
+
+**Opravené souběžné skupiny (skutečná změna chování, ne jen přejmenování):**
+1. Odeslání configu — `.send-btn` glow (.46s) vs `.send-change-note` bublina
+   (dřív .48s/.32s/.38s/.3s, jiná křivka) → obojí `--dur-glow`/`--ease-hero`.
+2. Úspěšné připojení — shimmer vs. fadery-doskočí-na-místo běžely stejně
+   dlouho (.72s) na dvou skoro identických, ale ne stejných křivkách
+   (`.22,.7,.2,1` vs `.22,.8,.2,1`, pravděpodobně překlep) → sjednoceno na
+   `--ease-settle`.
+3. Onboarding beat navigace — text/tečka/šipka běžely na 4 různých
+   rychlostech na jeden tap → `--dur-base`/`--dur-fast`.
+4. Send button reveal (.6s) vs. live HUD reveal (.56s) po připojení — obě
+   zdokumentované jako "musí dosednout spolu", ale numericky se lišily o
+   40ms → sdílený `--dur-reveal`.
+5. Toggle switch track (.22s) vs. thumb (.28s, jiná křivka) → obojí stejná
+   délka + `--ease-out`.
+6. Bank-card fade (.14s) vs. bank-name-row slide (.18s, stejný moment,
+   dítě běželo déle než vlastní rodič) → sjednoceno na .18s.
+7. Modal overlay (.16s) vs. modal panel (.18s) → sjednoceno na .18s.
+
+Navíc čistá tokenizace (žádná změna hodnoty) všech 21 `cubic-bezier(.16,1,
+.3,1)` a zbylých `.46s cubic-bezier(.22,1,.36,1)` výskytů, plus konsolidace
+`.3s ease`/`.16s ease`/press-feedback `transform .1s–.12s ease` shluků na
+sdílené `--dur-base`/`--dur-fast`/`--dur-press`.
+
+**Odhalen a opraven 1 test vázaný na starou literální hodnotu:**
+`connect-reveal-sync-probe.mjs` porovnával `btn.style.animation` STRING
+doslovně (`/^0?\.6s/`), což po přechodu na `var(--dur-reveal)` přestalo
+sedět — přepsáno na kontrolu `getComputedStyle(btn).animationDuration`
+(správnější způsob ověření i do budoucna, nezávislý na tom, jestli je
+hodnota literál nebo token).
+
+`npm test`: 587 passed / 1 failed (69 probes) — zpět na baseline, jediné
+zbylé selhání je nesouvisející pre-existing položka (viz Otevřené).
+
 ### 2026-08-17n — Onboarding "Next" tlačítko: mizení sladěno s rychlostí zelené záře
 
 Frank: "když na onboarding screenu ťukám na mobilu na tlačítko next, při
