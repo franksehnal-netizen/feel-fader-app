@@ -8,11 +8,41 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-- **Jedno pre-existing selhání v `mobile-ux-probe.mjs`, nesouvisí s onboarding-scroll fixem (2026-08-17b):**
-  "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování z jiné/předchozí session. Řešit: aktualizovat test expectations. Frank rozhodne.
-  (Druhé dřívější selhání — "beats below controller" na velmi krátkém viewportu — vyřešeno jako vedlejší efekt dynamického scroll fallbacku, viz Hotovo 2026-08-17b.)
+- **`welcome-heading-gap-probe.mjs` — "first-run #send-btn sits below the cardless onboarding copy" (pre-existing, nesouvisí s pracemi z 2026-08-17):** zastaralá asserce vůči jinému, dřívějšímu onboarding layoutu. Frank rozhodne, jestli test aktualizovat.
+  (Dřívější pre-existing selhání `mobile-ux-probe.mjs` — "Normal welcome contains only the brand and essential actions" — samo spadlo jako vedlejší efekt 2026-08-17m: wordmark je teď záměrně vidět i v plain welcome stavu.)
 
 ## Hotovo
+
+### 2026-08-17m — Plain (non-onboarding) welcome: notifikace nahoru, "Feel Fader" nápis přidán
+
+Navazuje na 17l. Frank: "upravit červenou notifikaci na welcome screenu bez
+onboardingu, aby byla taky nahoře, a přidej tam taky nápis Feel Fader" —
+stejný požadavek jako 17l, ale pro plain (returning-user, non-onboarding)
+welcome obrazovku, která ho dřív vůbec neměla (wordmark tam byl trvale
+`display:none` od dřívějšího, samostatného redesignu).
+
+Bez JS kaskády — tahle obrazovka nescrolluje ani se nepřekresluje za běhu,
+takže stačí statické `position:fixed` pravidlo (`top:24px` pro wordmark,
+`top:72px` pro notifikaci), zrcadlící onboarding vzor bez jeho komplexity.
+
+Při ověření (`scratch/tmp-plain-welcome-check.mjs`, viewport 430×932)
+odhalen reálný překryv: s notifikací viditelnou sahala její spodní hrana na
+125.6px, zatímco controller (sdílený, stejný poke-through mechanismus jako
+v onboardingu) na této obrazovce defaultně sedí na `top:88px` — notifikace
+by ho o ~38px překryla. Řešeno stejným `.stage{padding-top}` mechanismem
+jako 17l, ale čistě přes CSS `:has()` (`body:has(#welcome-screen:not(.hidden)
+#welcome-text-block:not(.welcome-onboarding) .welcome-browser-notice.show)
+.stage{padding-top:84px}`) — žádný JS, reaktivně se vypne, jakmile notifikace
+zmizí nebo začne onboarding.
+
+Vedlejší efekt: dřív pre-existing selhání v `mobile-ux-probe.mjs` ("Normal
+welcome contains only the brand and essential actions") teď samo prochází —
+test ve skutečnosti nevyžadoval wordmark skrytý, jen žádný NADBYTEČNÝ obsah;
+"Feel Fader" jako součást brandu mu nevadí.
+
+`npm test`: 587 passed / 1 failed (69 probes) — jediné zbylé selhání je
+pre-existing `welcome-heading-gap-probe.mjs` položka (viz Otevřené), žádná
+nová regrese. Onboarding kaskáda (17l) ověřena beze změny stejným skriptem.
 
 ### 2026-08-17l — Onboarding: controller i "Feel Fader" posunuty výš, notifikace deterministicky umístěná
 
