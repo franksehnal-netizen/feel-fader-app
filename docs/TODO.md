@@ -8,12 +8,55 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-- **Dvě pre-existing selhání v `mobile-ux-probe.mjs` odkryté opravou crashe (2026-08-17), nesouvisí s overlap fixem:**
-  1. "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování.
-  2. "Mobile onboarding keeps... copy below the stationary controller" — na velmi krátkém viewportu (`iphone-messenger` profil, 393×659) je matematicky nemožné zároveň udržet beats box pod controller obrázkem A na obrazovce (potřebuje ~276px pod controllerem, k dispozici jen ~60px) — overlap fix (níže) dává přednost "on-screen" před "pod controllerem". Test kóduje starší invariant, který si protiřečí s novou prioritou.
-  Řešit: buď aktualizovat test expectations, nebo zvážit jiný fallback pro extrémně krátké viewporty. Frank rozhodne.
+- **Jedno pre-existing selhání v `mobile-ux-probe.mjs`, nesouvisí s onboarding-scroll fixem (2026-08-17b):**
+  "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování z jiné/předchozí session. Řešit: aktualizovat test expectations. Frank rozhodne.
+  (Druhé dřívější selhání — "beats below controller" na velmi krátkém viewportu — vyřešeno jako vedlejší efekt dynamického scroll fallbacku, viz Hotovo 2026-08-17b.)
 
 ## Hotovo
+
+### 2026-08-17b — Onboarding scroll: tlačítko nesledovalo scroll, obsah přejížděl přes controller
+
+Frank znovu nahlásil ze skutečného telefonu (Messenger in-app, po nasazení
+předchozí opravy níže): "Connect & load" drží fixní vzdálenost od spodní
+hrany místo aby scrollovalo s obsahem; fadery/tlačítko vypadají zmenšené a
+ve špatné pozici; hláška o Edge je nalepená hned za nadpisem onboardingu.
+
+Dvě samostatné příčiny:
+
+1. **Regrese z předchozí opravy.** `positionWelcomeFloatingButton()` nastavovala
+   `top` na statickou pixelovou hodnotu s `!important` — rozbilo to původní
+   `calc(...)` vzorec, který zahrnoval `--welcome-onb-scroll-offset` (scroll
+   tracking pro `position:fixed` prvky přes transform-based fake-scroll).
+   Fix: místo přepisu výsledku (`top`) teď JS přepisuje jen VSTUPY vzorce
+   (`--onb-controller-top/height`, `--onb-cta-height/half`, s `'important'`
+   prioritou) — scroll-offset člen v CSS zůstává nedotčený, funguje zase.
+   Ověřeno: 150px scroll → tlačítko i carousel se posunou přesně o 150px,
+   návrat na scroll=0 vrátí přesně původní pozici.
+
+2. **Clamp na dolní hranu obrazovky byl špatný nápad na krátkých viewportech.**
+   Pod `max-height:820px` breakpointem je `#welcome-screen` už scrollovatelný
+   (existující fallback) — nutit obsah i tak do prvního viewportu ho tlačilo
+   NAHORU přes controller grafiku (tlačítko přes fyzické tlačítko na
+   ovladači, hláška přes nadpis onboardingu — přesně to, co ukazovaly
+   screenshoty). Fix: nad 820px (kde scroll není k dispozici) clamp na
+   viewport zůstává; pod 820px se obsah nechá přetéct a scrolluje se k němu.
+
+   Navíc: statická 820px hranice nepokrývala běžné ne-Pro iPhony (~852px) —
+   těsně nad hranicí, žádný scroll fallback, stejný problém. Řešení:
+   `positionWelcomeFloatingButton()` teď dynamicky MĚŘÍ, jestli se clamped
+   obsah reálně vejde, a pokud ne, zapne scrollovatelný fallback přes novou
+   `.welcome-scroll-fallback` třídu na `#welcome-screen` (zrcadlí CSS pravidla
+   z `@media(max-height:820px)` bloku, ale gatovaná JS místo pevné výšky) —
+   funguje pro libovolnou výšku telefonu, ne jen ty pod 820px.
+
+Ověřeno na 4 viewportech (659, 700, 852, 932px) — žádný overlap
+tlačítko↔controller, hláška↔nadpis, tlačítko↔hláška; scroll-tracking 1:1 v
+obou režimech (media-query i dynamický fallback). `unsupported-browser-welcome-probe.mjs`
+přepsán na nové invarianty (20 checks). Vedlejší efekt: opravil i dřívější
+pre-existing selhání "beats below controller" v `mobile-ux-probe.mjs`
+(matematicky neřešitelné za starého clamp-to-viewport přístupu, teď díky
+scroll fallbacku bezpředmětné). Celá sada: `npm test` — jen 1 pre-existing
+selhání zbývá (viz Otevřené), nesouvisející.
 
 ### 2026-08-17 — Welcome screen: "needs Chrome or Edge" hláška přes "Connect & load"
 
