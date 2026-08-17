@@ -13,6 +13,39 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17n — Onboarding "Next" tlačítko: mizení sladěno s rychlostí zelené záře
+
+Frank: "když na onboarding screenu ťukám na mobilu na tlačítko next, při
+posledním kliknutí tlačítko zmizí. Chci aby rychlost toho zmizení byla
+stejná jako je rychlost zmizení té zelené záře na buttonu, aby to bylo
+konzistentní."
+
+Poslední beat (`_ONB_BEATS[3]`, `feature:'configure'`) je jediný, kde se
+DVĚ věci mění současně: `.onb-next` dostává `.is-final` (mělo dřív jen
+`visibility:hidden`, bez tranzice → okamžité zmizení) a zároveň se
+`#send-btn`u rozsvítí zelená "configure" záře (`box-shadow`, tranzice
+`.46s cubic-bezier(.22,1,.36,1)`, feel-fader.html ~1579). Vedle sebe to
+působilo nekonzistentně — jedno mizí okamžitě, druhé se plynule rozsvítí.
+
+Fix: `.onb-next.is-final` teď fadeuje `opacity` přes stejnou `.46s
+cubic-bezier(.22,1,.36,1)` křivku; `visibility:hidden` se aplikuje až po
+dokončení fade (`transition:visibility 0s linear .46s`), takže tlačítko
+zůstane fokusovatelné/klikatelné jen po dobu fade-outu (má i
+`pointer-events:none` od začátku), pak teprve zmizí z accessibility stromu.
+
+Ověřeno (`tmp-onb-next-fade-check.mjs`): opacity plynule klesá 1→0 přes
+~460ms po cubic-bezier křivce, `visibility` sklopí na `hidden` přesně po
+dokončení fade (t≈498ms), ne okamžitě.
+
+Odhalen a opraven 1 test navázaný na starý okamžitý snap:
+`onb-product-tour-probe.mjs` — "final slide hides Next" četlo
+`visibility` HNED po `onbBeatGo(3)`, bez čekání na fade — přidáno čekání
+520ms před čtením (test teď ověřuje výsledný stav PO tranzici, ne
+uprostřed ní, což je stejně to, co ho zajímalo).
+
+`npm test`: 587 passed / 1 failed (69 probes) — zpět na baseline, jediné
+zbylé selhání je nesouvisející pre-existing položka (viz Otevřené).
+
 ### 2026-08-17m — Plain (non-onboarding) welcome: notifikace nahoru, "Feel Fader" nápis přidán
 
 Navazuje na 17l. Frank: "upravit červenou notifikaci na welcome screenu bez

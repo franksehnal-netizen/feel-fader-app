@@ -122,6 +122,11 @@ const skipWhenConnected = await desktop.evaluate(() => {
 P('Continue without device remains available during onboarding even when hardware is detected', skipWhenConnected !== 'none', skipWhenConnected);
 
 await desktop.evaluate(() => onbBeatGo(3, true));
+// Next now fades out over .46s (matching the send button's own green
+// "configure" glow transition, Frank 2026-08-17) instead of snapping to
+// visibility:hidden instantly -- wait for that fade to finish before reading
+// the final visibility state.
+await new Promise(resolve => setTimeout(resolve, 520));
 const finalState = await desktop.evaluate(() => ({
   beat: _onbBeat,
   nextVisibility: getComputedStyle(document.getElementById('onb-next')).visibility,
