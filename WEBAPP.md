@@ -2,7 +2,7 @@
 
 Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funkční popis UI i technické detaily implementace.
 
-> ℹ️ **Stav (2026-08-16):** `feel-fader.html` je jediný zdroj pravdy a nemá
+> ℹ️ **Stav (2026-08-17):** `feel-fader.html` je jediný zdroj pravdy a nemá
 > build krok. CSS, JS, fonty i obrázky jsou vložené přímo v něm. Odkazy používají
 > jména funkcí a selektorů, ne čísla řádků. **§5 (transport)** popisuje reálný
 > line-based serial protokol, ne historickou MIDI SysEx cestu.
@@ -48,14 +48,33 @@ Kompaktní interaktivní prvky skládají tři znovupoužitelné třídy: `.ui-c
 
 ### Motion
 
-Dvě křivky, žádné jiné. Duration **.06s–.45s**.
+Sdílené CSS custom properties (`:root`, feel-fader.html ~87-106) — **kdykoliv
+se na jednu akci mění víc věcí současně, musí sdílet stejný token**, jinak
+vznikne nekonzistence (viz `docs/feel-fader-final-review-2026-08-17.md` CL-1/CL-2).
 
-- **Micro-interakce** (hover, stepper, drag): **`ease`**, `.12–.15s`
-- **Větší/vstupní přechody** (welcome transition, HID switch, toasty, roller content, bank-tab, keyswitch chipy, theme switch, glow): **`cubic-bezier(.16,1,.3,1)`**, `.3–.45s`
+**Křivky:**
+- `--ease-out` — `cubic-bezier(.16,1,.3,1)` — house ease-out, panel/strukturální pohyb
+- `--ease-hero` — `cubic-bezier(.22,1,.36,1)` — success/glow momenty
+- `--ease-settle` — `cubic-bezier(.22,.8,.2,1)` — snap-into-place dosednutí
 
-Žádný spring/bounce/overshoot mimo tuto rodinu.
+**Délky:**
+- `--dur-press` `.1s` — stisk/scale feedback
+- `--dur-fast` `.16s` — malé state/visibility přepínače
+- `--dur-base` `.3s` — výchozí cross-fade
+- `--dur-glow` `.46s` — hero glow/success
+- `--dur-settle` `.72s` — settle/shimmer
+- `--dur-stage` `1.1s` — velká panelová choreografie
+- `--dur-reveal` `.6s` — post-connect Send button + live HUD reveal (musí dosednout spolu)
+- `--dur-modal` `.18s` — modal overlay fade-in + panel slide-up
+- `--dur-switch` `.22s` — hid-switch track + thumb
 
-Nepřidávat spring/bounce easing ani durationy > .5s pro UI feedback — láme to „klidný, přesný" charakter appky.
+Jednorázové dekorativní rytmy (idle fader dýchání, status pulse, capture
+pulse, setup cue) zůstávají literály — nejsou součástí žádné souběžné
+skupiny, tokenizace by tam nic nesjednotila.
+
+Žádný spring/bounce/overshoot mimo tuto rodinu. Nepřidávat spring/bounce
+easing ani durationy > `--dur-stage` pro UI feedback — láme to „klidný,
+přesný" charakter appky.
 
 ### Typografie
 
@@ -114,9 +133,8 @@ feel-fader.html
 Načtení stránky
   → cfgLoad() — načte cfg z localStorage (nebo DEFAULT_CFG)
   → initDark() — nastaví tmavý/světlý režim
-  → welcomeImg.src = deviceImg.src — zkopíruje PNG zařízení na welcome screen
-  → initWelcomeFaderOverlay() — zobrazí animované fadery na welcome screenu
-  → render() — vykreslí UI
+  → render() — vykreslí UI (welcome screen sdílí stejný `#device-home` DOM uzel
+    se stage, viz §3.1 bod 7 — žádná samostatná overlay kopie faderů)
   → initMidi() — požádá o Web MIDI přístup
   → showWelcome() — zobrazí welcome overlay s okamžitě dostupným Connect & load, viz §3.1
 ```
@@ -170,13 +188,13 @@ se v demo režimu nepoužívá.
 6. Pozadí a text welcome vrstvy se rozpustí, ale sdílený controller zůstává plně neprůhledný.
 7. Tentýž DOM uzel se přesune z `#welcome-controller-slot` do `#device-home`; obrázek ani fadery se znovu nenačítají nebo nepřekreslují jako druhá kopie.
 
-**Welcome intro:** Tři stručné slidy se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. Samostatné **Skip intro** bylo odstraněno jako redundantní; primární akce je dostupná stále. Intro používá pevný 142px obsahový slot a na mobilu rezervuje popisu tři řádky, takže tečky ani tlačítka pod nimi nemění pozici.
+**Welcome intro:** Čtyři stručné slidy (`_ONB_BEATS`: faders, roller, button, configure) se automaticky střídají, ale neblokují připojení ani demo. Indikátory jsou skutečná tlačítka s `aria-label` a přímou volbou slidu. Samostatné **Skip intro** bylo odstraněno jako redundantní; primární akce je dostupná stále. Intro používá pevný 142px obsahový slot a na mobilu rezervuje popisu tři řádky, takže tečky ani tlačítka pod nimi nemění pozici.
 
 **Mobilní ukotvení akcí:** **Continue without device** je fixované 8 px nad spodní safe-area prohlížeče. **Connect & load** a **Send to device** jsou jeden sdílený `#send-btn`: welcome jej vloží do rezervovaného `.welcome-action-slot`, při zahájení přechodu se tentýž uzel přesune do `.send-callout` a po načtení pouze změní popisek a funkci. Skutečná vzdálenost od controlleru se zachová přes `--send-entry-gap`, takže se tlačítko nepřekreslí ani nepohne také po intro slidu s vyšším textovým slotem.
 
 **První krok v appce:** Po prvním vstupu se nezobrazuje žádná další karta ani povinné odkliknutí. Jakmile uživatel poprvé doscrolluje k **Library setup**, picker se jednou jemně zvýrazní bez změny layoutu, automatického scrollu nebo otevření nabídky. Demo bez zařízení má samostatný čitelný badge; fadery zůstávají stabilní a nikdy nepředstírají periodická live data. **Show intro again** v Help & Guide znovu otevře skutečný welcome intro.
 
-**Klíčové funkce:** `initWelcomeFaderOverlay()`, `connectTransitionWelcome()`, `hideWelcome()`, `skipWelcome()`
+**Klíčové funkce:** `connectTransitionWelcome()`, `hideWelcome()`, `skipWelcome()`
 
 ---
 
@@ -428,7 +446,7 @@ je vypnutý, BUTTON sekce ukáže `#macro-schema-notice`.
 initMidi()
   → requestMIDIAccess({sysex:true})  → onstatechange (debounce 400 ms, ignoruje CC churn)
   → connectInputs()
-      → isFeelFader(name): match "feel fader" | "circuitpython audio"
+      → isFeelFader(name): match "feel fader"
       → inp.onmidimessage = onMidiMsg;  _ffConnected = true
       → onDeviceConnected() — rozhodne vstup:
           • serial port už schválený + !dirty → tichý load / sync banner (viz 5.4)
@@ -536,7 +554,7 @@ App drží **web formát** (`cfg` — per-control, viz §4), device posílá **i
 | `connectTransitionWelcome()` | Animovaný přechod welcome screenu při připojení zařízení. |
 | `hideWelcome()` | Spustí connect transition. Volá `connectTransitionWelcome()`. |
 | `skipWelcome()` | Okamžitě skryje welcome screen bez animace. |
-| `initWelcomeFaderOverlay()` | Zkopíruje PNG thumby z hlavního stage na welcome screen overlay. |
+| ⚠ `initWelcomeFaderOverlay()` | **Odstraněno.** Welcome screen a stage teď sdílí jeden `#device-home` DOM uzel (přesouvaný mezi `#welcome-controller-slot` a stage, viz §3.1 bod 7) — žádná samostatná overlay kopie faderů. |
 | ⚠ `renderFaderVisual()` | **Odstraněno** (value bar zrušen — viz komentář u `setBar`). |
 | ⚠ `updateFaderVisual()` | **Odstraněno** (dtto). |
 | `toggleDark()` | Přepne dark/light mode + uloží do localStorage. |
@@ -592,10 +610,10 @@ top = Math.round((1 - v/127) * (trackHeight - thumbHeight))
 
 ## 8. i18n
 
-Překlady jsou definovány v JS objektu `TRANSLATIONS` (řádek 3018; dřív dokumentováno jako `STRINGS`) a aplikovány přes `t(key)` + `applyLang()` na elementy s atributem `data-i18n="key"`. `currentLang` je natvrdo `'en'`.
+Překlady jsou definovány v JS objektu `TRANSLATIONS` (dřív dokumentováno jako `STRINGS`) a aplikovány přes `t(key)` + `applyLang()` na elementy s atributem `data-i18n="key"`. `currentLang` je natvrdo `'en'`.
 
 Aktuálně podporován pouze **anglický jazyk**. Česká lokalizace není implementována — appka je primárně pro mezinárodní uživatele.
 
 ---
 
-*Naposledy aktualizováno: 2026-07-20 (doc-drift oprava dle strukturního auditu — §1 Transport/Serial popis srovnán s §5, čísla řádků odstraněna napříč dokumentem ve prospěch jmen funkcí, opraveny §2/§4/§6/§7 nepřesnosti — viz `docs/feel-fader-structure-audit-2026-07-20.md` DOC-001/003/004/007)*
+*Naposledy aktualizováno: 2026-08-17 (doc-drift oprava dle finální kontroly — odstraněny odkazy na neexistující `initWelcomeFaderOverlay()`, §0 Motion doplněna o tokenový systém `--dur-*`/`--ease-*`, opraven počet onboarding slidů (3→4) a poslední stopa čísla řádku u `TRANSLATIONS` — viz `docs/feel-fader-final-review-2026-08-17.md` DOC-004/008/009/010/011)*

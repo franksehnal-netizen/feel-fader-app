@@ -50,5 +50,37 @@ P('onerror payload se nespustil (window.__xss=false)', res.xss===false, JSON.str
 P('žádný alert()/dialog z injektovaného skriptu', alerts.length===0, alerts.join(' | '));
 P('payload není v DOM jako živý <img onerror>', res.bodyHasRawImg===false, JSON.stringify(res));
 P('bank name/icon/label je v DOM jen jako escapovaný text', res.nameEscaped===true, JSON.stringify(res));
+
+// SEC-004 (final review 2026-08-17): roller_mode/ks_channel/ks_velocity go
+// through the same "already-normalized" branch of normalizeFwConfig as
+// name/icon/label above, but weren't clamped — roller_mode reaches
+// `data-mode="${rmode}"` unescaped (encoderPanel), an attribute-breakout
+// vector distinct from the innerHTML-text vector proven above.
+const res2 = await p.evaluate(async ()=>{
+  window.__xss2 = false;
+  const breakout = '"><img src=x onerror="window.__xss2=true"><div data-x="';
+  const evil = { banks:[{ name:'X', icon:'', fader1:{cc:1,channel:0,label:'A'}, fader2:{cc:2,channel:0,label:'B'}, encoder:{cc:32,channel:0}, uacc_values:[1],
+    roller_mode: breakout, ks_notes:[1], ks_channel: breakout, ks_velocity: breakout }] };
+  let parsed = evil;
+  if (!parsed.banks) throw new Error('Invalid device backup');
+  parsed = normalizeFwConfig(parsed);
+  cfg = parsed; loaded = true; dirty = true; activeBank = 0;
+  cfgSave(); render();
+  await new Promise(r=>setTimeout(r,100));
+  return {
+    xss2: window.__xss2,
+    bodyHasRawImg: /<img[^>]+onerror/i.test(document.body.innerHTML),
+    rollerMode: cfg.banks[0].roller_mode,
+    ksChannel: cfg.banks[0].ks_channel,
+    ksVelocity: cfg.banks[0].ks_velocity,
+  };
+});
+const validRollerModes = ['cc','keyswitch','track_nav'];
+P('roller_mode je omezen na známé hodnoty (SEC-004)', validRollerModes.includes(res2.rollerMode), JSON.stringify(res2));
+P('ks_channel je clampnuté číslo (SEC-004)', Number.isFinite(res2.ksChannel), JSON.stringify(res2));
+P('ks_velocity je clampnuté číslo (SEC-004)', Number.isFinite(res2.ksVelocity), JSON.stringify(res2));
+P('roller_mode/ks_channel/ks_velocity breakout payload se nespustil (window.__xss2=false)', res2.xss2===false, JSON.stringify(res2));
+P('payload není v DOM jako živý <img onerror> (SEC-004)', res2.bodyHasRawImg===false, JSON.stringify(res2));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

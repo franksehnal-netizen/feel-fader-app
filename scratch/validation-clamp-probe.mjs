@@ -68,5 +68,28 @@ P('normalizeFwConfig clamps encoder cc/channel', allNumeric(r.encc) && r.encc>=0
 P('normalizeFwConfig clamps uacc_values elements', allInRange(r.uacc, 0, 127), JSON.stringify(r.uacc));
 P('normalizeFwConfig clamps ks_notes elements', allInRange(r.ks, 0, 127), JSON.stringify(r.ks));
 
+// --- applyLibraryPreset() clamps a hostile custom preset (SEC-004, final
+// review 2026-08-17) — custom presets can come from a hand-edited
+// localStorage blob or imported JSON and are applied without going through
+// normalizeFwConfig; roller_mode/ks_velocity weren't clamped at point of use.
+r = await p.evaluate(() => {
+  const savedCfg = cfg, savedActive = activeBank, savedCustom = customLibraryPresets;
+  cfg = { banks: [{ name:'X', roller_mode:'cc', uacc_values:[1], ks_notes:[1],
+    fader1:{cc:11,channel:0}, fader2:{cc:1,channel:0}, encoder:{cc:32,channel:0} }] };
+  activeBank = 0;
+  customLibraryPresets = { Evil: { custom: true,
+    roller: { roller_mode: '"><img src=x onerror="window.__xss3=true">', nav_keys_cw:[0x52], nav_keys_ccw:[0x51] },
+    articulations: { uacc_values:[1], ks_notes:[1], ks_channel: 3, ks_velocity: '"><img src=x onerror="window.__xss3=true">' },
+  }};
+  window.__xss3 = false;
+  applyLibraryPreset('Evil', 'all');
+  const out = { rollerMode: cfg.banks[0].roller_mode, ksVelocity: cfg.banks[0].ks_velocity, xss3: window.__xss3 };
+  cfg = savedCfg; activeBank = savedActive; customLibraryPresets = savedCustom;
+  return out;
+});
+P('applyLibraryPreset restricts roller_mode to known values', ['cc','keyswitch','track_nav'].includes(r.rollerMode), JSON.stringify(r));
+P('applyLibraryPreset clamps ks_velocity to a number', Number.isFinite(r.ksVelocity), JSON.stringify(r));
+P('applyLibraryPreset payload never executes', r.xss3===false, JSON.stringify(r));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
