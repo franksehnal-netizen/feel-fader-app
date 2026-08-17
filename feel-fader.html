@@ -221,16 +221,35 @@ header{
 .live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 31px;gap:7px 5px;height:100%}
 .live-hud-bank{display:none}
 .live-hud-item{min-width:0;color:var(--t2)}
-.live-hud-item:not(.live-hud-roller){display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;align-items:center;justify-items:center;row-gap:2px}
+.live-hud-item:not(.live-hud-roller){position:relative;overflow:hidden;border-radius:var(--r);padding:4px 2px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;align-items:center;justify-items:center;row-gap:2px}
+/* Fader level as a background wash instead of a separate meter bar — the
+   fill sits behind the label/value/tech so it reads as the cell's own
+   state, not a decoration next to it. The wash (::before) and the text
+   (direct children) both get z-index so painting order is explicit —
+   z-index:-1 on the wash alone rendered blank under this ancestor's
+   backdrop-filter (headless-Chrome-verified render bug, 2026-08-17); this
+   positive-z-index-on-both-layers form is more robust. Driven by
+   scaleY(--live-level-frac) rather than a percentage height: percentage
+   height on an absolutely positioned pseudo needs its containing block's
+   height to be "specified", which a grid-item's stretch-derived height
+   isn't reliably treated as — scaleY sidesteps that and is compositor-only
+   (cheaper than animating height). --live-level-frac is a unitless 0..1
+   fraction set on the item itself (Frank 2026-08-17, option D of 4). */
+.live-hud-item:not(.live-hud-roller)>*{position:relative;z-index:1}
+.live-hud-item:not(.live-hud-roller)::before{
+  content:'';position:absolute;z-index:0;inset:0;
+  transform:scaleY(var(--live-level-frac,0));transform-origin:bottom;
+  background:color-mix(in srgb,var(--t2) 14%,transparent);
+  transition:transform .06s linear,background-color .15s ease;
+}
+.live-hud-item:not(.live-hud-roller):has(.live-hud-tech.has-issue)::before{
+  background:color-mix(in srgb,var(--danger) 20%,transparent);
+}
 .live-hud-label{font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
 .live-hud-label-long{display:none}
 .live-hud-label-short{display:inline}
-.live-hud-meter{height:3px;border-radius:var(--r-pill);background:rgba(127,127,135,.16);overflow:hidden}
-.live-hud-item:not(.live-hud-roller) .live-hud-meter{position:relative;width:4px;height:16px}
-.live-hud-meter-fill{display:block;width:var(--live-level,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,#8e8e93,#aeaeb2);transition:width .06s linear}
-.live-hud-item:not(.live-hud-roller) .live-hud-meter-fill{position:absolute;right:0;bottom:0;left:0;width:100%;height:var(--live-level,0%);background:linear-gradient(0deg,#8e8e93,#aeaeb2);transition:height .06s linear}
 .live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
-.live-hud-tech{color:var(--t3);font:600 6.25px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+.live-hud-tech{color:var(--t3);font:600 7px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
 .live-hud-tech.has-issue{color:var(--danger)}
 .live-hud-roller{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:5px;row-gap:2px;padding-top:5px;border-top:1px solid var(--border)}
 .live-hud-roller .live-hud-tech{grid-column:1/-1;justify-self:start}
@@ -1747,7 +1766,6 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   .live-hud[data-side]{left:16px;right:auto}
   .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:4px}
   .live-hud-item:not(.live-hud-roller){row-gap:2px}
-  .live-hud-item:not(.live-hud-roller) .live-hud-meter{height:17px}
   .live-hud-roller{grid-template-columns:auto minmax(0,1fr);column-gap:3px;row-gap:1px;padding-top:3px}
   .live-hud-roller .live-hud-value{font-size:10px}
 }
@@ -2209,15 +2227,13 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <div class="live-hud" id="live-strip" data-state="DISCONNECTED" data-side="left" role="group" tabindex="0" aria-label="Live device values. Drag left or right to reposition." aria-hidden="true">
   <div class="live-hud-bank" id="live-hud-bank">B1 · Bank 1</div>
   <div class="live-hud-inner">
-    <div class="live-hud-item">
+    <div class="live-hud-item" id="live-f1-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f1-label-long">L</span><span class="live-hud-label-short" id="live-f1-label-short">L</span></span>
-      <span class="live-hud-meter" aria-hidden="true"><span class="live-hud-meter-fill" id="live-f1-meter"></span></span>
       <span class="live-hud-value" id="live-f1-value">—</span>
       <span class="live-hud-tech" id="live-f1-tech">Ch1·CC11</span>
     </div>
-    <div class="live-hud-item">
+    <div class="live-hud-item" id="live-f2-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f2-label-long">R</span><span class="live-hud-label-short" id="live-f2-label-short">R</span></span>
-      <span class="live-hud-meter" aria-hidden="true"><span class="live-hud-meter-fill" id="live-f2-meter"></span></span>
       <span class="live-hud-value" id="live-f2-value">—</span>
       <span class="live-hud-tech" id="live-f2-tech">Ch1·CC1</span>
     </div>
@@ -5670,14 +5686,14 @@ function updateContextualLiveStrip(){
 }
 function renderLiveFaderValues(){
   const allowed = connState() === 'CONNECTED_LIVE';
-  const setLiveValue = (id, meterId, value, seen) => {
+  const setLiveValue = (id, itemId, value, seen) => {
     const valid = allowed && seen && Number.isFinite(value);
     setTxt(id, valid ? value : '—');
-    const meter = document.getElementById(meterId);
-    if (meter) meter.style.setProperty('--live-level', valid ? (Math.max(0, Math.min(127, value)) / 127 * 100) + '%' : '0%');
+    const item = document.getElementById(itemId);
+    if (item) item.style.setProperty('--live-level-frac', valid ? String(Math.max(0, Math.min(127, value)) / 127) : '0');
   };
-  setLiveValue('live-f1-value', 'live-f1-meter', liveValues.f1, liveSeen.f1);
-  setLiveValue('live-f2-value', 'live-f2-meter', liveValues.f2, liveSeen.f2);
+  setLiveValue('live-f1-value', 'live-f1-item', liveValues.f1, liveSeen.f1);
+  setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
 }
 
 function renderLiveStrip(){

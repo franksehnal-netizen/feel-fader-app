@@ -805,11 +805,7 @@ async function runProfile(browser, url, profile) {
         return value.scrollWidth <= value.clientWidth + 1;
       }),
       labels: ['live-f1-label-short','live-f2-label-short','live-roller-label-short'].map(id => document.getElementById(id).textContent),
-      metersVisible: [...hud.querySelectorAll('.live-hud-meter')].every(meter => getComputedStyle(meter).display !== 'none'),
-      meterRects: [...hud.querySelectorAll('.live-hud-meter')].map(meter => {
-        const meterRect = meter.getBoundingClientRect();
-        return { width: meterRect.width, height: meterRect.height };
-      }),
+      washHeights: ['live-f1-item','live-f2-item'].map(id => parseFloat(document.getElementById(id).style.getPropertyValue('--live-level-frac'))),
       itemRects: [...hud.querySelectorAll('.live-hud-item')].map(item => {
         const itemRect = item.getBoundingClientRect();
         return { top: itemRect.top, right: itemRect.right, bottom: itemRect.bottom, left: itemRect.left };
@@ -822,7 +818,7 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Scrolled mobile monitor becomes the permanent 96x96 square with L, R and ART',
     mobileStrip.square && Math.abs(mobileStrip.width - 96) <= 1 && Math.abs(mobileStrip.height - 96) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
-      && mobileStrip.meterRects.every(rect => rect.width > 0 && rect.height > 0)
+      && mobileStrip.washHeights.every(h => h > 0)
       && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Snap Pizzicato'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
@@ -852,23 +848,20 @@ async function runProfile(browser, url, profile) {
   const stripBackAtController = await page.evaluate(() => {
     const hud = document.getElementById('live-strip');
     const rect = hud.getBoundingClientRect();
-    const meters = [...hud.querySelectorAll('.live-hud-meter')].map(meter => {
-      const meterRect = meter.getBoundingClientRect();
-      return { width: meterRect.width, height: meterRect.height };
-    });
+    const washHeights = ['live-f1-item','live-f2-item'].map(id => parseFloat(getComputedStyle(document.getElementById(id), '::before').height));
     return {
       visible: hud.classList.contains('is-contextual-visible'),
       square: !hud.classList.contains('is-compact'),
       opacity: getComputedStyle(hud).opacity,
       width: rect.width,
       height: rect.height,
-      meters,
+      washHeights,
     };
   });
   addCheck(checks, 'Hardware monitor remains the same 96x96 square beside the controller',
     stripBackAtController.visible && stripBackAtController.square && stripBackAtController.opacity === '1'
       && Math.abs(stripBackAtController.width - 96) <= 1 && Math.abs(stripBackAtController.height - 96) <= 1
-      && stripBackAtController.meters.every(meter => meter.width > 0 && meter.height > 0),
+      && stripBackAtController.washHeights.every(h => h > 0),
     `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / square ${stripBackAtController.square} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
