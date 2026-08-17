@@ -30,6 +30,18 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       await new Promise(requestAnimationFrame);
       const ctaAfterSkip = document.getElementById('send-btn')?.getBoundingClientRect().top;
       skipWelcome(); render();
+      // finishWelcomeInstant() now re-measures layoutFaders() one rAF after skip (not
+      // just re-positioning from a possibly-stale cache) — the fader can legitimately
+      // correct itself once, quickly, if the synchronous mid-transition measurement
+      // caught the device image before its aspect-ratio-driven height had resolved
+      // (Frank, real-device report 2026-08-17: fader appeared oversized/mispositioned
+      // right after "Continue without device", then snapped to the correct size on
+      // first scroll — the snap was an accidental correction via a resize event; this
+      // makes it happen deterministically instead). Capture "before" after that one
+      // corrective frame, not at the raw pre-correction instant — "stable" here means
+      // no *further* drift once the initial correction has landed, not a frozen wrong
+      // value.
+      await new Promise(requestAnimationFrame);
       const before = document.getElementById('thumb-l')?.style.transform;
       await new Promise(r => setTimeout(r, 900));
       const after = document.getElementById('thumb-l')?.style.transform;

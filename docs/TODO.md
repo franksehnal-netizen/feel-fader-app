@@ -14,6 +14,42 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17d — Skip welcome: fadery se zobrazí velké/špatně, po scrollu skočí správně
+
+Frank po 2026-08-17c nahlásil ("Continue without device"): fadery se
+zobrazí VĚTŠÍ a v jiné pozici, po prvním scrollu SKOČÍ na správnou
+velikost/pozici. Klíčové vodítko k diagnóze.
+
+Kořen: `finishWelcomeInstant()` (volaná ze `skipWelcome()`) volá
+`finalizeWelcomeExit()` → `layoutFaders()` SYNCHRONNĚ, uprostřed přechodu
+onboarding→normální app — v tu chvíli ještě nemusí být `img.offsetHeight`
+(závislé na `aspect-ratio` CSS vlastnosti) definitivně vyřešené prohlížečem.
+Následný `requestAnimationFrame` blok volal jen `positionThumbs()` (ne
+`layoutFaders()`) — takže jen ZNOVU APLIKOVAL tu samou (možná špatnou)
+zacachovanou `_faderTravel` hodnotu. Jediné, co to kdy opravilo, byl
+NÁHODNÝ `resize` event (typicky vyvolaný sbalením/rozbalením adresní
+lišty mobilního prohlížeče při scrollu) — proto "skok po scrollu".
+
+Fix: rAF blok teď volá i `layoutFaders()` (ne jen `positionThumbs()`),
+takže se to opraví deterministicky, ne nahodile.
+
+Ověřeno automatizovaně (přesná reprodukce mechanismu, i když ne přesně
+Frankova čísla — Chrome/Blink nemá stejné aspect-ratio timing jako
+WebKit): `imgW` zůstává konstantní přes celý běh, ale `transform` Y
+hodnota thumbu se opraví PŘESNĚ JEDNOU (132px → 83px) hned na první
+snímek po opravě a pak zůstává stabilní — potvrzuje to jak mechanismus
+(pozdě vyřešená výška), tak že oprava nezavádí žádnou další nestabilitu.
+
+`onb-probe4.mjs` ("no-HW demo keeps fader thumbs stable") tuhle opravu
+zprvu nahlásil jako regresi — testoval stabilitu OD ÚPLNĚ PRVNÍHO
+(předopravného) měření, což je teď záměrně jiné. Upraven na měření
+stability PO jednom korekčním snímku, ne od syrového pre-fix stavu.
+`send-dock-gap-symmetry-probe.mjs` selhal jen v plné sadě (69 probes,
+systémová zátěž) — v izolaci prochází 2/2, nesouvisí s touto opravou.
+
+Celá sada: `npm test` — zpět na stejná 3 pre-existing, nesouvisející
+selhání jako před touto opravou.
+
 ### 2026-08-17c — Onboarding: trhaný scroll tlačítka + controller zajížděl za lištu pozadí
 
 Frank po 2026-08-17b nahlásil další 3 nálezy ze skutečného telefonu: fadery
