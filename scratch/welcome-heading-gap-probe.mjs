@@ -1,8 +1,8 @@
 // Regression: in the "no onboarding tips" welcome state (returning user,
 // ff-onboarded already set), the heading must not sit flush against the
 // action button with zero gap. Measured 2026-08-10: gap was exactly 0px.
-// Also asserts positionWelcomeAnchor() still pins #send-btn's screen
-// position identically whether tips show or not (its whole job).
+// First-run onboarding now intentionally stacks its CTA below the tour copy;
+// returning-user welcome keeps the canonical in-app button position.
 // Spec: 2026-08-10-todo-batch-design.md §4.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -30,10 +30,11 @@ const withTips = await p.evaluate(async () => {
   showWelcome();
   await new Promise(r => setTimeout(r, 100));
   const btn = document.getElementById('send-btn').getBoundingClientRect();
-  return { btnTop: btn.top };
+  const beats = document.getElementById('onb-beats').getBoundingClientRect();
+  return { btnTop: btn.top, beatsBottom: beats.bottom };
 });
-P('#send-btn stays pinned to the same screen position in both states', Math.abs(withTips.btnTop - noTips.btnTop) < 0.5,
-  `noTips=${noTips.btnTop} withTips=${withTips.btnTop}`);
+P('first-run #send-btn sits below the cardless onboarding copy', withTips.btnTop >= withTips.beatsBottom + 16,
+  `copyBottom=${withTips.beatsBottom} btnTop=${withTips.btnTop}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

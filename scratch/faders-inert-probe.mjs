@@ -38,7 +38,10 @@ const welcome = await p.evaluate(async () => {
   const sample = (thumbId, railId, value) => {
     const thumb=document.getElementById(thumbId), rail=document.getElementById(railId);
     const img=thumb.querySelector('img');
-    const travel=rail.getBoundingClientRect().height-img.getBoundingClientRect().height;
+    // The product tour may render the shared controller at a visual scale;
+    // connectTransitionWelcome settles it into the full-size app stage, so the
+    // final target is based on the rail's local (untransformed) travel.
+    const travel=rail.offsetHeight-img.offsetHeight;
     return { thumb, rail, expected:Math.round((1-value/127)*travel) };
   };
   const l=sample('thumb-l','track-l',110);
@@ -65,11 +68,13 @@ const welcome = await p.evaluate(async () => {
   const settledRight=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
   await new Promise(resolve=>setTimeout(resolve,650));
   const finalRect = document.getElementById('device-img').getBoundingClientRect();
+  const homeRect = document.getElementById('device-home').getBoundingClientRect();
   return {
     scrollBefore,scrollAfterStart,scrollFinal:window.scrollY,
     welcomeRect:{top:welcomeRect.top,left:welcomeRect.left,width:welcomeRect.width},
     alignedRect:{top:alignedRect.top,left:alignedRect.left,width:alignedRect.width},
     finalRect:{top:finalRect.top,left:finalRect.left,width:finalRect.width},
+    homeRect:{top:homeRect.top,left:homeRect.left,width:homeRect.width},
     freezeDeltaLeft:Math.abs(frozenL-beforeL),
     freezeDeltaRight:Math.abs(frozenR-beforeR),
     left:settledLeft,
@@ -100,9 +105,9 @@ out('welcome transition always resets a previously scrolled app to top',
   welcome.scrollBefore>0 && welcome.scrollAfterStart===0 && welcome.scrollFinal===0,
   `${welcome.scrollBefore} → ${welcome.scrollAfterStart} → ${welcome.scrollFinal}`);
 out('single controller persists while the app resets to its canonical top position',
-  welcome.sameDeviceNode && Math.abs(welcome.alignedRect.left-welcome.finalRect.left)<1 &&
-  Math.abs(welcome.alignedRect.width-welcome.finalRect.width)<1 && Math.abs(welcome.alignedRect.top-welcome.finalRect.top)<1,
-  JSON.stringify({welcome:welcome.welcomeRect,aligned:welcome.alignedRect,final:welcome.finalRect}));
+  welcome.sameDeviceNode && Math.abs(welcome.homeRect.left-welcome.finalRect.left)<1 &&
+  Math.abs(welcome.homeRect.width-welcome.finalRect.width)<1 && Math.abs(welcome.homeRect.top-welcome.finalRect.top)<1,
+  JSON.stringify({welcome:welcome.welcomeRect,aligned:welcome.alignedRect,final:welcome.finalRect,home:welcome.homeRect}));
 
 const linkPage = await b.newPage();
 await linkPage.goto(URL,{waitUntil:'networkidle0'});

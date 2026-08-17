@@ -41,11 +41,11 @@ P('drag below the threshold does not change beat', afterSmallDrag === 1, `beat=$
 // Dots still work.
 await p.evaluate(() => onbBeatGo(0));
 await new Promise(r => setTimeout(r, 250));
-const dot3 = await p.$('.onb-dot:nth-child(3)');
-await dot3.click();
+const dot4 = await p.$('.onb-dot:nth-child(4)');
+await dot4.click();
 await new Promise(r => setTimeout(r, 250));
 const afterDotClick = await p.evaluate(() => _onbBeat);
-P('dot click still navigates to its beat', afterDotClick === 2, `beat=${afterDotClick}`);
+P('fourth dot navigates to the final beat', afterDotClick === 3, `beat=${afterDotClick}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

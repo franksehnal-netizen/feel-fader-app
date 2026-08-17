@@ -23,28 +23,30 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
     const beat0 = await page.evaluate(() => {
       const beats = document.getElementById('onb-beats');
       return { beatsVisible: beats && getComputedStyle(beats).display !== 'none',
-               dots: document.querySelectorAll('#onb-beats .onb-dots span').length,
-               ctaHidden: !document.getElementById('welcome-start').classList.contains('show') };
+               dots: document.querySelectorAll('#onb-beats .onb-dot').length,
+               ctaHidden: !document.getElementById('send-btn').classList.contains('show') };
     });
-    await new Promise(r => setTimeout(r, 3600));
+    await new Promise(r => setTimeout(r, 800));
     const at36 = await page.evaluate(() => ({
-      startHidden: !document.getElementById('welcome-start').classList.contains('show'),
+      startHidden: !document.getElementById('send-btn').classList.contains('show'),
+      beat: _onbBeat,
     }));
     // advance to CTA
-    await page.evaluate(() => { onbSkipIntro(); });
+    await page.evaluate(() => { onbBeatGo(3, true); });
     // onbBeatGo() cross-fades text via a 180ms setTimeout (see feel-fader.html); wait past it
     // before reading textContent, otherwise we observe the pre-skip text.
     await new Promise(r => setTimeout(r, 220));
-    const beat2 = await page.evaluate(() => ({
+    const beat4 = await page.evaluate(() => ({
       title: document.querySelector('#onb-beats .onb-beat-title')?.textContent || ''
     }));
     // no-HW: skip reveals "Explore the demo" path; Start not forced
     const checks = [
       ['#onb-beats visible on first-run welcome', beat0.beatsVisible === true],
-      ['3 step dots rendered', beat0.dots === 3],
-      ['CTA (Start) hidden during beats', beat0.ctaHidden === true],
-      ['fallback does not surface Start during beats (t=3.6s)', at36.startHidden === true],
-      ['onbSkipIntro jumps to final beat (title = Connect or explore)', beat2.title.includes('Connect')],
+      ['4 step dots rendered', beat0.dots === 4],
+      ['CTA (Connect & load) is available during beats', beat0.ctaHidden === false],
+      ['CTA stays available while reading the intro', at36.startHidden === false],
+      ['slides wait for explicit user navigation', at36.beat === 0],
+      ['final beat explains configure/perform relationship', beat4.title.includes('Configure')],
       ['no pageerror / console.error', pageErrors.length === 0],
     ];
     let ok = true; console.log('\nChecks:');

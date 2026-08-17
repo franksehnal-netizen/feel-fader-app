@@ -8,7 +8,43 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
+_(žádné otevřené položky)_
+
 ## Hotovo
+
+### 2026-08-16 — Header lišta: chip padding, dark-toggle centering, bank toolbar
+
+1. **Bank chipy v headeru měly hodně volného místa kolem sebe.** Zjištěno, že
+   TODO odkazovalo na starou/mrtvou třídu `.bank-tab` (padding `8px 12px`,
+   nikde reálně nepoužita) — reálně vykreslované chipy jsou `.bank-block-tab`
+   (padding `2px 12px`). Horizontální padding zúžen `12px → 9px` na
+   `.bank-block-tab` i `.bank-block-tab-add` ("+" tlačítko) pro konzistentní,
+   kompaktnější rozestup.
+2. **Dark/light tlačítko (`.dark-toggle`) nebylo výškově na střed.** Přesně
+   změřeno: sluníčko (light mode) je geometricky na střed (1px/1px shora/zdola),
+   ale **měsíček (dark mode) sedí o ~1px níž** — jeho SVG cesta (srpek) není
+   nakreslená na střed svého 14×14 viewBoxu (2,25px mezera nahoře vs 1,3px
+   dole). Opraveno `translateY(-.5px)` nudge na `html.dark .theme-icon-moon`.
+3. **Bank actions toolbar (‹ › ⧉ ✕) na dotykových zařízeních (`@media(pointer:coarse)`,
+   ne šířka viewportu) skákal na 44×44px** s plným kruhovým glass pozadím i v
+   klidu — vedle názvu banky působil nápadně. Zmenšeno na 36×36px (pořád
+   pohodlný touch target). Ověřeno přes `page.setViewport({isMobile:true,
+   hasTouch:true})`, který na rozdíl od `emulateMediaFeatures` skutečně
+   vynutí `pointer:coarse` v headless Chrome (zapsáno do memory
+   `project_feelfader_browser_test_automation`).
+
+### 2026-08-16 — Header title select/velikost + welcome swipe-select
+
+1. **Header nadpis "Feel Fader" (`.h-title`) šel označit myší a nebyl velkým
+   písmem.** `.h-title` dostal `user-select:none` (parita s welcome-screen
+   wordmarkem) a `text-transform:uppercase` + o stupeň větší/tučnější řez
+   (13px/700 → 14px/800, `letter-spacing:.03em`) — teď čitelně vystupuje jako
+   brand title vedle bank tabů, ne jako další chip.
+2. **Welcome tutorial: swipe přes text ho zároveň selectoval.** Už vyřešeno —
+   součást nedokončeného WIP zděděného na začátku této session
+   (`#onb-beats,.onb-beat-title,.onb-beat-sub,.onb-beat-details{user-select:none}`
+   + `touch-action:pan-y`). Ověřeno živě (computed `user-select:none` na všech
+   textových uzlech i dynamicky vkládaných capability pills, které ho dědí).
 
 ### 2026-08-10 — 9 UX nálezů z provozu (batch)
 

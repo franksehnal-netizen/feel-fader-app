@@ -2,8 +2,9 @@
 // see docs/superpowers/specs/2026-07-21-welcome-blur-overlay-design.md).
 // #device-wrap and #send-btn now mount ONCE, at page load, directly into their
 // final app position (#device-home / .send-callout) and never reparent again.
-// The welcome screen is a pure position:fixed blur overlay on top of the
-// already-rendered app; #send-btn gets a `.welcome-floating` class (position:
+// First-run onboarding removes the blur to show highlighted hardware clearly;
+// returning-user welcome keeps the original soft blur.
+// #send-btn gets a `.welcome-floating` class (position:
 // fixed, computed --welcome-float-top/left) to visually escape onto the
 // welcome card while welcome is up. This replaces the old reparenting +
 // --stage-entry-offset/--send-entry-gap pixel-continuity system entirely.
@@ -37,7 +38,7 @@ P('#device-wrap already lives in #device-home at page load', atLoad.controllerPa
 P('#send-btn already lives in .send-callout at page load', atLoad.btnParentClass === 'send-callout', JSON.stringify(atLoad));
 P('#send-btn carries .welcome-floating while welcome is up', atLoad.btnHasFloating, JSON.stringify(atLoad));
 P('#send-btn is position:fixed while welcome is up', atLoad.btnPosition === 'fixed', atLoad.btnPosition);
-P('welcome overlay uses backdrop-filter blur (not an opaque fill)', /blur/.test(atLoad.overlayBackdrop), atLoad.overlayBackdrop);
+P('first-run product tour removes background blur for highlighted hardware', atLoad.overlayBackdrop === 'none', atLoad.overlayBackdrop);
 
 // 2. skipWelcome(): nothing reparents, .welcome-floating comes off.
 await p.evaluate(() => skipWelcome());
@@ -67,6 +68,11 @@ await p2.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle
 await p2.evaluate(() => localStorage.setItem('ff-onboarded', '1'));
 await p2.reload({ waitUntil: 'networkidle0' });
 await new Promise(r => setTimeout(r, 200));
+const returningBackdrop = await p2.evaluate(() => {
+  const style = getComputedStyle(document.getElementById('welcome-screen'), '::before');
+  return style.backdropFilter || style.webkitBackdropFilter;
+});
+P('returning-user welcome retains the soft background blur', /blur/.test(returningBackdrop), returningBackdrop);
 async function imgTop() { return p2.evaluate(() => document.getElementById('device-img').getBoundingClientRect().top); }
 const before0 = await imgTop();
 await p2.evaluate(() => hideWelcome());

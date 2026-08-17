@@ -26,7 +26,7 @@ const fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
       showWelcome(); onbStartWelcome();
       await new Promise(requestAnimationFrame);
       const ctaBeforeSkip = document.getElementById('send-btn')?.getBoundingClientRect().top;
-      onbBeatGo(2, true);
+      onbBeatGo(3, true);
       await new Promise(requestAnimationFrame);
       const ctaAfterSkip = document.getElementById('send-btn')?.getBoundingClientRect().top;
       skipWelcome(); render();

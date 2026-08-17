@@ -20,7 +20,7 @@ const shape = await p.evaluate(() => {
   return { hasCompact: strip.classList.contains('is-compact'), width: cs.width, height: cs.height, borderRadius: cs.borderRadius };
 });
 P('is-compact never gets added', !shape.hasCompact, JSON.stringify(shape));
-P('Renders as a 112x112 square, not a pill', shape.width === '112px' && shape.height === '112px' && shape.borderRadius === '22px', JSON.stringify(shape));
+P('Renders as a 112x112 square, not a pill', shape.width === '112px' && shape.height === '112px' && shape.borderRadius === '18px', JSON.stringify(shape));
 
 const gap = await p.evaluate(() => {
   const strip = document.getElementById('live-strip');

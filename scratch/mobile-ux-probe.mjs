@@ -401,6 +401,7 @@ async function runProfile(browser, url, profile) {
   const welcomeBefore = await page.evaluate(() => {
     const cta = document.getElementById('send-btn').getBoundingClientRect();
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
+    const beats = document.getElementById('onb-beats').getBoundingClientRect();
     const device = document.getElementById('device-img').getBoundingClientRect();
     const wordmark = document.getElementById('welcome-wordmark');
     const wordmarkRect = wordmark.getBoundingClientRect();
@@ -411,7 +412,9 @@ async function runProfile(browser, url, profile) {
       stageBottom: stage.bottom,
       stageCenter: stage.top + stage.height / 2,
       deviceTop: device.top,
+      deviceBottom: device.bottom,
       deviceCenter: device.top + device.height / 2,
+      beatsTop: beats.top,
       wordmarkTop: wordmarkRect.top,
       wordmarkBottom: wordmarkRect.bottom,
       wordmarkLabel: wordmark.getAttribute('aria-label'),
@@ -426,7 +429,7 @@ async function runProfile(browser, url, profile) {
   }));
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-welcome.png`) });
   const introNavPositions = [];
-  for (let slide = 0; slide < 3; slide += 1) {
+  for (let slide = 0; slide < 4; slide += 1) {
     await page.evaluate(index => onbBeatGo(index), slide);
     await settle(page, 250);
     introNavPositions.push(await page.evaluate(() => ({
@@ -442,13 +445,14 @@ async function runProfile(browser, url, profile) {
     - Math.min(...introNavPositions.map(item => item.dotsTop));
   const introCtaShift = Math.max(...introNavPositions.map(item => item.ctaTop))
     - Math.min(...introNavPositions.map(item => item.ctaTop));
-  addCheck(checks, 'Intro dots stay fixed across all three slides', dotsShift <= 1, `${dotsShift.toFixed(2)} px`);
-  addCheck(checks, 'Primary CTA stays fixed across all three slides', introCtaShift <= 1, `${introCtaShift.toFixed(2)} px`);
+  addCheck(checks, 'Intro dots stay fixed across all four slides', dotsShift <= 1, `${dotsShift.toFixed(2)} px`);
+  addCheck(checks, 'Primary CTA stays fixed across all four slides', introCtaShift <= 1, `${introCtaShift.toFixed(2)} px`);
   addCheck(checks, 'Redundant Skip intro action is absent',
     await page.$('.onb-skip') === null, 'absent');
-  addCheck(checks, 'Welcome copy is centered over the controller',
-    Math.abs(welcomeBefore.stageCenter - welcomeBefore.deviceCenter) <= 1,
-    `${welcomeBefore.stageCenter.toFixed(2)} / ${welcomeBefore.deviceCenter.toFixed(2)} px`);
+  addCheck(checks, 'Mobile onboarding keeps the wordmark above and copy below the stationary controller',
+    welcomeBefore.wordmarkBottom < welcomeBefore.deviceTop
+      && welcomeBefore.beatsTop >= welcomeBefore.deviceBottom,
+    `wordmark bottom ${welcomeBefore.wordmarkBottom.toFixed(2)} / controller ${welcomeBefore.deviceTop.toFixed(2)}–${welcomeBefore.deviceBottom.toFixed(2)} / copy top ${welcomeBefore.beatsTop.toFixed(2)} px`);
   addCheck(checks, 'Welcome controller stays still',
     Math.abs(welcomeAfter.deviceTop - welcomeBefore.deviceTop) <= 0.25,
     `${welcomeBefore.deviceTop.toFixed(2)} → ${welcomeAfter.deviceTop.toFixed(2)} px`);
@@ -462,9 +466,10 @@ async function runProfile(browser, url, profile) {
   await page.evaluate(() => {
     document.getElementById('welcome-text-block').classList.remove('welcome-onboarding');
     document.getElementById('onb-beats').style.display = 'none';
+    delete document.getElementById('device-wrap').dataset.onbFeature;
     showStartBtn();
   });
-  await settle(page, 100);
+  await settle(page, 550);
   const compactWelcome = await page.evaluate(() => {
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
     const action = document.getElementById('send-btn').getBoundingClientRect();
