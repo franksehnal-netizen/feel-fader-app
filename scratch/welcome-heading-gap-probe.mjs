@@ -1,9 +1,16 @@
 // Regression: in the "no onboarding tips" welcome state (returning user,
 // ff-onboarded already set), the heading must not sit flush against the
 // action button with zero gap. Measured 2026-08-10: gap was exactly 0px.
-// First-run onboarding now intentionally stacks its CTA below the tour copy;
-// returning-user welcome keeps the canonical in-app button position.
 // Spec: 2026-08-10-todo-batch-design.md §4.
+//
+// First-run state (final review 2026-08-17, welcome-heading-gap-probe fix):
+// the original assertion here expected #send-btn BELOW #onb-beats, per the
+// 2026-08-10 spec's stacking order. The mid-August onboarding redesign
+// (wordmark/controller/notice top-to-bottom cascade, see docs/TODO.md
+// 2026-08-17l onward) flipped that — the button now sits directly under the
+// controller, with the tour copy below it (confirmed correct via screenshot,
+// Frank 2026-08-18). Assertion updated to match; still guards against the
+// two flush-against-each-other zero-gap regression this probe exists for.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -31,10 +38,10 @@ const withTips = await p.evaluate(async () => {
   await new Promise(r => setTimeout(r, 100));
   const btn = document.getElementById('send-btn').getBoundingClientRect();
   const beats = document.getElementById('onb-beats').getBoundingClientRect();
-  return { btnTop: btn.top, beatsBottom: beats.bottom };
+  return { btnBottom: btn.bottom, beatsTop: beats.top };
 });
-P('first-run #send-btn sits below the cardless onboarding copy', withTips.btnTop >= withTips.beatsBottom + 16,
-  `copyBottom=${withTips.beatsBottom} btnTop=${withTips.btnTop}`);
+P('first-run cardless onboarding copy sits below #send-btn with a visible gap', withTips.beatsTop >= withTips.btnBottom + 16,
+  `btnBottom=${withTips.btnBottom} beatsTop=${withTips.beatsTop}`);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
