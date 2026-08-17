@@ -8,9 +8,51 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-_(žádné otevřené položky)_
+- **Dvě pre-existing selhání v `mobile-ux-probe.mjs` odkryté opravou crashe (2026-08-17), nesouvisí s overlap fixem:**
+  1. "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování.
+  2. "Mobile onboarding keeps... copy below the stationary controller" — na velmi krátkém viewportu (`iphone-messenger` profil, 393×659) je matematicky nemožné zároveň udržet beats box pod controller obrázkem A na obrazovce (potřebuje ~276px pod controllerem, k dispozici jen ~60px) — overlap fix (níže) dává přednost "on-screen" před "pod controllerem". Test kóduje starší invariant, který si protiřečí s novou prioritou.
+  Řešit: buď aktualizovat test expectations, nebo zvážit jiný fallback pro extrémně krátké viewporty. Frank rozhodne.
 
 ## Hotovo
+
+### 2026-08-17 — Welcome screen: "needs Chrome or Edge" hláška přes "Connect & load"
+
+Frank nahlásil (screenshoty z Messenger in-app prohlížeče na iPhone): červená
+hláška o nepodporovaném prohlížeči vizuálně koliduje s tlačítkem "Connect &
+load" / carousel onboardingu se nevykresluje na obrazovce.
+
+Kořen: paralelní CSS blok (feel-fader.html ~1401-1420) natvrdo pinoval pozici
+onboarding controlleru/tlačítka na hardcoded per-width-breakpoint pixelové
+konstanty (`--onb-controller-top:72px`, `--onb-controller-height:497.3125px`
+atd.) přes `!important` — nikdy nereagoval na výšku viewportu. Živé JS měření
+v `positionWelcomeFloatingButton()` bylo tichým `!important` přebito, takže
+tlačítko/carousel sedělo na identické pozici bez ohledu na výšku telefonu —
+na vysokých telefonech to kolidovalo s hláškou (ta je v normálním flow a s
+rostoucí výškou obrazovky se posouvá dolů), na krátkých vypadl celý carousel
+mimo obrazovku.
+
+Fix: `positionWelcomeFloatingButton()` teď nastavuje `top`/`--welcome-cta-bottom`
+s prioritou `'important'` (inline `!important` vyhrává nad stylesheet
+`!important` v rámci author origin), takže živé měření skutečně vyhraje.
+Přidán clamping na obě hrany — nahoře nesmí tlačítko přijít blíž než 12px k
+dolnímu okraji viditelné hlášky, dole nesmí carousel přesáhnout
+`window.innerHeight`; dolní hranice (viewport) je tvrdá, horní (hláška)
+best-effort. Ověřeno na reálné velikosti Frankova telefonu (iPhone Pro Max,
+430×932) — čistě, bez kolize. Na ~852px (běžné non-Pro iPhony) zůstává menší
+zbytkový překryv s hláškou — matematicky nejde zároveň uspokojit "pod
+hláškou" i "na obrazovce" v tak málo prostoru, dolní hranice má přednost
+(viz položka v Otevřené o testu, který na to naráží na ještě kratším 659px
+profilu).
+
+Testy: nová `unsupported-browser-welcome-probe.mjs` (11 checks, reálné
+`navigator.requestMIDIAccess=undefined`, ne interní state flag — žádná
+předchozí probe tuhle kombinaci vůbec necvičila, protože běží v Chrome, který
+obě API podporuje). Mimochodem opraveny 2 zastaralé `#welcome-text-block
+.welcome-skip` selektory v `mobile-ux-probe.mjs` (skip tlačítko se při
+onboardingu přesouvá do `document.body` přes `floatWelcomeSkip()`, scoped
+selektor tak vracel `null` a probe padala s `TypeError`) — po opravě probe
+odkryla 2 samostatná pre-existing selhání nesouvisející s touto opravou,
+zapsaná výše v Otevřené.
 
 ### 2026-08-16 — Header lišta: chip padding, dark-toggle centering, bank toolbar
 

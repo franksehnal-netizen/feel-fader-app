@@ -57,6 +57,7 @@ const PROBES = [
   'livecolor-probe.mjs',
   'midi-backlog-guard-probe.mjs',
   'mobile-ux-probe.mjs',
+  'unsupported-browser-welcome-probe.mjs',
   'onb-probe4.mjs',
   'welcome-no-box-probe.mjs',
   'status-hover-reveal-probe.mjs',

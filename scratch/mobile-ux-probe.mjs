@@ -474,7 +474,7 @@ async function runProfile(browser, url, profile) {
     const stage = document.querySelector('.welcome-copy-stage').getBoundingClientRect();
     const action = document.getElementById('send-btn').getBoundingClientRect();
     const controller = document.getElementById('device-img').getBoundingClientRect();
-    const visibleText = [document.getElementById('welcome-wordmark'), document.getElementById('send-btn'), document.querySelector('#welcome-text-block .welcome-skip')]
+    const visibleText = [document.getElementById('welcome-wordmark'), document.getElementById('send-btn'), document.querySelector('.welcome-skip')]
       .filter(element => element.getClientRects().length > 0)
       .map(element => element.textContent.trim());
     return {
@@ -507,7 +507,7 @@ async function runProfile(browser, url, profile) {
 
   const feedbackState = await page.evaluate(async () => {
     const originalLoad = window.loadConfigFromDevice;
-    const continueButton = document.querySelector('#welcome-text-block .welcome-skip');
+    const continueButton = document.querySelector('.welcome-skip');
     const continueTop = () => continueButton.getBoundingClientRect().top;
     const runFailure = async (name, message) => {
       window.loadConfigFromDevice = async () => {
