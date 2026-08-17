@@ -14,6 +14,23 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17e — Onboarding samotný: fadery mimo pozici (stejná chyba, druhý konec)
+
+Po 2026-08-17d Frank potvrdil, že hlavní appka (po skip welcome) je OK, ale
+samotný onboarding pohled (carousel s beat 1 "Two faders...") měl fadery
+pořád mimo pozici — stejná třída chyby jako 17d, jen na OPAČNÉM konci
+přechodu (vstup do onboardingu, ne odchod z něj).
+
+`layoutFaders()` se při vstupu do onboardingu volá jen z `onImgLoad()`
+(vázáno na `<img>` load event) — může proběhnout DŘÍV, než se aplikuje
+`.welcome-onboarding` třída (a jí vynucená 220px šířka + aspect-ratio
+výška). `onbStartWelcome()` má už existující double-rAF blok pro
+`positionWelcomeAnchor()`/`positionWelcomeFloatingButton()`, ale ten
+`layoutFaders()`/`positionThumbs()` vůbec nevolal. Fix: přidáno do
+stejného double-rAF bloku.
+
+Celá sada: `npm test` — zpět na stejná 3 pre-existing nesouvisející selhání.
+
 ### 2026-08-17d — Skip welcome: fadery se zobrazí velké/špatně, po scrollu skočí správně
 
 Frank po 2026-08-17c nahlásil ("Continue without device"): fadery se
