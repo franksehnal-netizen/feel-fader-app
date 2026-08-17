@@ -14,6 +14,40 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17c — Onboarding: trhaný scroll tlačítka + controller zajížděl za lištu pozadí
+
+Frank po 2026-08-17b nahlásil další 3 nálezy ze skutečného telefonu: fadery
+malé/špatně pozicované (zatím neuzavřeno, čeká na screenshot), controller
+při scrollu nahoru zajíždí za lištu s barvou pozadí, pohyb "Connect & load"
+tlačítka je trhaný. Dva ze tří vyřešeny:
+
+1. **Trhaný pohyb tlačítka.** `top` je layout property — animovat ji na
+   každý scroll event vynucuje synchronní reflow, viditelně trhané na
+   reálném zařízení (na rozdíl od grafiky ovladače, která se hýbe přes
+   `transform`, kompozitovaně). Fix: scroll-offset se teď aplikuje přes
+   `transform:translate(-50%,-50%) translateY(var(--welcome-onb-scroll-offset))`
+   místo uvnitř `top` calc() — stejná matematika (ověřeno: 150px scroll =
+   přesně 150px posun, beze změny), jen plynulá.
+
+2. **Controller zajížděl za lištu s barvou pozadí.** Reálná CSS cascade
+   chyba: `@media(max-width:900px)` blok (feel-fader.html ~1468) obsahoval
+   `.device-wrap.welcome-mode[data-onb-feature] .device-visual{z-index:1}` —
+   identický selektor jako always-on pravidlo o pár řádků výš
+   (`z-index:205`), ale později v souboru → na jakékoliv mobilní šířce
+   (≤900px, prakticky všechny telefony) potichu vyhrával a stahoval
+   controller z "vždy nahoře" na "prohraje s téměř čímkoliv". Frank
+   potvrdil, že controller má být vždy nahoře (z-index 205) bez ohledu na
+   šířku, stejně jako desktop — mobilní pravidlo smazáno, transparentnější
+   pozadí (`::before`, 28% mix) na mobilu zůstává (to bylo v pořádku).
+
+Ověřeno: `getComputedStyle(.device-visual).zIndex === '205'` na mobilním
+onboardingu (dřív `'1'`). Celá sada: `npm test` — stejná 3 pre-existing
+selhání jako předtím, žádné nové regrese.
+
+Bod "fadery malé/špatně pozicované" zatím OTEVŘENÝ — nešlo reprodukovat v
+headless Chrome (zkusil scroll i simulovaný resize event), čeká se na
+Frankův screenshot.
+
 ### 2026-08-17b — Onboarding scroll: tlačítko nesledovalo scroll, obsah přejížděl přes controller
 
 Frank znovu nahlásil ze skutečného telefonu (Messenger in-app, po nasazení
