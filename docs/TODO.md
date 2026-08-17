@@ -14,6 +14,34 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17i — Controller "za lištou" při scrollu: skutečná příčina, konečně
+
+Dvě předchozí opravy (theme-color meta, color-scheme) byly rozumné hypotézy,
+ale nefungovaly — Frank stestoval znovu, pořád tam byla. Klíčové vodítko,
+které je obě vyvrátilo: "pouze controller zajede za lištu, ostatní prvky
+jsou viditelné" — kdyby šlo o prohlížečovou vrstvu (adresní lišta, overscroll
+fill), schovala by VŠECHNO na stejné pozici stejně, ne selektivně jeden prvek.
+
+Skutečná příčina byla v kódu celou dobu, jen jinde: `.stage` (rodič
+controlleru, `.stage-collapse>.stage`) má TRVALÉ `overflow:hidden`
+(používané pro bank-switch collapse animaci) — a onboarding "fake scroll"
+transform na controlleru (`.device-visual` transform:translateY sledující
+`--welcome-onb-scroll-offset`) se při dostatečném scrollu posune MIMO
+hranici `.stage` a tam se prostě OŘÍZNE. Žádná barevná lišta, čistý CSS
+clip. V kódu už existoval přesně tenhle vzor chyby zdokumentovaný a
+opravený pro JINÝ případ (`.change-popover.is-open` — feel-fader.html
+~1380, `.stage-collapse:has(.change-popover.is-open)>.stage{overflow:visible}`)
+— jen chyběl analogický override pro onboarding.
+
+Fix: `overflow:visible!important` přidáno do existujícího onboarding-specific
+pravidla pro `.stage-collapse>.stage` (feel-fader.html ~1438), vedle
+`opacity:1!important;transform:none!important`, které tam už bylo.
+
+Ověřeno: `getComputedStyle(.stage).overflow === 'visible'` během onboardingu;
+po scrollu `img.top` (−66px) teď legitimně přesahuje `stage.top` (70px) —
+dřív by to `.stage` prostě neukázalo. Celá sada: `npm test` — baseline,
+2 pre-existing nesouvisející selhání.
+
 ### 2026-08-17h — Tmavá lišta přes controller při scrollu: nebyla to appka, byl to Safari
 
 Frank poslal čerstvý screenshot přesně toho momentu — ukázal tmavou/černou
