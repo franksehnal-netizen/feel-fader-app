@@ -185,26 +185,42 @@ firmware `pytest tests/` 105 passed.
   encoder channel+cc, keyswitch channel, keyswitch velocity). Ověřeno
   porovnáním vyrenderovaného HTML před/po (identické až na dvě
   `aria-label` velikosti písmen, neškodné).
-- **`A-2`** — **vráceno zpět, neprovedeno.** Zkusil jsem mikrotaskovou
-  cache pro `validate()` (redukce 9 volání na 1 za render cyklus), ale
-  existující regresní test (`validation-clamp-probe.mjs`) přesně
-  simuluje bezpečnostně kritický vzor — synchronní `cfg` mutace mezi
-  dvěma voláními `validate()` v jednom ticku — a cache to pokazila
-  (stará, neplatná chyba přežila i po opravě configu). Skutečný přínos
-  (funkce je levná, pár desítek iterací) nestál za riziko stale-cache
-  bugu v bezpečnostně citlivé cestě. `validate()` je beze změny.
-- **`A-3`** — **doporučeno přeskočit, neprovedeno.** `setRollerMode()`
-  obchází `render()` záměrně: kdyby přes něj šel, `.roller-mode-row`
-  by se přestavěl jako nový DOM uzel a rozbil by plynulý slide efekt
-  přepínacího jezdce (CSS `transform` transition nemá odkud animovat na
-  čerstvě vytvořeném elementu). Doslovná realizace nálezu by šla proti
-  hlavnímu požadavku na "seamless" UX; skutečná oprava (částečný DOM
-  diff v `render()`) je mnohem větší zásah, než na jaký je vlna 3
-  dimenzovaná.
-- **`PR-003`** — nevyžádáno, zůstává jako zdokumentovaný akceptovaný gap
-  (beze změny od 07-20).
+- **`A-2`** — **hotovo (druhý pokus, bezpečnější design).** První pokus
+  (mikrotasková cache pro `validate()`) byl vrácen — existující
+  regresní test (`validation-clamp-probe.mjs`) přesně simuloval
+  synchronní `cfg` mutaci mezi dvěma voláními `validate()` v jednom
+  ticku a cache to pokazila. Druhý pokus (2026-08-18, Frank: "udělej to
+  všechno"): **explicitní předávání místo časové cache** — `render()`
+  spočítá `validate()` jednou a předá `errs` jako parametr dolů řetězem
+  (`renderPanels`→`faderSectionContent`/`encoderSectionContent`→
+  `encoderPanel`→`rollerModeBodyHtml`→`ccEncoderBody`, `runValidation`→
+  `markSectionIssues`→`sectionIssueKeys`/`banksWithIssues`→
+  `renderLiveStrip`). Každý parametr má default `= validate()`, takže
+  všechny NEZÁVISLÉ volající (doSend, handleDirtyAction,
+  focusValidationError, setActiveTab's markSectionIssues()) dostanou
+  vždy čerstvou hodnotu beze změny chování — žádný implicitní stav,
+  žádné riziko stale dat. Ověřeno spy testem (`render-validate-once-probe.mjs`):
+  `validate()` se teď volá **přesně 1×** za `render()` (bylo až 9×), a
+  že render() pořád správně promítne chybu do DOM po refaktoru.
+- **`A-3`** — **hotovo v bezpečném rozsahu, animace zachována.**
+  Empiricky ověřeno (ne jen predikce): `render()` zavolaný dvakrát nad
+  stejnou sekcí vytvoří **jiný** DOM uzel pro `.roller-mode-row`
+  (`sameNode: false`) — potvrzuje, že plné přepojení by rozbilo CSS
+  transition slide efekt. Frank zvolil (a): bezpečná dedupe místo (b)
+  obětovat animaci. Nové `ROLLER_MODES` konstanta nahradila `['cc',
+  'keyswitch','track_nav']` literál duplikovaný na 4 místech
+  (`encoderPanel` ×2, `rollerModeKey`, `setRollerMode`).
+  `setRollerMode()` zůstává záměrnou, teď jasně zdokumentovanou
+  výjimkou z `render()` — sdílí s ním všechny ostatní stavební bloky
+  (`reflectDirty`/`cfgAutosave`/`runValidation`/`rollerModeBodyHtml`),
+  obchází ho jen pro ten jeden animovaný element.
+- **`PR-003`** — **hotovo.** `handleSysEx()`'s `CMD_INFO` větev teď volá
+  `applyInfoFaders(info)` stejně jako serial cesta (`serialReadInfo`) —
+  firmware posílal `faders` na obou cestách už dřív, appka ho
+  konzumovala jen z jedné. TDD RED/GREEN, nový probe
+  `sysex-info-faders-probe.mjs`.
 
-**Ověření:** app `npm test` 603 passed / 1 pre-existing (stejné jako
-baseline), firmware `pytest tests/` 107 passed. Nic nepushnuto kromě
-double-press feature (samostatný, Frankem už otestovaný commit) —
-zbytek čeká na review.
+**Ověření (po dokončení celé vlny 3, 2026-08-18):** app `npm test` 611
+passed / 0 failed (73 probes) — poprvé bez jediného pre-existing
+selhání. Firmware `pytest tests/` 107 passed beze změny (vlna 3 zbytek
+byl čistě app-side).

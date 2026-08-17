@@ -2651,6 +2651,10 @@ function setMacroGlobal(on) {
 
 const DEFAULT_UACC = [1,2,3,4,5,20,21,22,23,26,31,32,40,41,42,43,44,45,46,47,49,50,52,70,71,72,73,74,75,90,91,100,101,110,112];
 const MAX_BANKS = 8;
+// A-3 (final review 2026-08-17): single source for the roller mode list —
+// dřív duplikováno jako inline literál na 4 místech (encoderPanel ×2,
+// rollerModeKey, setRollerMode).
+const ROLLER_MODES = ['cc','keyswitch','track_nav'];
 
 const DEFAULT_CFG = {
   macro_keys: [],
@@ -2935,15 +2939,19 @@ function reflectDirty() {
 function render() {
   cfgAutosave();
   renderBankTabs();
-  renderPanels();
+  // A-2 (final review 2026-08-17): validate() computed once here and threaded
+  // through renderPanels()/runValidation() explicitly, instead of each of the
+  // ~9 downstream call sites recomputing it independently every render().
+  const errs = validate();
+  renderPanels(errs);
   renderUacc();
-  runValidation();
+  runValidation(errs);
   // NOTE: renderConnState() intentionally NOT called here.
   // It depends on `loaded`/`_ffConnected`/`_midiState`, so calling it on every
   // render() would be redundant; it's called explicitly at each site where
   // those signals change (connectInputs(), handleSysEx(), etc.).
   updateDeviceInfo();
-  renderLiveStrip();
+  renderLiveStrip(errs);
 }
 
 function renderBankTabs() {
@@ -3013,7 +3021,7 @@ function updateStickySectionHeads() {
     });
   });
 }
-function renderPanels() {
+function renderPanels(errs = validate()) {
   const b  = cfg.banks[activeBank];
   const bi = activeBank;
   const bankChanged = bi !== _lastRenderedBank;   // fade-in přehrát jen při reálné změně banky (jinak render probliká kartu)
@@ -3063,15 +3071,15 @@ function renderPanels() {
     <div class="bank-card${bankChanged ? ' bank-anim' : ''}">
       ${bankNameRowHtml}
       <div class="bank-section ${isSectionOpen('fader1')?'is-open':'is-collapsed'}" data-fader="fader1" onmouseenter="hoverFaderLink('fader1',true)" onmouseleave="hoverFaderLink('fader1',false)">
-        ${faderSectionContent('fader1', b.fader1, bi)}
+        ${faderSectionContent('fader1', b.fader1, bi, errs)}
       </div>
       <div class="bank-section-divider"></div>
       <div class="bank-section ${isSectionOpen('fader2')?'is-open':'is-collapsed'}" data-fader="fader2" onmouseenter="hoverFaderLink('fader2',true)" onmouseleave="hoverFaderLink('fader2',false)">
-        ${faderSectionContent('fader2', b.fader2, bi)}
+        ${faderSectionContent('fader2', b.fader2, bi, errs)}
       </div>
       <div class="bank-section-divider"></div>
       <div class="bank-section bank-section-encoder ${isSectionOpen('roller')?'is-open':'is-collapsed'}" data-fader="roller" onmouseenter="hoverFaderLink('roller',true)" onmouseleave="hoverFaderLink('roller',false)">
-        ${encoderSectionContent(b.encoder, bi)}
+        ${encoderSectionContent(b.encoder, bi, errs)}
       </div>
       <div class="bank-section-divider"></div>
       <div class="bank-section bank-section-macro ${isSectionOpen('macro')?'is-open':'is-collapsed'}" data-fader="macro" onmouseenter="hoverFaderLink('macro',true)" onmouseleave="hoverFaderLink('macro',false)">
@@ -3103,8 +3111,12 @@ function stepperFieldHtml(id, label, value, min, max, decOnclick, incOnclick, on
         </div>`;
 }
 
-function faderSectionContent(key, ctrl, bi) {
-  const errs  = validate();
+// A-2 (final review 2026-08-17): errs defaults to a fresh validate() call so
+// every existing caller keeps working unchanged, but render()'s call chain
+// (below) computes it ONCE and threads it through explicitly — no implicit
+// cache/staleness risk (a prior attempt at time-based memoization broke a
+// synchronous mutate-then-revalidate pattern and was reverted).
+function faderSectionContent(key, ctrl, bi, errs = validate()) {
   const err   = errs.find(e => e.field === `b${bi}.${key}`)?.msg || '';
   const displayLabel = faderDisplayName(ctrl,key);
   const ariaDisplayLabel = escHtml(displayLabel);
@@ -3131,8 +3143,7 @@ function faderSectionContent(key, ctrl, bi) {
     </div></div>`;
 }
 
-function ccEncoderBody(ctrl, bi) {
-  const errs    = validate();
+function ccEncoderBody(ctrl, bi, errs = validate()) {
   const encErr  = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
@@ -3330,12 +3341,12 @@ function keyswitchBody(bi) {
 function rollerModeTitle(mode) {
   return mode === 'keyswitch' ? 'Keyswitch' : mode === 'track_nav' ? 'Navigation' : 'Articulation';
 }
-function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc') {
+function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc', errs = validate()) {
   return mode === 'keyswitch' ? keyswitchBody(bi)
        : mode === 'track_nav' ? trackNavBody(bi)
-       : ccEncoderBody(ctrl, bi);
+       : ccEncoderBody(ctrl, bi, errs);
 }
-function encoderPanel(ctrl, bi) {
+function encoderPanel(ctrl, bi, errs = validate()) {
   const rmode = cfg.banks[bi].roller_mode || 'cc';
   const open = isSectionOpen('roller');
   // Single error site for the whole roller section, rendered in every mode
@@ -3343,14 +3354,14 @@ function encoderPanel(ctrl, bi) {
   // mode rendered no error element at all and cc mode's uacc error was a
   // conditional, id-less div; both left roller errors invisible once #vbar
   // stopped being shown (final whole-branch review, 2026-08-08).
-  const rollerErr = validate().find(e => e.field === `b${bi}.encoder` || e.field === `b${bi}.uacc`)?.msg || '';
+  const rollerErr = errs.find(e => e.field === `b${bi}.encoder` || e.field === `b${bi}.uacc`)?.msg || '';
 
   return `
   <div class="panel panel-wide">
     ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),null,'Sends MIDI CC (Articulation), note keyswitches, or HID navigation keys, depending on the mode selected below.')}
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
-      <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${['cc','keyswitch','track_nav'].indexOf(rmode)}">
-        ${['cc','keyswitch','track_nav'].map((m,mi) => {
+      <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${ROLLER_MODES.indexOf(rmode)}">
+        ${ROLLER_MODES.map((m,mi) => {
           const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)'};
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
           return `<button type="button" class="roller-mode-btn${active?' active':''}"
@@ -3358,7 +3369,7 @@ function encoderPanel(ctrl, bi) {
             onclick="setRollerMode(${bi},'${m}')" onkeydown="rollerModeKey(event,${bi},${mi})">${labels[m]}</button>`;
         }).join('')}
       </div>
-      <div class="roller-mode-content" id="roller-mode-content-${bi}">${rollerModeBodyHtml(ctrl, bi, rmode)}</div>
+      <div class="roller-mode-content" id="roller-mode-content-${bi}">${rollerModeBodyHtml(ctrl, bi, rmode, errs)}</div>
       <div id="err-b${bi}-roller" class="section-error">${escHtml(rollerErr)}</div>
     </div>
   </div>`;
@@ -3451,9 +3462,9 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
     </div></div>`;
 }
 
-function encoderSectionContent(ctrl, bi) {
+function encoderSectionContent(ctrl, bi, errs = validate()) {
   // Get full encoder panel HTML and strip the outer panel wrapper
-  const full = encoderPanel(ctrl, bi);
+  const full = encoderPanel(ctrl, bi, errs);
   // Remove <div class="panel panel-wide"> wrapper and its closing </div>
   return full
     .replace(/^\s*<div class="panel panel-wide"[^>]*>/, '')
@@ -3604,7 +3615,7 @@ function onFaderName(bi, key, value) {
   refreshSectionSemantics(bi,key);
 }
 function rollerModeKey(e, bi, index) {
-  const modes = ['cc','keyswitch','track_nav'];
+  const modes = ROLLER_MODES;
   let next = index;
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (index + 1) % modes.length;
   else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (index + modes.length - 1) % modes.length;
@@ -3622,7 +3633,15 @@ function rememberRollerAdvanced(bi, open) {
 }
 function setRollerMode(bi, mode) {
   // audit I6 — konfigurace je vždy povolená; runtime gate (HID off) řeší inline notice v trackNavBody
-  const modes = ['cc','keyswitch','track_nav'];
+  //
+  // A-3 (final review 2026-08-17, vědomá výjimka): tahle funkce záměrně
+  // neobchází render() — obchází ho JEN pro .roller-mode-row/.roller-mode-content,
+  // protože render() (renderPanels()) přestavuje celou sekci přes innerHTML =
+  // nový DOM uzel nemá odkud animovat CSS transition na --roller-index
+  // (empiricky ověřeno: render() volaný dvakrát vytvoří jiný .roller-mode-row
+  // uzel pokaždé). Zbytek — reflectDirty()/cfgAutosave()/runValidation() —
+  // používá stejné sdílené funkce jako render() by použil.
+  const modes = ROLLER_MODES;
   const current = cfg.banks[bi].roller_mode || 'cc';
   if (!modes.includes(mode) || current === mode) return;
   cfg.banks[bi].roller_mode = mode;
@@ -4355,9 +4374,9 @@ function handlePrimaryAction() {
   if (welcome && !welcome.classList.contains('hidden') && !welcome.classList.contains('connecting')) return doStart();
   return handleDirtyAction();
 }
-function runValidation() {
+function runValidation(errs = validate()) {
   reflectDirty();
-  const errs=validate(), bar=document.getElementById('vbar'), btn=document.getElementById('send-btn');
+  const bar=document.getElementById('vbar'), btn=document.getElementById('send-btn');
   const changeNote=document.getElementById('send-change-note');
   // While the button is still .welcome-floating (i.e. showing "Connect &
   // load" on the still-visible welcome screen), this function's own text/
@@ -4426,8 +4445,8 @@ function runValidation() {
     if (encCcEl) encCcEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
     if (encChEl) encChEl.setAttribute('aria-invalid', encErrEntry ? 'true' : 'false');
   });
-  markSectionIssues();
-  renderLiveStrip();
+  markSectionIssues(errs);
+  renderLiveStrip(errs);
 }
 
 // Mapa validačního `field` -> klíč sekce. 'encoder' i 'uacc' bydlí v roller
@@ -4438,18 +4457,18 @@ function _issueFieldToSection(field) {
   if (!m) return null;
   return { bi: Number(m[1]), key: (m[2] === 'encoder' || m[2] === 'uacc') ? 'roller' : m[2] };
 }
-function sectionIssueKeys(bi) {
+function sectionIssueKeys(bi, errs = validate()) {
   const out = new Set();
-  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s && s.bi === bi) out.add(s.key); });
+  errs.forEach(e => { const s = _issueFieldToSection(e.field); if (s && s.bi === bi) out.add(s.key); });
   return out;
 }
-function banksWithIssues() {
+function banksWithIssues(errs = validate()) {
   const out = new Set();
-  validate().forEach(e => { const s = _issueFieldToSection(e.field); if (s) out.add(s.bi); });
+  errs.forEach(e => { const s = _issueFieldToSection(e.field); if (s) out.add(s.bi); });
   return out;
 }
-function markSectionIssues() {
-  const keys = sectionIssueKeys(activeBank);
+function markSectionIssues(errs = validate()) {
+  const keys = sectionIssueKeys(activeBank, errs);
   ['fader1','fader2','roller','macro'].forEach(key => {
     const section = document.querySelector(`.bank-section[data-fader="${key}"]`);
     const head = section && section.querySelector('.section-head');
@@ -4462,7 +4481,7 @@ function markSectionIssues() {
       slot.insertBefore(d, slot.firstChild);
     }
   });
-  const bad = banksWithIssues();
+  const bad = banksWithIssues(errs);
   document.querySelectorAll('#bank-tabs .bank-block-tab').forEach((btn, idx) => {
     btn.querySelector('.bank-tab-issue')?.remove();
     if (bad.has(idx)) {
@@ -4914,7 +4933,16 @@ function handleSysEx(data){
       if(typeof info.bank==='number' && info.bank>=0) liveBank=info.bank|0;   // sync live-bank indicator on info push
       updateHidToggle();
       updateDeviceInfo();
+      // PR-003 (final review 2026-08-17): apply sync-on-connect fader positions
+      // on the SysEx CMD_INFO path too, matching the serial path (serialReadInfo)
+      // — firmware sends `faders` on both, app only consumed it from one.
+      const _faders = applyInfoFaders(info);   // set liveValues BEFORE render (render recreates value spans)
       render();   // re-render roller selector — track_nav gating depends on hid_enabled
+      if (_faders) {
+        positionThumbs();                       // thumbs live in the (persistent) stage, not rebuilt by render
+        renderLiveStrip();
+        requestAnimationFrame(positionThumbs);  // best-effort follow-up if geometry wasn't ready yet
+      }
       // Apply device-specific theme preference
       applyDeviceDark(DEVICE_INFO.serial);
     }catch(e){}
@@ -5563,7 +5591,7 @@ function renderLiveFaderValues(){
   setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
 }
 
-function renderLiveStrip(){
+function renderLiveStrip(errs = validate()){
   const strip = document.getElementById('live-strip');
   if (!strip) return;
   const state = connState();
@@ -5582,7 +5610,7 @@ function renderLiveStrip(){
   setTxt('live-f2-label-short', 'R');
   setTxt('live-f1-tech', `Ch${bank.fader1.channel+1}·CC${bank.fader1.cc}`);
   setTxt('live-f2-tech', `Ch${bank.fader2.channel+1}·CC${bank.fader2.cc}`);
-  const liveIssues = sectionIssueKeys(liveBank);
+  const liveIssues = sectionIssueKeys(liveBank, errs);
   document.getElementById('live-f1-tech')?.classList.toggle('has-issue', liveIssues.has('fader1'));
   document.getElementById('live-f2-tech')?.classList.toggle('has-issue', liveIssues.has('fader2'));
   renderLiveFaderValues();

@@ -84,6 +84,8 @@ const PROBES = [
   'onb-swipe-probe.mjs',
   'roller-mode-timing-sync-probe.mjs',
   'is-feel-fader-probe.mjs',
+  'sysex-info-faders-probe.mjs',
+  'render-validate-once-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
