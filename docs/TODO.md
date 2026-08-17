@@ -14,6 +14,43 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17k — Controller do nativního scrollu (17j nestačilo)
+
+Po 17j Frank potvrdil: tlačítko super, controller pořád trhaný ("FEEL FADER"
+nahoře trhaný taky — to je ale text vytištěný přímo na fotce controlleru,
+stejné pixely, žádná samostatná příčina; `.welcome-wordmark` DOM element
+ověřen jako už dokonale plynulý, 200px scroll = přesně 200px posun).
+
+17j vědomě nechalo controller na bezpečnějším transform+`will-change`
+přístupu — u sdíleného, komplexního prvku (fadery, drag zóny, animace) byl
+plný přesun do nativního scrollu zamítnut jako příliš rizikový. Frankovo
+"pojď s tím něco udělat" = ověřený vzor z tlačítka (17j) teď fungoval,
+zkusit i pro controller.
+
+Nové `floatDeviceHomeNative()`/`restoreDeviceHomeNative()` — stejný
+DOM-přesun vzor, `#device-home` (celá jednotka, `.device-wrap` zůstává
+jeho přímým dítětem → `.device-home > .device-wrap` pravidlo funguje beze
+změny) se dočasně přesune vedle `#onb-beats` jen když je `#welcome-screen`
+skutečně scrollovatelné. `position:absolute` + `top:var(--onb-controller-top)`
+(už existující, JS-počítaná rest-frame hodnota) — transform na potomcích
+(`.device-visual`/`#zone-roller`/`#zone-macro`) vypnut (`transform:none`),
+jinak by se scroll aplikoval dvakrát.
+
+Prověřeno předem, než se do toho šlo: žádné CSS pravidlo v souboru není
+scoped na `.stage .device-home` cestu (jen třídy) — přesun tedy nic
+jiného nerozbíjí. Z-index poznámka: jakmile je `.device-home` opravdu
+UVNITŘ `#welcome-screen`, `.device-visual{z-index:205}` trik na "prosvítání"
+přes overlay přestává být potřeba (vyhrává už `.welcome-inner{z-index:1}`
+lokálně proti `#welcome-screen::before{z-index:0}`) — ponechán beze změny,
+neškodí.
+
+Ověřeno na 3 scénářích: scroll shift `#device-img` teď PŘESNĚ sedí (210/210,
+134/134), `dvZIndex` pořád 205, `zone-roller`/`elementFromPoint` chování
+nezměněné oproti původnímu stavu (pointer-events:none, roller zóna skrytá
+mimo svůj beat — to je odjakživa tak). Celá sada: `npm test` — čistá
+baseline (jen 2 pre-existing), tentokrát ani ta dříve zdokumentovaná
+flaky (`send-dock-gap-symmetry`) se neprojevila.
+
 ### 2026-08-17j — Onboarding scroll: controller a tlačítko "se škubaly", teečky/text plynulé
 
 Po 17i (lišta pryč) Frank nahlásil: při scrollu se controller a "Connect &
