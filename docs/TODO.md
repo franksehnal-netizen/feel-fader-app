@@ -8,6 +8,7 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
+- **Onboarding poslední krok — Next zmizí a glow "Connect & load" ať naskočí přesně současně (Frank 2026-08-17):** "v posledním kroku tlačítko next zmizí a já bych chtěl, aby se přesně jak tlačítko mizí, zobrazil glow kolem tlačítka connect & load. Časově ať je to navázané na stejný parametr." 17n už sjednotilo RYCHLOST obou (`--dur-glow`/`--ease-hero`, sdílený token) — tohle je o tom, jestli oba START ve stejný okamžik (`.onb-next.is-final` toggle vs. `data-onb-feature="configure"` toggle, oba by měly nastávat ve stejném volání `onbBeatGo()`, ale nekontrolováno). Ověřit na nasazeném demu, případně doladit spouštěcí moment.
 - **`welcome-heading-gap-probe.mjs` — "first-run #send-btn sits below the cardless onboarding copy" (pre-existing, nesouvisí s pracemi z 2026-08-17):** zastaralá asserce vůči jinému, dřívějšímu onboarding layoutu. Frank rozhodne, jestli test aktualizovat.
   (Dřívější pre-existing selhání `mobile-ux-probe.mjs` — "Normal welcome contains only the brand and essential actions" — samo spadlo jako vedlejší efekt 2026-08-17m: wordmark je teď záměrně vidět i v plain welcome stavu.)
 
