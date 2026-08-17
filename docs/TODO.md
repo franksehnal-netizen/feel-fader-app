@@ -14,6 +14,61 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-17l — Onboarding: controller i "Feel Fader" posunuty výš, notifikace deterministicky umístěná
+
+Frank poslal screenshot z telefonu: "Pojďme controller i Feel Fader posunout
+více nahoru. A někam vhodně umístit i tu červenou notifikaci" (notifikace =
+"needs Chrome or Edge" hláška pro nepodporovaný prohlížeč).
+
+Analýza (`scratch/tmp-layout-audit.mjs`, viewport 430×932): wordmark seděl na
+`top:54px` — vzorec `--onb-controller-top - 30`, tj. čistě odvozený od toho,
+kam controller náhodou spadl skrz starý flow-based layout, nikdy vědomě
+navržený pro onboarding. Notifikace navíc měřena jako NEDETERMINISTICKÁ —
+dva běhy identického skriptu ji naměřily jednou přes horní okraj controlleru,
+podruhé přes spodní — protože ležela v obyčejném document flow +
+`.welcome-inner` flex centering, mimo JS-počítaný rest-frame systém, který
+používá všechno ostatní v onboardingu.
+
+Řešení: nová vědomá kaskáda shora dolů — wordmark (pevná 20px mezera od
+vršku) → notifikace (jen když viditelná, 16px pod wordmarkem) → controller
+(20px pod tím) → tlačítko/beats (beze změny, stávající vzorce).
+`positionWelcomeFloatingButton()` teď tyto pozice POČÍTÁ (ne měří), zapisuje
+do `--onb-wordmark-bottom`/`--onb-notice-top`/`--onb-controller-top`.
+
+Cestou vyplynul druhý, skrytý problém: `--onb-controller-top` sice bylo
+nastavené správně, ale nic ho ve výchozím (non-native-scroll) stavu doopravdy
+NEPOUŽÍVALO k umístění controlleru — ten byl celou dobu jen vertikálně
+centrovaný přes `.stage{justify-content:center}` flexbox flow, úplně nezávisle
+na proměnné (proto staré demo se sdílenou proměnnou byť "opravenou" vůbec
+nehnulo controllerem). `--onb-controller-top` byl tedy popisný (odvozený
+měřením), ne autoritativní. Nová `.stage{justify-content:flex-start;
+padding-top:var(--onb-stage-pad-top)}` ho dělá skutečně závazným — se
+samostatnou `--onb-stage-pad-top` proměnnou (ne přímo `--onb-controller-top`),
+protože `.stage` sedí ~56px pod vrcholem viewportu (schovaná hlavička appky
+za welcome overlayem, pořád zabírá místo v flow) — narozdíl od wordmarku/
+notifikace/tlačítka, které jsou `position:fixed` přímo v souřadnicích
+viewportu.
+
+Výsledek (430×932, bez notifikace): wordmark top 54→20px (o 34px výš),
+controller top 102→58px (o 44px výš), notifikace teď vždy `top:54px`
+deterministicky (ověřeno 2× stejný běh). S notifikací: `--onb-controller-top`
+128px, notifikace 54–108px, vše bez překryvu, `scrollFallback` se aktivuje
+automaticky, pokud by se to i tak nevešlo.
+
+Odhalen a opraven vedlejší bug při refaktoru: `onboardingScrollTop` proměnná
+byla omylem smazána z horního scope funkce, ale pozdější non-onboarding větev
+(`positionWelcomeAnchor`) ji pořád potřebovala — `npm test` to okamžitě
+odhalil (`ReferenceError`, 3 crashnuté probes). Opraveno vrácením deklarace
+s komentářem, proč tam zůstává.
+
+`npm test`: 583 passed / 5 failed (69 probes) — všech 5 selhání ověřeno
+izolovaně jako čisté PASS (`help-deep-links-probe`, `footer-pinned-to-
+bottom-probe`, `send-dock-gap-symmetry-probe` — všechny 3 jen flaky pod
+plnou zátěží 69 probes, stejný dříve zdokumentovaný vzor) + 1 pre-existing
+`welcome-heading-gap-probe` položka (viz Otevřené) + 1 pre-existing
+`mobile-ux-probe` wordmark-visibility položka (viz Otevřené) — žádná nová
+regrese.
+
 ### 2026-08-17k — Controller do nativního scrollu (17j nestačilo)
 
 Po 17j Frank potvrdil: tlačítko super, controller pořád trhaný ("FEEL FADER"
