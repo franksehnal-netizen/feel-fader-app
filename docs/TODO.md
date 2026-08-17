@@ -8,11 +8,48 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
+- **Lišta barvy pozadí překrývá controller nahoře při scrollu nahoru.** Frank nahlásil
+  opakovaně (2026-08-17, po fixu bodu "controller zajíždí za lištu" v Hotovo 17c) —
+  z-index fix z 17c to nevyřešilo úplně, pořád se to děje. Čeká se na čerstvý
+  screenshot přesně toho momentu, abych identifikoval skutečnou příčinu (dosavadní
+  `.device-visual{z-index:1}` cascade bug byl reálný a opravený, ale zjevně není
+  jediná příčina).
 - **Jedno pre-existing selhání v `mobile-ux-probe.mjs`, nesouvisí s onboarding-scroll fixem (2026-08-17b):**
   "Normal welcome contains only the brand and essential actions" — test čeká `'Feel Fader'` wordmark viditelný v compact (returning-user) welcome stavu, ale ten je od dřívějšího wordmark redesignu v tomto stavu záměrně `display:none` (viz CSS komentář u `.welcome-wordmark`, feel-fader.html:1163-1170). Test je zastaralý vůči záměrné změně chování z jiné/předchozí session. Řešit: aktualizovat test expectations. Frank rozhodne.
   (Druhé dřívější selhání — "beats below controller" na velmi krátkém viewportu — vyřešeno jako vedlejší efekt dynamického scroll fallbacku, viz Hotovo 2026-08-17b.)
 
 ## Hotovo
+
+### 2026-08-17g — Onboarding scroll: tlačítko se během gesta "rozjíždělo" od textu
+
+Frank potvrdil, že fadery (17e) jsou OK, a upřesnil dřívější "Connect & load
+by mělo scrollovat s popisy" — nejde o statickou pozici, ale o to, že se
+tlačítko a text/controller BĚHEM samotného tažení prstem rozjedou (i když
+nakonec skončí správně).
+
+Dvě příčiny, obě opravené:
+
+1. `--welcome-onb-scroll-offset` (řídí transform tracking tlačítka i
+   ovladače) se aktualizoval jen přes `scroll` event listener —
+   na WebKitu/iOS je známé, že `scroll` eventy můžou být coalescované/
+   opožděné za compositor-driven nativním scrollem během rychlého gesta.
+   Fix: `startOnbScrollSync()`/`stopOnbScrollSync()` — kontinuální
+   `requestAnimationFrame` polling aktivní jen během onboardingu, čte
+   živý `scrollTop` každý vykreslený snímek místo čekání na event.
+2. **Skutečná příčina zbytku rozjetí:** `.send-btn` má vlastní
+   `transition:...,transform .18s ease` (feel-fader.html:324) pro běžné
+   float-in/dock animace. I s opraveným (1) se tlačítko kvůli tomuhle
+   CSS transitionu vizuálně vyhlazovalo/dohánělo ke každé nové hodnotě
+   místo okamžitého sledování — po celou dobu gesta honilo pohyblivý
+   cíl. Fix: onboarding-specifické pravidlo teď má `transition:none`
+   pro transform (ostatní transitions — opacity/color/atd. — zachovány).
+
+Ověřeno automatizovaně: `scrollTop=369px` skok → `deviceShift` i `ctaShift`
+teď PŘESNĚ 369px (dřív ctaShift byl 366.7px, ~2.3px pozadu). Odkryl to i
+existující `onb-product-tour-probe.mjs`, který teď prochází bez úprav.
+
+Celá sada: `npm test` — zpět na baseline (jen 2 pre-existing nesouvisející
+selhání).
 
 ### 2026-08-17e — Onboarding samotný: fadery mimo pozici (stejná chyba, druhý konec)
 
