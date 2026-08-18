@@ -12,6 +12,51 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zs — BUTTON sekce: zvýraznění na controlleru se konečně zobrazí i bez HID
+
+Frank: "na mobilu kdyz vyberu sekci button, neobjevi se zelene
+zvyrazneni buttonu." Root cause potvrzen reprodukcí: `#zone-macro`
+(fyzická zóna tlačítka na obrázku controlleru) měla `zone-hidden`
+třídu (`display:none`) VŽDY, dokud `DEVICE_INFO.hid_enabled` není
+`true` (výchozí stav appky je HID vypnuté) — na rozdíl od fader1/
+fader2/roller, které jsou vždy přítomné (jen neviditelné přes
+`outline:1px solid transparent`, dokud nejsou `.fader-linked`).
+`.fader-linked` třída se na `#zone-macro` korektně přidávala i bez
+HID — jenže celá zóna byla `display:none`, takže nebylo co vidět.
+
+Frank potvrdil: zóna/zvýraznění se má zobrazit i bez HID, konzistentně
+se zbylými 3 sekcemi. Bezpečné — zóna už má vlastní `data-tip`
+("Requires Keyboard (HID); a short press still cycles banks."), takže
+uživatel se o požadavku na HID dozví z tooltipu/dotykem, ne z toho, že
+zóna zmizí beze zprávy.
+
+Trvale smazáno (`zone-hidden` mechanismus celý): třída z počátečního
+markupu (`#zone-macro`), CSS pravidlo `.ctrl-zone.zone-hidden{display:
+none}`, JS toggle `zm.classList.toggle('zone-hidden',...)` v
+`renderPanels()`. Sweep potvrdil 0 zbylých referencí.
+
+Ověřeno (touch emulace, výchozí `hid_enabled:false`): po otevření
+BUTTON sekce je `#zone-macro` `display:block`, `.fader-linked`
+přítomná, zelené pozadí `rgba(52,199,89,.957)` computed — screenshot
+potvrzuje viditelný zelený glow na hraně těla controlleru. `npm test`:
+617 passed / 0 failed / 0 crashed (73 probes).
+
+### 2026-08-18zr — Live HUD: drag na dotyku zase vypnutý, zpátky pevně v rohu
+
+Frank: "v mobilni berzi nechme tem status bad prichyceny v rohi, jak
+byl puvodne." Přímá reverze `### 2026-08-18v` (dnes dřívější povolení
+draggingu i na dotyku) — Frank vyzkoušel a chce HUD na mobilu zpátky
+natrvalo přichycený v rohu, ne přesouvatelný.
+
+Fix: `liveHudManipulable()` (feel-fader.html ~5522) vráceno z
+`(any-pointer:fine),(any-pointer:coarse)` zpátky na jen
+`(any-pointer:fine)` — přesně stav před 18v (mouse-only manipulace,
+zvětšovací tlačítko beze změny, má vlastní nezávislý gate).
+
+Ověřeno: na touch emulaci (`any-pointer:coarse=true`) je
+`liveHudManipulable()` znovu `false`. `npm test`: 617 passed / 0
+failed / 0 crashed (73 probes).
+
 ### 2026-08-18zq — Stepper pilulka (+/−/číslo): proporce na mobilu sjednoceny s počítačem
 
 Frank: "pilulky s +, - a cislem kanalu se na telefonu zobrazovaly stejne
