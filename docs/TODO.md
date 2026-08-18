@@ -12,6 +12,32 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zt — BUTTON sekce: zjednodušen text v těle
+
+Frank: "There is say too much information and text [in the BUTTON
+section]. Discuss possible simplification." Brainstorming odhalil, že
+se stejné vysvětlení ("long-press ≥0.5s pošle combo, short-press
+přepíná banky, vyžaduje HID") opakovalo na 4 místech: hover tooltip na
+hlavičce sekce, vždy-viditelný odstavec v těle (`.uacc-note`), HID
+notice blok (když je HID vypnuté), a Help & Guide panel.
+
+Frank potvrdil směr: nechat vysvětlení jen v tooltipu + Help & Guide,
+z těla smazat vždy-viditelný odstavec úplně.
+
+Fix (feel-fader.html `macroSectionContent()`, ~3565): `.uacc-note`
+text `"Long-press the device button (≥0.5 s) to send this key combo —
+e.g. play/stop or a DAW shortcut. A short press still switches banks.
+${scopeNote}"` → jen `${scopeNote}` ("One key combo shared by every
+bank." / "This bank has its own key combo; other banks keep theirs.")
+— zbytek sekce (HID notice, LONG-PRESS KEY pole, Global checkbox)
+beze změny.
+
+Ověřeno screenshotem (430px viewport, HID off) — sekce viditelně
+kompaktnější, 4řádkový odstavec nahrazen jedním krátkým řádkem. `npm
+test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu (1 mezi-běh ukázal už dřív zdokumentovaný flaky
+`send-dock-gap-symmetry-probe.mjs`).
+
 ### 2026-08-18zs — BUTTON sekce: zvýraznění na controlleru se konečně zobrazí i bez HID
 
 Frank: "na mobilu kdyz vyberu sekci button, neobjevi se zelene
