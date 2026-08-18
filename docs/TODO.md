@@ -12,6 +12,35 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zm — Welcome screen: samovolný "breathing" pohyb faderů trvale odstraněn
+
+Frank: "nechci aby se ma welcome screenu hybaly samowolne hybly ty
+fadery, odstran to trvale!" Idle animace (`welcome-fader-master`/
+`-slave`, ~5.5s smyčka, `#thumb-l`/`#thumb-r`) běžela na plain
+(returning-user, ne-onboarding) welcome obrazovce — onboarding ji už
+dřív explicitně vypínal (`[data-onb-feature] .fader-thumb{animation:
+none!important}`, jiný highlight mechanismus).
+
+Trvale smazáno (ne jen vypnuto přes `animation:none`, jak by šlo
+rychleji — Frank chtěl "odstraň to trvale"):
+- CSS: `.device-wrap.welcome-mode #thumb-l/-r{animation:...}` pravidla
+  (feel-fader.html ~1462-1463) + obě `@keyframes welcome-fader-master/
+  -slave` (~1663-1674) + teď nadbytečné `[data-onb-feature] .fader-
+  thumb{animation:none!important}` override (~1467, nemá už co
+  přebíjet).
+- JS: `layoutFaders()` (~4635-4643) počítalo a nastavovalo 6 CSS
+  proměnných (`--wf-l-rest/-low/-high`, `--wf-r-rest/-low/-high`) čistě
+  pro tuhle animaci — `const wrap` deklarace i celý `if(wrap){...}`
+  blok smazány jako mrtvý kód (ověřeno: `wrap` se nikde jinde ve funkci
+  nepoužíval). Zbytek `layoutFaders()` (track/thumb pozicování, hover
+  zóny) beze změny.
+
+Ověřeno: `getComputedStyle(thumb).animationName === 'none'`, pozice
+identická (`matrix(...)`) při měření s 2.5s odstupem — žádný
+samovolný pohyb. Sweep přes celý soubor potvrdil 0 zbylých referencí
+na `welcome-fader-master/-slave`/`--wf-l-*`/`--wf-r-*`. `npm test`: 617
+passed / 0 failed / 0 crashed (73 probes).
+
 ### 2026-08-18zl — Fix regrese: controller zmizel z mobilního welcome screenu
 
 Frank: "ted na mobilu ma welcome screenu neni videt controller." Přímý
