@@ -12,6 +12,149 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zq — Stepper pilulka (+/−/číslo): proporce na mobilu sjednoceny s počítačem
+
+Frank: "pilulky s +, - a cislem kanalu se na telefonu zobrazovaly stejne
+jako mna pocitaci. Ted maji ty pilulky jine proporce." Naměřeno přesně:
+desktop — tlačítko 24×24, pole 34×24 (STEJNÁ výška, čistá jednotná
+pilulka). Touch (`pointer:coarse`) — tlačítko 44×44 (funkční audit A8,
+touch-target fix), ale pole zůstalo jen 40×24 — tlačítka o dost vyšší
+než pole mezi nimi, vizuálně "pilulka v pilulce" místo jednoho tvaru
+(screenshot potvrdil přesně tenhle efekt).
+
+Fix (feel-fader.html ~968, `@media(pointer:coarse)`): `.stepper input`
+`height:24px→44px` (dorovnáno na výšku tlačítka — to je ten hlavní
+vizuální rozpor) a `width:40px→62px` (zachovává STEJNÝ poměr
+tlačítko:pole jako desktop — 34/24≈1.42, škálováno na 1.42×44≈62 — ne
+libovolná touch šířka).
+
+Ověřeno screenshoty (iPhone 13 emulace, před/po) — pilulka teď jeden
+souvislý tvar, číslo vyplňuje celou výšku, žádné plovoucí menší pole
+uvnitř. `touch-target-stepper-specificity-probe.mjs` (testuje jen
+tlačítka) beze změny prošel. `npm test`: 617 passed / 0 failed / 0
+crashed (73 probes) na čistém re-runu.
+
+### 2026-08-18zp — Dark/light tlačítko na mobilu zmenšeno na polovinu (+ bank chipy)
+
+Frank: "Průměr tlačítka na horní liště na light dark mode zmenši na
+polovinu v mobilním zobrazení." Touch (`pointer:coarse`) velikost byla
+44px → polovina = 22px. Frank potvrdil, že bank chipy (dřív svázané se
+stejnou výškou jako toggle, item `2026-08-18zd`) mají zmenšit na 22px
+taky, kvůli zachování konzistence.
+
+**Vlastní chyba při implementaci, opravena hned:** první pokus nastavil
+`.dark-toggle{width:22px...}` do stejného `@media(pointer:coarse)`
+bloku jako předtím — ale `min-width` floor trik z `zd` fungoval jen
+SMĚREM NAHORU (44 > základních 30px). Jít DOLŮ (22 < 30px) tenhle
+trik nezachrání — floor 22px je triviálně splněný, i když `width`
+cascade spadne zpátky na unconditional `width:30px` (pozdější
+pravidlo v souboru, stejná specificita, vyhrává). Naměřeno: tlačítko
+zůstalo 30×30, ne 22×22.
+
+Skutečná oprava: nové `@media(pointer:coarse){.dark-toggle{width:22px;
+height:22px}}` pravidlo přesunuto tak, aby v souboru stálo AŽ PO
+základním `.dark-toggle{width:30px;height:30px}` pravidlu — při
+stejné specificitě vyhrává pozdější pravidlo bez ohledu na to, jestli
+je uvnitř media query, takže žádný floor/ceiling trik není potřeba.
+`.bank-block-tab{min-height:22px}` nemělo tenhle problém (žádné
+konkurenční unconditional pravidlo pro výšku), jen jsem ho omylem
+smazal při úpravě sdíleného seznamu — vráceno zpět.
+
+Ověřeno v obou kontextech: touch (iPhone 13 emulace) toggle 22×22,
+chip 22px; base (myš, 1280px) toggle 30×30, chip 30px — beze změny.
+Screenshot potvrzuje kulatý tvar i čitelnou ikonku uvnitř. `npm test`:
+617 passed / 0 failed / 0 crashed (73 probes) na čistém re-runu.
+
+### 2026-08-18zo — Mobil: odstraněna duplicitní spodní kopie Send tlačítka
+
+Frank: "Když na mobilu scrolluju dolu a červené tlačítko zajede nahoře
+za listu, objeví se dole nové červené tlačítko. To spodní chci
+odstranit. Nechme jen to jedno horní."
+
+**Mechanismus (ne bug, existující feature):** `updateMobileSendDock()`
+(feel-fader.html ~3030) na scroll/resize kontrolovala, jestli je
+appka ≤600px, jsou nezachráněné změny (`dirty`), a tlačítko vyscrollovalo
+z horní 48px zóny — pokud ano, FYZICKY přemístila `.send-callout` (i s
+`#send-btn` uvnitř) do `document.body` a udělala z něj `position:fixed`
+pilulku u spodního okraje obrazovky (`.is-mobile-docked`). Je to celou
+dobu JEDNO tlačítko, jen reparentované — ale vizuálně to vypadalo přesně
+jak Frank popsal: nahoře zmizí (za lištou), dole se "objeví nové".
+
+Frank potvrdil: chce tenhle mechanismus úplně zrušit, tlačítko ať
+zůstane v normálním místě layoutu a při scrollu prostě odjede z
+obrazovky jako běžný obsah.
+
+Trvale smazáno (stejná filozofie jako u fader-animace výše):
+- JS: celá funkce `updateMobileSendDock()` + její volání v `reflectDirty()`
+  + oba event listenery (`scroll`, `resize`) — 3 volání celkem.
+- CSS: `.send-callout.is-mobile-docked` a 4 navazující potomčí pravidla
+  (`::before`, `.send-change-note` transform varianty, `.change-popover`
+  pozicování) — celý `@media(max-width:600px)` blok pro tenhle stav.
+
+Ověřeno: sweep na `is-mobile-docked`/`updateMobileSendDock`/
+`mobile-send-docked` — 0 zbylých referencí. Screenshot (iPhone 13,
+dirty state, scroll 500px) — jen JEDNO `.send-callout` v DOM, viditelné
+nahoře ve svém normálním místě, žádná spodní kopie ani po scrollu až
+na patičku stránky.
+
+**Test aktualizován, ne jen smazán:** `mobile-ux-probe.mjs` explicitně
+ověřoval overlap-avoidance mezi HUD a "dirty Send dock" (testovalo
+STAV, který teď nikdy nenastane) — přepsáno na opačné tvrzení: tlačítko
+zůstává ve svém `#send-anchor`, nikdy nedostane `position:fixed` ani
+`.is-mobile-docked`.
+
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu.
+
+### 2026-08-18zn — Zvýraznění na controlleru sjednoceno s onboarding stylem
+
+Frank: "chci aby byly v aplikaci ty zvyraznene prvky zvyraznene stejnym
+zpusobem jako v onboarding screenu." Srovnání odhalilo dva zcela odlišné
+vizuální systémy: onboarding používá sytou `rgba(52,199,89,...)` (=
+`--green`) s trojvrstvým glow (`drop-shadow` na fader thumbu, `box-
+shadow` na roller/tlačítku, tlačítko navíc téměř plnou zelenou
+výplní); appka měla vlastní tlumenější `--highlight-rgb` systém
+(76,175,105 light / 92,190,120 dark), jednovrstvý, měkčí.
+
+Rozsah potvrzen s Frankem: **jen controller zóny** (fadery/roller/
+tlačítko — mají v onboardingu přímou obdobu). `.bank-section.fader-
+linked` (zvýraznění celé nastavovací sekce v kartě) zůstává na svém
+tlumenějším `--highlight-rgb` stylu — onboarding nemá pro settings
+panel žádný vzor ke srovnání.
+
+Implementace (feel-fader.html ~724-740): pro každou controller zónu
+zkopírovány DOSLOVA stejné hodnoty jako v odpovídajícím onboarding
+pravidle:
+- **Fadery** — `.fader-track::before` pill-glow mechanismus (za
+  drahou) trvale smazán, nahrazen `filter:drop-shadow(...)` přímo na
+  `.fader-thumb` (`.fader-track.fader-linked .fader-thumb`) — stejný
+  přístup jako onboarding (glow kopíruje tvar thumbu, ne obdélníkovou
+  vrstvu za ním).
+- **Roller** — `#zone-roller.fader-linked`: `background:transparent;
+  outline-color:transparent` + trojvrstvý `box-shadow`, identický s
+  `[data-onb-feature="roller"] #zone-roller`.
+- **Tlačítko** — `#zone-macro.fader-linked`: `background:rgba(52,199,
+  89,.96)` (skoro plná výplň, ne slabý wash) + trojvrstvý `box-shadow`,
+  identický s `[data-onb-feature="button"] #zone-macro`.
+- Generický `.ctrl-zone.fader-linked` fallback smazán (nahrazen
+  ID-specifickými pravidly) — mrtvý kód po přidání specifických
+  pravidel pro obě jediné `.ctrl-zone` instance.
+
+Dead-code sweep: `--highlight-element-fill`/`--highlight-element-glow`
+proměnné (light i dark) teď nikde nepoužité — smazány (stejná "trvale
+odstranit" filozofie jako u předchozí položky s fadery).
+
+**Test aktualizován, ne jen opraven:** `faders-inert-probe.mjs` ověřoval
+starý sjednocený systém (section/track/outline stejná barva) — přepsáno
+na ověření nové shody s onboardingem (`thumb` filter obsahuje `drop-
+shadow`+`52, 199, 89`, `zone` box-shadow taky, roller povrch zůstává
+plně netónovaný — `background`/`outline` alpha 0, přesně jako
+onboardingovo `outline:0`).
+
+Ověřeno screenshoty (fader1, roller) — sytý zelený glow identický s
+onboardingem. `npm test`: 617 passed / 0 failed / 0 crashed (73
+probes) na čistém re-runu.
+
 ### 2026-08-18zm — Welcome screen: samovolný "breathing" pohyb faderů trvale odstraněn
 
 Frank: "nechci aby se ma welcome screenu hybaly samowolne hybly ty

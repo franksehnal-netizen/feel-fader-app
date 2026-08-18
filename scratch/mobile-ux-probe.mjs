@@ -840,22 +840,26 @@ async function runProfile(browser, url, profile) {
     Math.abs(mobileStrip.topGap - 12) <= 1 && Math.abs(mobileStrip.leftGap - 16) <= 1,
     `${mobileStrip.leftGap.toFixed(1)} px left / ${mobileStrip.topGap.toFixed(1)} px below header`);
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip.png`) });
+  // updateMobileSendDock()/.is-mobile-docked removed entirely (Frank
+  // 2026-08-18: scrolling past the button used to pop out a SECOND, fixed-
+  // bottom copy — "objeví se dole nové červené tlačítko... to spodní chci
+  // odstranit") — the button now just stays in normal document flow and
+  // scrolls off-screen like any other content. Confirms the removal held,
+  // not just that nothing crashed.
   await page.evaluate(() => { dirty = true; reflectDirty(); });
   await settle(page, 460);
   const dockedStrip = await page.evaluate(() => {
-    const hud = document.getElementById('live-strip').getBoundingClientRect();
-    const send = document.querySelector('.send-callout').getBoundingClientRect();
-    const overlap = !(hud.right <= send.left || hud.left >= send.right || hud.bottom <= send.top || hud.top >= send.bottom);
+    const anchor = document.getElementById('send-anchor');
+    const callout = document.querySelector('.send-callout');
     return {
-      docked: document.body.classList.contains('mobile-send-docked'),
-      hudTop: hud.top,
-      sendBottomGap: window.innerHeight - send.bottom,
-      overlap,
+      stillInAnchor: callout.parentElement === anchor,
+      isFixed: getComputedStyle(callout).position === 'fixed',
+      hasDockedClass: callout.classList.contains('is-mobile-docked'),
     };
   });
-  addCheck(checks, 'Top-left hardware monitor stays clear of the dirty Send dock',
-    dockedStrip.docked && !dockedStrip.overlap && Math.abs(dockedStrip.sendBottomGap - 12) <= 1,
-    `docked ${dockedStrip.docked} / overlap ${dockedStrip.overlap} / HUD top ${dockedStrip.hudTop.toFixed(1)} px / Send ${dockedStrip.sendBottomGap.toFixed(1)} px`);
+  addCheck(checks, 'Send button stays in its normal flow position when scrolled + dirty on mobile (no fixed-bottom duplicate)',
+    dockedStrip.stillInAnchor && !dockedStrip.isFixed && !dockedStrip.hasDockedClass,
+    JSON.stringify(dockedStrip));
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip-docked.png`) });
   await page.evaluate(() => window.scrollTo(0, 0));
   await settle(page, 420);

@@ -111,6 +111,12 @@ out('single controller persists while the app resets to its canonical top positi
 
 const linkPage = await b.newPage();
 await linkPage.goto(URL,{waitUntil:'networkidle0'});
+// Redesigned 2026-08-18: hardware-zone highlight (fader thumb/roller/button)
+// now matches onboarding's own glow EXACTLY (rgba(52,199,89,...) drop-shadow/
+// box-shadow, not the softer --highlight-rgb system) — Frank: "chci aby byly
+// ty zvýrazněné prvky zvýrazněné stejným způsobem jako v onboarding screenu".
+// The settings SECTION deliberately keeps the old, softer --highlight-rgb
+// treatment (no onboarding equivalent to match, scope confirmed with Frank).
 const linkedHighlight = await linkPage.evaluate(async () => {
   skipWelcome();
   render();
@@ -122,13 +128,14 @@ const linkedHighlight = await linkPage.evaluate(async () => {
     await new Promise(resolve=>setTimeout(resolve,400));
     const sectionStyle=getComputedStyle(sectionEl);
     const section=sectionStyle.backgroundColor;
-    const track=getComputedStyle(document.getElementById('track-l'),'::before').backgroundColor;
+    const thumb=getComputedStyle(document.getElementById('thumb-l')).filter;
     const zoneStyle=getComputedStyle(document.getElementById('zone-roller'));
     const zone=zoneStyle.backgroundColor;
     const zoneOutline=zoneStyle.outlineColor;
+    const zoneShadow=zoneStyle.boxShadow;
     hoverFaderLink('fader1',false);
     hoverFaderLink('roller',false);
-    return {section,track,zone,zoneOutline,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
+    return {section,thumb,zone,zoneOutline,zoneShadow,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
   };
   const light=await read();
   document.documentElement.classList.add('dark');
@@ -139,12 +146,12 @@ const linkedHighlight = await linkPage.evaluate(async () => {
 await linkPage.close();
 const linkedHighlightOk = theme => {
   const rgba = value => (value.match(/[\d.]+/g)||[]).map(Number);
-  const section=rgba(theme.section),track=rgba(theme.track),zone=rgba(theme.zone),outline=rgba(theme.zoneOutline);
-  return section.slice(0,3).join(',')===track.slice(0,3).join(',') &&
-    track.slice(0,3).join(',')===outline.slice(0,3).join(',') &&
-    track[3]>section[3] && zone[3]===0 && outline[3]>.4;
+  const zone=rgba(theme.zone),outline=rgba(theme.zoneOutline);
+  return theme.thumb.includes('drop-shadow') && theme.thumb.includes('52, 199, 89') &&
+    theme.zoneShadow.includes('52, 199, 89') &&
+    zone[3]===0 && outline[3]===0; // roller's own surface (fill+outline) stays fully untinted, matching onboarding's outline:0
 };
-out('roller highlight keeps its surface untinted while sharing the linked hue',
+out('roller/thumb highlight matches onboarding\'s own glow exactly (rgba(52,199,89,...)), surface untinted',
   linkedHighlightOk(linkedHighlight.light) && linkedHighlightOk(linkedHighlight.dark),
   JSON.stringify(linkedHighlight));
 
