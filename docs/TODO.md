@@ -12,6 +12,33 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zl — Fix regrese: controller zmizel z mobilního welcome screenu
+
+Frank: "ted na mobilu ma welcome screenu neni videt controller." Přímý
+důsledek `### 2026-08-18zh` (zrušení blur na welcome screenu) — real
+regrese, ne nový požadavek.
+
+**Root cause:** `.device-visual{z-index:205}` (feel-fader.html ~1480),
+co "prostrkává" controller nad `#welcome-screen::before` overlay, je
+scoped jen na `[data-onb-feature]` (onboarding) nebo `.connect-success`
+(~1651). Na běžné returning-user (ne-onboarding) welcome obrazovce
+`.device-visual` NIKDY nemělo vlastní z-index — spoléhalo čistě na to,
+že staré poloprůhledné sklo (`linear-gradient(145deg,var(--glass-dialog),
+var(--glass-card))`, obě barvy s alfa < 1) controller aspoň slabě
+prosvítí BEZ ohledu na stacking order. Změna na plně neprůhledné
+`background:var(--bg)` (zh) tuhle "záchrannou síť" odstranila — a
+protože `z-index:auto` sedí ZA overlayem, controller úplně zmizel.
+
+Fix: nové pravidlo `.device-wrap.welcome-mode:not([data-onb-feature])
+:not(.connect-success) .device-visual{z-index:205;pointer-events:none}`
+— stejné z-index řešení jako existující 2 případy, jen pro chybějící
+třetí (:not() guardy proti double-apply s onboarding/connect-success).
+
+Ověřeno screenshoty (iPhone 13 emulace): returning-user welcome má
+controller opět viditelný a ostrý (ne jen ghosted přes sklo); onboarding
+beze změny (z-index 205 přes svoje původní, nedotčené pravidlo). `npm
+test`: 617 passed / 0 failed / 0 crashed (73 probes).
+
 ### 2026-08-18zk — Bank karta: pole pro název banky omezené na 190px šířky
 
 Frank: "U banky chci omezit velikost pole pro zadávání názvu, tak jak
