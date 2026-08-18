@@ -8,33 +8,597 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-- **Mobil — přepnutí light/dark: horní lišta se překreslí se zpožděním, chvíli je průhledná než naskočí blur (Frank 2026-08-18):** "po zmene lista horni se překresluje, blur se zapne se zpožděním cca sekundu. Lista je chvíli transparentní a až pak se zapne blur. Není to seamless." `applyTheme()` (feel-fader.html ~6167-6196) přepíná theme přes `document.startViewTransition(commit)` — `header` (~182-188) má `background:var(--chrome-glass-bg)` + `backdrop-filter:var(--chrome-glass-filter)` (CSS proměnné, přepínané `.dark` třídou na `<html>`). Podezřelá příčina: View Transition API dělá screenshot starého/nového stavu pro cross-fade, a `backdrop-filter` je známě špatně zachytáván tímhle snapshot mechanismem na mobilních prohlížečích (Safari/Chrome) — snapshot může na moment ukázat element bez blur, než se stihne "dopočítat" reálný filtr. Ověřit na reálném telefonu; pokud se potvrdí, možný fix: vyloučit `header`/`.live-hud` z view transition (`view-transition-name:none` nebo vlastní `::view-transition-old/new` pravidlo), případně přepnout blur na `header` mimo transition úplně (jen barva/pozadí přes transition, blur trvale zapnutý).
-- **Vlastní custom kurzor ve tvaru fader capu — návrh domluven, čeká na implementaci (Frank 2026-08-18):** Původní podnět: "kurzor ve tvaru ruky s 5 prsty... vypadá velmi old-school - 8 bit. Lze místo něj mít něco modernějšího?" Appka nikde nemá vlastní kurzor — jde o čistě OS/prohlížečový nativní `cursor:pointer` (32× v souboru, feel-fader.html), jehož vzhled se liší podle systému/prohlížeče a na Windows bývá dost pixelovaný.
-  **Domluvená specifikace designu** (brainstorming 2026-08-18): originální "Acoustic Empire" nápad — kurzor ve tvaru **skutečného fader capu** z HW Feel Fader (ne generický hudební symbol jako nota nebo ladička), protože propojuje fyzické zařízení se softwarem. Detaily:
-  - **Orientace:** svisle (jak fader sedí na hardwaru a jak se zobrazuje v appce), ne diagonálně jako běžný šipkový kurzor.
-  - **Styl:** **plná/vyplněná silueta** (Frank: "chtěl bych ten tvar plný"), ne dutý line-art obrys.
-  - **Zdroj NEpřevzít doslova:** on-screen fader thumb (`#thumb-l`/`#thumb-r`) je vložená fotorealistická base64 PNG fotka hardwaru (feel-fader.html ~2140) — na velikosti kurzoru (~24-32px) by fotka byla rozmazaná/nečitelná a nešla by přebarvit pro dark mode. Nutno překreslit jako novou zjednodušenou vektorovou (SVG) siluetu inspirovanou tvarem/proporcemi reálného capu.
-  - **Light/dark varianty:** dvě barevné verze (jednobarevná výplň, `--t1`/vhodná barva), přepínané stejným způsobem jako ostatní theme-aware assety v appce (`applyTheme()`).
-  - **Implementace:** inline `cursor:url(data:image/svg+xml;base64,...) x y, pointer` (zachovává single-file architekturu appky — žádný externí soubor), aplikovat všude, kde je teď `cursor:pointer` (32 míst). Hotspot (x y v `cursor()`) doladit při implementaci.
-- **Skrytí controlleru smrští jen svisle, chci i vodorovně rovnoměrně (Frank 2026-08-18):** "když skryju controller, smrští se to ve směru svislé osy. Chtěl bych, aby se controller změnil rovnoměrně i ve vodorovném směru." Mechanismus: `.stage-collapse{display:grid;grid-template-rows:minmax(0,1fr)}` → `.is-collapsed{grid-template-rows:minmax(0,0fr)}` (feel-fader.html ~310-313) — animovatelný grid-trick na výšku, na šířku nemá vliv (ta zůstává 100 % kontejneru). `.stage-collapse.is-collapsed>.stage` má navíc jen malé jednotné `transform:scale(.94)` jako součást fade-outu, ne hlavní schlopení. Chtělo by to buď přidat souběžnou horizontální komponentu (grid-template-columns / scaleX / width), nebo celé schlopení předělat na jednotný `scale()` z obou os — rozhodnout při implementaci.
-- **Toggle switch (Keyboard HID zapnuto) má být stejně zelený jako hlavní tlačítko "Sent", navázat na stejný barevný parametr (Frank 2026-08-18, screenshot):** "chci mít aplikaci konzistentní." Oba UŽ ODKAZUJÍ na stejnou proměnnou `--green:#34c759` (feel-fader.html ~68) — `.send-btn.sent{background:var(--green)}` (~379, plná, sytá barva) vs. `.hid-switch input:checked + .hid-switch-track{background:color-mix(in srgb,var(--green) 44%,transparent);...}` (~755, jen 44% mix → vybledlá/pastelová, proto vizuálně nesedí, i když je to nominálně "stejný parametr"). Řešit pravděpodobně zvýšením/odstraněním toho 44% mixu na tracku, ne změnou samotné `--green` proměnné.
-- **Sdílený "glass" gradient (`--control-glass-bg`) vypadá "cheap", ladit GLOBÁLNĚ (Frank 2026-08-18, screenshot Roller order UACC pilulek → rozhodnuto 2026-08-18):** "tyto tlačítka vypadají strašně cheap s tím gradientem" → "celý sdílený styl se mi nezdá, poladíme ho globálně." `--control-glass-bg:linear-gradient(145deg,rgba(255,255,255,.72),rgba(174,174,178,.34))` (feel-fader.html ~61, dark varianta ~131) — používá `.ui-glass`, `.send-btn.idle`, `.uacc-tag`, `.roller-mode-row`, `.stepper input`, `.ks-stepval` a další (celoaplikační token, ne jednotlivá komponenta). Rozsah potvrzen: řešit token samotný, ne jen `.uacc-tag`.
-- **Výrazněji zvýraznit banku aktivní na zařízení, ne jen malou ikonku (Frank 2026-08-18):** "zatím je tam ta malá ikonka na liště, ale chtěl bych tam přidat něco víc." Současný stav: `.bank-tab-device` (feel-fader.html ~1919-1920, 12×14px SVG ikonka ovladače, `opacity:.78`, barva `var(--t2)` — tichá/sekundární) se zobrazí v bank tabu, když je ta banka `isLive` (aktivní na hardwaru, ~2957-2980). `.bank-block-tab.is-live{box-shadow:none}` momentálně jen RUŠÍ stín, nepřidává žádný vlastní akcent. Návrh řešení (barva/okraj/glow/badge apod.) nechat na designové rozhodnutí při implementaci — zatím jen zaznamenat požadavek.
-- **"Enable Keyboard (HID)?" potvrzovací dialog — prověřit vizuální konzistenci s ostatními notifikacemi (Frank 2026-08-18, screenshot):** dialog vzniká přes sdílený `openConfirm()` helper (feel-fader.html ~3511-3520, `onHidToggle()`, `title:'Enable Keyboard (HID)?'`, `tone:'primary'`) — stejný mechanismus jako ostatní confirm dialogy v appce (`.overlay`/`.modal`), takže případná nekonzistence bude spíš v konkrétním stylingu (barva/tone tlačítka, formátování textu) než ve struktuře. Projít vedle sebe se zbytkem notifikací/dialogů a porovnat.
-- **Mobil — floating Live HUD, drag funguje jen na PC (Frank 2026-08-17):** "je to dragable jen na PC, ne když si to zobrazím v telefonu." Upřesněno — jde o existující Live HUD (`#live-strip`, `_liveHudDrag`). Záměrně vypnuto pro touch: `function liveHudManipulable(){ return window.matchMedia('(any-pointer:fine)').matches; }` (feel-fader.html ~5527, komentář "enlarge/drag need a mouse, not a wide window (Frank 2026-07-27)") — tohle je teď REVERZE toho dřívějšího rozhodnutí, ne nová věc. Řešit: povolit drag i na `(any-pointer:coarse)`, ověřit že pointer-events based drag mechanismus (~5635+, `pointerdown`/`pointermove`) funguje i s touch pointery beze změny (měl by, jen gate to blokuje).
-- **Mobil — skrýt controller → scroll → zase zobrazit: objeví se ve špatné pozici, po ~1s skočí na správnou (Frank 2026-08-17):** "když skryju controller, kousek scrolluju a controller opět aktivuju, objeví se v jiné pozici a cca za 1s skočí zpět do správné pozice." Podezřelé místo: `applySendAnchorDock`/`trackSendAnchorDock` (feel-fader.html ~5996-6195+) měří pozice přes `getBoundingClientRect()` (viewport-relativní) v okamžiku SHOW/HIDE přechodu (`r0 = anchor.getBoundingClientRect()`, `pillStartTop`, ~6102-6108) — pokud se něco z toho cachuje při HIDE a znovu použije při SHOW BEZ přeměření po mezitímním scrollu, přesně tohle by to vysvětlilo (~1s zpoždění pak sedí na nějaký fallback/settle timer, který to nakonec dorovná). Ověřit a najít přesné místo cache→scroll→stale-hodnota.
-- **Mobil — červené "Send to device" tlačítko při scrollu pod horní liquid-glass lištu zmizí naráz, ne plynule (Frank 2026-08-17):** "když scrolluju dolů, tlačítko zajede za tu lištu a najednou pak zmizí, nedojede to plynule, což je škoda." `header` (uvnitř `.top-sticky`, `position:sticky;z-index:50`, feel-fader.html ~182-202) má `background:var(--chrome-glass-bg)` + `backdrop-filter`, ale žádnou měkkou masku/gradient na spodní hraně — `#send-btn` v normálním (ne-welcome, ne-dokovaném) flow nemá žádnou scroll-vázanou logiku (žádný IntersectionObserver na tohle, ověřeno), takže jde čistě o CSS stacking: tlačítko se zpod lišty "utne" tvrdou hranou místo plynulého mizení. Řešit pravděpodobně přes gradient-masku na spodní hraně `header`/`.top-sticky`, nebo dřívější dokování Send tlačítka (existující `applySendAnchorDock` mechanismus) předtím, než se dostane pod lištu.
-- **Mobil — kliknutí do "Search setups" pole přiblíží (zoomne) celou appku (Frank 2026-08-17):** "otevře se dropdown menu a celé se mi to přiblíží. Nevím proč, ale nemělo by se to přibližovat." Skoro jistá příčina: `.library-quick-input` (feel-fader.html, `font:12px 'Mulish',sans-serif`) — iOS Safari/Chrome automaticky zoomuje viewport při focusu na `<input>` s `font-size` pod 16px (známé mobilní chování, netýká se to appky specificky). Fix: zvýšit `font-size` na `input` na aspoň 16px (i jen pro mobilní breakpoint), případně vizuálně zmenšit přes `transform:scale()` pokud má zůstat opticky stejně velké.
-- **Live status bar — "Ch1·CC1" text má být vystředěný na tečce, ne jako celý string (Frank 2026-08-17):** "chci aby to bylo umístěno tou tečkou na střed toho indikátoru. Teď se to posouvá, když změním např. z CC9 na CC10." `.live-hud-tech` (`#live-f1-tech`/`#live-f2-tech`, `font-variant-numeric:tabular-nums` už řeší číslice v RÁMCI jednoho čísla, ale celý string "Ch1·CC9" vs "Ch1·CC10" má jinou DÉLKU, a rodič `.live-hud-item:not(.live-hud-roller)` centruje přes `justify-items:center` — takže při vystředění celého stringu se posune i levá "Ch1" část, ne jen pravá strana kde se mění počet znaků). Řešit ukotvením na oddělovači "·" — např. dva flex/grid sloty po stranách tečky s pevnou šířkou pro kanál i hodnotu, nebo `·` jako grid gridline mezi dvěma right/left-aligned buňkami.
-- **Help & Guide — odstranit sekci "Service: DEV / PROD mode" (Frank 2026-08-17):** "to slouží pro mě, ale ne pro uživatele." feel-fader.html ~2274-2275: `<div class="settings-subhead" id="help-dev">Service: DEV / PROD mode</div>` + navazující `<p>` (firmware boot-mode postup s BOOTSEL recovery). Smazat oba řádky; ověřit, že nikde jinde v appce neexistuje odkaz/link na `#help-dev` (kotva).
-- **Mobil — "unsaved changes" popisek koliduje s Live status barem, když je controller skrytý (Frank 2026-08-17):** "když na mobilu skryju zobrazení controlleru, tlačítko Send to device se přesune nahoru. Když udělám nějakou změnu, vlevo od něj se zobrazí popis unsaved changes. To se pak překrývá s LIVE status barem." Doky: `#send-sticky-row`/`#send-sticky-row-inner` (feel-fader.html ~1143-1164, 2259, 5710+) — Send tlačítko a jeho `.send-change-note` popisek dokují do `.top-sticky` při skrytém controlleru; Live HUD (`#live-strip`, z-index 45) sedí taky v horní části obrazovky (`.top-sticky` má z-index 50, komentář ~201 zmiňuje jejich vztah). Potřeba vymyslet, jak zabránit kolizi — přesunout Live HUD, zúžit/zkrátit note, nebo jinak.
-- **Mobil — vybraná sekce BUTTON nezvýrazní odpovídající tlačítko na controlleru (Frank 2026-08-17):** "Chci stejný efekt jako v onboarding aplikaci." Highlight `.fader-linked` (feel-fader.html ~727-737, `#zone-macro.fader-linked` už existuje a je nastylovaný) se v hlavní appce spouští jen přes `hoverFaderLink()` (~5499), navázané na `onmouseenter`/`onmouseleave` (~3222-3235) — na mobilu bez hoveru se to nikdy nespustí. Stejný vzor mají VŠECHNY sekce (fader1/fader2/roller/macro), takže je to potenciálně širší mezera než jen BUTTON — ověřit, jestli Frank vidí problém i u ostatních sekcí, nebo jestli macro/button má ještě něco navíc jinak. Onboarding řeší highlight jinak (`data-onb-feature="button"` → `#zone-macro` CSS, feel-fader.html ~1530), bez hoveru — tenhle mechanismus by šel jako vzor.
-- **Mobil — horní lišta: dark/light tlačítko kulaté, bank chipy na stejnou výšku jako jeho průměr (Frank 2026-08-17):** "chci aby tlačítko na horní liště pro přepínání mezi light/dark bylo kulaté. A chipy u bank na té liště aby měly stejnou výšku jako bude průměr toho light/dark tlačítka. Chci konzistenci a minimalismus." `.dark-toggle` (feel-fader.html ~1113, 30px base / 44px `@media(pointer:coarse)`) má třídu `ui-pill` (`border-radius:var(--r-pill)`) — na čtvercovém boxu by to už mělo dávat kruh, ověřit proč to tak nepůsobí (padding/ikona/header layout?) než se řeší. Bank chipy = `.bank-block-tab` (feel-fader.html ~2015, `padding:2px 9px`, žádná pevná výška — výška plyne z obsahu) — nastavit na výšku = průměr tlačítka.
-- **Mobil — bank karta: action tlačítka (‹ › ⧉ ✕) na stejnou výškovou úroveň jako Bank ikona, zmenšit (Frank 2026-08-17):** "na kartě s bankami bych chtěl mít buttony s šipkami, duplikací a křížkem na stejné výškové úrovni jako Bank ikonu, a tlačítka chci subtilnější, zmenšit." Aktuálně na `@media(max-width:540px)` `.bank-block-name-top{flex-wrap:wrap}` shazuje `.bank-actions` na vlastní řádek pod ikonu/jméno (feel-fader.html ~762). Velikost tlačítek `@media(pointer:coarse)` je 36px (feel-fader.html ~1039) — už jednou zmenšeno z 44px po Frankově zpětné vazbě 2026-08-16, teď chce dál dolů.
-- **Onboarding poslední krok — Next zmizí a glow "Connect & load" ať naskočí přesně současně (Frank 2026-08-17):** "v posledním kroku tlačítko next zmizí a já bych chtěl, aby se přesně jak tlačítko mizí, zobrazil glow kolem tlačítka connect & load. Časově ať je to navázané na stejný parametr." 17n už sjednotilo RYCHLOST obou (`--dur-glow`/`--ease-hero`, sdílený token) — tohle je o tom, jestli oba START ve stejný okamžik (`.onb-next.is-final` toggle vs. `data-onb-feature="configure"` toggle, oba by měly nastávat ve stejném volání `onbBeatGo()`, ale nekontrolováno). Ověřit na nasazeném demu, případně doladit spouštěcí moment.
-  (Dřívější pre-existing selhání `mobile-ux-probe.mjs` — "Normal welcome contains only the brand and essential actions" — samo spadlo jako vedlejší efekt 2026-08-17m: wordmark je teď záměrně vidět i v plain welcome stavu.)
+(žádné otevřené položky)
 
 ## Hotovo
+
+### 2026-08-18zg — Light/dark přepnutí: header/HUD blur artefakt odstraněn
+
+Frank: "po změně lišta horní se překresluje, blur se zapne se zpožděním
+cca sekundu. Lišta je chvíli transparentní a až pak se zapne blur. Není
+to seamless."
+
+**Root cause:** `applyTheme()` přepíná motiv přes `document.
+startViewTransition(commit)` — bere DVA celostránkové snímky
+(`::view-transition-old/new(root)`, feel-fader.html ~515-519) a mezi
+nimi crossfade. `header`/`.live-hud` mají `backdrop-filter`, jehož
+sytost/hodnota se mezi motivy vůbec nemění (jen barva podkladového
+skla) — problém byl čistě v tom, že known browser quirk: rasterizace
+"nového" snímku pro crossfade může proběhnout dřív, než backdrop-filter
+stihne dokompozitovat proti podkladu, takže zachycený snímek headeru
+chvíli vypadá bez blur.
+
+Fix: `header,.live-hud{view-transition-name:none}` — vyjmuty z
+crossfade snímkování úplně; barva jejich skla teď přepne OKAMŽITĚ
+(žádný fade), zatímco zbytek stránky dál plynule prolíná přes
+`theme-frame-in` animaci.
+
+Ověřeno vizuálně: zachyceny sekvence snímků headeru po 25ms (0-225ms po
+kliknutí na přepínač) před a po fixu, porovnány vedle sebe v
+brainstorming companion prohlížeči — Frank potvrdil, že fix vypadá
+dobře. `npm test`: 617 passed / 0 failed / 0 crashed (73 probes).
+
+TODO.md **Otevřené je teď prázdné** — všech 18 položek z této session
+(17 z `docs/TODO.md` + tahle, přidaná a dokončená ve stejné konverzaci)
+vyřešeno.
+
+### 2026-08-18zf — Onboarding Next fade / Connect glow: ověřeno už synchronizované, beze změny
+
+Frank: "v posledním kroku tlačítko next zmizí a já bych chtěl, aby se
+přesně jak tlačítko mizí, zobrazil glow kolem tlačítka connect & load."
+17n už sjednotilo RYCHLOST obou (`--dur-glow`/`--ease-hero`); otevřené
+zůstávalo jen to, jestli oba START ve stejný okamžik — nekontrolováno.
+
+**Analýza kódu:** `applyBeat()` (feel-fader.html, `onbBeatGo()`) mění
+`nextEl.classList.toggle('is-final',...)` a
+`controller.dataset.onbFeature = beat.feature` v sousedních řádcích
+STEJNÉHO synchronního volání — žádný `setTimeout`/`await` mezi nimi.
+Obě CSS tranzice (`.onb-next.is-final` opacity, `[data-onb-feature=
+"configure"] #send-btn` box-shadow) mají `transition:...var(--dur-glow)
+var(--ease-hero)...` bez `transition-delay`.
+
+**Empirické ověření** (Puppeteer, jemné vzorkování `getComputedStyle`
+po 2ms): první pokus ukázal ~35-40ms rozdíl, ale metodika měla chybu —
+po "instant" skoku na předposlední beat čekala jen 50ms, což nestačilo
+na ustálení PŘEDCHOZÍ box-shadow tranzice (460ms) → naměřený "baseline"
+nebyl ustálený stav. Po opravě (počkat 800ms na plné usazení před
+měřením) klesl rozdíl na konzistentních **~15-25ms** napříč 4 běhy —
+necelý jeden snímek při 60fps (16.7ms), hluboko pod hranicí lidského
+vnímání současnosti (~100ms).
+
+Uzavřeno jako **ověřeno, beze změny** — kód i měření souhlasně ukazují,
+že oba efekty startují prakticky současně; zbylý rozdíl je artefakt
+měření (`box-shadow` s `color-mix()` je nákladnější na přepočet než
+prosté `opacity`), ne vizuálně postřehnutelná asynchronost.
+
+### 2026-08-18ze — Bank karta: action tlačítka zpátky na řádek s ikonou, zmenšena na 28px
+
+Frank: "na kartě s bankami bych chtěl mít buttony... na stejné výškové
+úrovni jako Bank ikonu, a tlačítka chci subtilnější, zmenšit." Dvě
+samostatné úpravy:
+
+1. **Zpátky na jeden řádek.** `@media(max-width:540px)
+   {.bank-block-name-top{flex-wrap:wrap}}` (feel-fader.html) shazovalo
+   `.bank-actions` pod ikonu/jméno na vlastním řádku. Zjištěno, že to
+   nebyla technická nutnost — `.bank-name-input{flex:1;min-width:0}` se
+   umí zúžit, aby akce vedle sebe měly místo. `flex-wrap:wrap` +
+   doprovodné `.bank-actions{width:100%;padding-left:31px}` odstraněny.
+2. **Menší tlačítka.** `.btn-remove-bank`/`.bank-action-btn` mají
+   ZÁKLADNÍ (myš) velikost už 28px — jen `@media(pointer:coarse)`
+   override je na dotyku zvětšoval na 36px (zmenšeno z 44px 2026-08-16).
+   Frank vybral z nabídnutých 28px/32px → **28px** (shodně s Bank
+   ikonou) — touch override snížen z 36px na 28px, takže teď je
+   identický se základní velikostí v obou kontextech.
+
+Ověřeno screenshotem (iPhone 13 emulace): ‹ › ⧉ ✕ na stejném řádku s
+ikonou i jménem banky, vizuálně sladěné, subtilnější. `npm test`: 617
+passed / 0 failed / 0 crashed (73 probes).
+
+### 2026-08-18zd — Dark/light tlačítko konečně kulaté, bank chipy na stejnou výšku
+
+Frank: "chci aby tlačítko na horní liště pro přepínání mezi light/dark
+bylo kulaté. A chipy u bank... aby měly stejnou výšku jako bude průměr
+toho light/dark tlačítka." `.dark-toggle` mělo `border-radius:999px`
+(`.ui-pill`) a `width:44px;height:44px` uvnitř `@media(pointer:coarse)`
+— na papíře mělo být kruh, ale nebylo.
+
+**Root cause (skutečná cascade chyba, ne padding/ikona jak TODO
+tušilo):** bezpodmínečné `.dark-toggle{width:30px;height:30px}` (báze,
+~1039) se v souboru nachází AŽ PO `@media(pointer:coarse){.dark-toggle
+{width:44px;height:44px}}` (~967). Při stejné specificitě vyhrává
+POZDĚJŠÍ pravidlo — takže na dotyku `width` spadlo zpátky na 30px,
+zatímco `height` zůstalo 44px jen díky samostatnému `min-height:44px`
+(~968), který u `width` obdobu neměl. Výsledek: 30×44px obdélník.
+
+Fix: `.dark-toggle` dostalo vlastní `min-width:44px` (floor, který ta
+pozdější `width:30px` cascade nepřebije) — bez zásahu do sdíleného
+`min-height` pravidla (to by zasáhlo i `.bank-block-tab`/`.send-btn`
+šířkou, nechtěné). Bank chipy (`.bank-block-tab`) dostaly `@media
+(pointer:fine){min-height:30px}` — vědomě SCOPED, ne bezpodmínečné:
+bezpodmínečné pravidlo by (stejnou cestou) přebilo existující touch
+`min-height:44px` a stáhlo dotykovou výšku zpátky na 30px — přesně
+stejná třída chyby, kterou jsem právě opravoval, teď ve vlastním kódu.
+
+**Vedlejší nález, skutečná regrese odhalená testy:** opravený (teď
+skutečně 44px) toggle zabírá o 14px víc místa v headeru → na
+nejužším podporovaném telefonu (393px, `iphone-messenger` profil) se
+`#bank-tabs` řádek zúžil natolik, že s uměle dlouhým testovacím jménem
+banky ("Bang go b") přestaly všechny 3 taby doslova "vejít" bez
+scrollu. `.bank-block-tabs{overflow-x:auto}` je ale přesně na tohle už
+dávno navržené — scroll v tomhle případě není bug. `mobile-ux-probe.mjs`
+ale ověřoval "každý tab se vejde do kontejneru bez scrollu", což
+fungovalo jen náhodou díky předtím vadnému (užšímu) toggle. Přepsáno na
+smysluplnější invariant: řádek jako celek nesmí vizuálně kolidovat s
+toggle tlačítkem (`bankTabContainer.right <= darkToggle.left`) — scroll
+uvnitř řádku je v pořádku, kolize s tlačítkem vedle by nebyla.
+
+Ověřeno automatizovaně (base i touch kontext): toggle 30×30 (myš) /
+44×44 (dotyk) v obou případech čtverec; bank chipy 30px (myš) / 44px
+(dotyk), shodně s toggle. `npm test`: 617 passed / 0 failed / 0 crashed
+(73 probes) na čistém re-runu.
+
+### 2026-08-18zc — Sekce zvýrazňují odpovídající zónu na controlleru i bez hoveru (dotyk)
+
+Frank: "Chci stejný efekt jako v onboarding aplikaci" (BUTTON sekce
+nezvýrazní tlačítko na mobilu). Ověřeno a rozsah potvrzen s Frankem:
+mezera se týkala VŠECH 4 sekcí (fader1/fader2/roller/macro), ne jen
+BUTTON — `hoverFaderLink()` byla navázaná čistě na
+`onmouseenter`/`onmouseleave`, které se na dotyku nikdy nespustí.
+
+Fix (feel-fader.html ~5437-5455): highlight teď řízen DVĚMA nezávislými
+zdroji sloučenými přes OR, ne přepisováním — `_hoveredFaderKey` (živý
+mouse hover, jako dřív) A `isSectionOpen(key)` (sekce rozbalená —
+funguje bez hoveru, tohle nese touch případ). Nová `syncFaderLink(key)`
+je jediný zdroj pravdy, volaná jak z `hoverFaderLink()` (mouse), tak
+nově v `renderPanels()` pro všechny 4 klíče po každém renderu (`~3177`)
+— nutné, protože `renderPanels()` staví `.bank-section` HTML od nuly
+přes `innerHTML`, což by jinak smazalo dřív nastavenou třídu.
+
+Vědomě NEudělané: `.fader-linked` třída na SAMOTNÉM `.bank-section`
+panelu se aplikuje stejným mechanismem jako dřív u hoveru (bez
+speciální výjimky) — konzistentní s existujícím vizuálem, žádná nová
+komponenta.
+
+Ověřeno (`scratch/tmp-fader-link-touch-check.mjs`): otevření každé ze 4
+sekcí BEZ jakékoliv myší akce zvýrazní odpovídající controller zónu;
+zavření všech čtyř highlight vyčistí; simultánní mouse hover (fader1) +
+open (roller) jsou zvýrazněné zároveň a jsou na sobě nezávislé — odchod
+myší z fader1 vyčistí JEN fader1, roller (pořád open) zůstává
+zvýrazněný. `npm test`: 617 passed / 0 failed / 0 crashed (73 probes).
+
+### 2026-08-18zb — "Unsaved changes" popisek už nekoliduje s Live HUD
+
+Frank: "když na mobilu skryju zobrazení controlleru... vlevo od něj se
+zobrazí popis unsaved changes. To se pak překrývá s LIVE status barem."
+Screenshot potvrdil skutečně ošklivou kolizi — text popisku vykreslený
+přes "L R" hodnoty HUD karty.
+
+**Přesná příčina, ne jen obecná "kolize":** `updateContextualLiveStrip()`
+(feel-fader.html ~5645) má už z 2026-07-27 vědomé rozhodnutí kotvit HUD
+jen k `header`u, ne k celému `.top-sticky` — komentář výslovně
+zdůvodňuje, že dokované Send tlačítko je VYCENTROVANÉ, zatímco HUD sedí
+zcela vlevo, takže nekolidují. Ta úvaha byla správná PRO TLAČÍTKO, ale
+nepočítala s `.send-change-note` ("unsaved changes"), který se na rozdíl
+od tlačítka rozpíná DOLEVA od centrovaného tlačítka a na úzkém mobilním
+viewportu dosáhne až do zóny HUD.
+
+Fix: `updateContextualLiveStrip()` teď čte, jestli je `#send-change-note`
+reálně `.is-visible` (a controller skrytý) — pokud ano, kotví HUD ke
+spodku CELÉHO `#send-sticky-row` (dokovaný řádek) místo jen k headeru;
+pokud ne, chová se přesně jako předtím (žádná změna pro běžný,
+ne-dirty případ — cíleně zachováno, ne paušální posun HUD dolů pokaždé,
+když je controller skrytý).
+
+Ověřeno screenshoty: s nezachráněnou změnou HUD karta čistě POD
+dokovaným řádkem, žádný překryv. Bez nezachráněné změny HUD `top`
+zůstává `52px` (header 40 + 12), identické s chováním před fixem.
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu — mezi-běhy ukázaly `help-deep-links-probe.mjs`/`bank-live-dot-
+probe.mjs`/`send-dock-gap-symmetry-probe.mjs` selhání, všechny 3 už dřív
+v této session zdokumentované jako flaky pod zátěží (potvrzeno: 21
+Chrome + 9 Node procesů nakumulovaných za celou session na pozadí;
+izolovaný re-run všech 3 prošel čistě).
+
+### 2026-08-18za — Help & Guide: smazána sekce "Service: DEV / PROD mode"
+
+Frank: "to slouží pro mě, ale ne pro uživatele." Smazán `#help-dev`
+subhead + navazující `<p>` (firmware boot-mode postup, BOOTSEL recovery
+— feel-fader.html ~2357-2358). Ověřeno, že na `#help-dev` nikde jinde
+neexistoval odkaz (jediný výskyt v souboru).
+
+`help-trim-probe.mjs` explicitně ověřovalo, že `#help-dev` EXISTUJE
+(pozůstatek dřívějšího "trim" úkolu, kdy šlo o jinou sekci) — přepsáno
+na opačné tvrzení (`#help-dev REMOVED`).
+
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu — jeden mezi-běh ukázal `help-deep-links-probe.mjs` selhání
+(`inViewport:false`), potvrzeno jako nesouvisející flaky (3× izolovaný
+re-run: 2× PASS, 1× FAIL, nedeterministické — skutečná regrese by
+selhávala pokaždé).
+
+### 2026-08-18z — Live HUD tech řádek ("Ch1·CC11"): ukotveno na tečce, žádný posun při změně počtu číslic
+
+Frank: "chci aby to bylo umístěno tou tečkou na střed toho indikátoru.
+Teď se to posouvá, když změním např. z CC9 na CC10." Příčina: `.live-
+hud-item{justify-items:center}` centrovalo celý string `Ch1·CC9` jako
+jeden blok — při CC9→CC10 se změnila DÉLKA celého stringu, takže se
+posunula i nezměněná levá "Ch1" část.
+
+Fix (feel-fader.html): `#live-f1-tech`/`#live-f2-tech` (~2184, 2189)
+rozděleny na 3 vnořené spany (`.live-hud-tech-ch`/`.live-hud-tech-dot`/
+`.live-hud-tech-val`), nová `.live-hud-tech-split{display:grid;
+grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);justify-self:
+stretch}` — dvě `minmax(0,1fr)` krajní kolony vždy dostanou přesně
+poloviční podíl ze zbylého prostoru bez ohledu na obsah (bare `1fr`, bez
+`minmax`, první pokus, ještě respektuje vlastní min-content jako podlahu
+— naměřen zbytkový posun ~2px, opraveno přechodem na `minmax(0,1fr)`).
+JS (`renderLiveStrip()`, ~5694-5695): `setTxt` teď píše zvlášť do
+`-ch`/`-val` sub-elementů místo jednoho kombinovaného stringu. Roller
+tech řádek (`#live-roller-tech`) vědomě NEDOTČEN — má vlastní odlišné
+zarovnání (`justify-self:start`, celá šířka řádku) a 3 různé tvary
+obsahu podle nav módu, nebylo předmětem požadavku.
+
+Odhalena a opravena 1 vlastní regrese při ladění: prvotní verze měla
+`column-gap:1px` mezi sloupci — v kompaktní 96×96 mobilní variantě HUD
+to způsobilo 2px přetečení (`scrollWidth 36 > clientWidth 34`),
+odhaleno `mobile-ux-probe.mjs` (`techUnclipped` check) — gap odstraněn,
+tečka sama má dost vizuálního odstupu.
+
+Ověřeno (`scratch/tmp-live-hud-tech-dot-check.mjs`): tečka i "Ch1" na
+IDENTICKÉ x-pozici (`dotX`/`chLeft`) při CC9/CC10/CC100 — 0px rozdíl.
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes).
+
+### 2026-08-18y — "Search setups" input: iOS zoom-on-focus vypnut, opticky beze změny
+
+Frank: "otevře se dropdown menu a celé se mi to přiblíží... nemělo by se
+to přibližovat." Potvrzená příčina: `.library-quick-input` mělo
+`font-size:12px` — iOS Safari/Chrome automaticky zoomuje viewport při
+focusu na `<input>` pod 16px. Frank zvolil variantu **B**: reálně zvětšit
+na 16px (vypne zoom), ale opticky zůstat na původní ~12px velikosti přes
+`transform:scale()`, ne jen viditelně zvětšit text.
+
+Implementace (feel-fader.html ~1997-2005, ~3109-3114): nový wrapper
+`<span class="library-quick-input-scale">` kolem `<input>` — `overflow:
+hidden` na wrapperu ořízne inputův PŘED-transformem větší layout box
+zpátky na původní vizuální stopu (29px výška, změřeno). Input dostal
+`font:16px`, `width:133.333%`, `height:38.667px`, proporčně zvětšený
+padding (`8px 13.333px` — 6/.75, 10/.75), `transform:scale(.75)
+transform-origin:top left` — 16×.75=12 (zpět na původní vizuální
+velikost textu).
+
+**Vědomě NE `overflow:hidden` na `.quick-setup-picker`** (rodič, hostí i
+dropdown menu `.quick-setup-menu{position:absolute}`) — to by useklo i
+menu. Nový wrapper je scoped jen kolem inputu samotného, picker i menu
+beze změny. Ověřeno, že `openQuickSetupMenu()`/pozicování menu vůbec
+nečte input's `getBoundingClientRect()` (menu je pozicované vůči
+`.quick-setup-picker`, ne vůči inputu) — žádná závislost na přesné
+geometrii inputu, změna je bezpečná.
+
+Ověřeno automatizovaně: computed `font-size` inputu teď `16px` (dřív
+`12px`), renderovaná (post-transform) šířka `242.83px` — identická s
+před-změnovou hodnotou `242.84px` (na sub-pixel přesně stejná vizuální
+velikost). Screenshot potvrzuje vizuálně nerozeznatelné od originálu,
+dropdown menu se po focusu stále otevírá správně. `npm test`: 617
+passed / 0 failed / 0 crashed (73 probes) — žádná regrese.
+
+### 2026-08-18x — Header: měkký fade na spodní hraně, Send tlačítko už nemizí naráz
+
+Frank: "když scrolluju dolů, tlačítko zajede za tu lištu a najednou pak
+zmizí, nedojede to plynule." Potvrzeno: `header` (feel-fader.html
+~196-202, uvnitř `.top-sticky`, `position:sticky;z-index:50`) neměl na
+spodní hraně žádnou masku — obsah scrollující zdola (Send tlačítko, v
+normálním flow, nedokované) se pod lištou schovává čistě CSS stackingem,
+ostrá hrana.
+
+Fix: `mask-image`/`-webkit-mask-image:linear-gradient(to bottom,#000
+calc(100% - 14px),transparent)` na `header` — stejná technika jako
+existující `.bank-block-tabs.tabs-fade-r`. 14px zvoleno vůči změřené
+výšce headeru (40px, `getBoundingClientRect()`) — dost na viditelné
+zjemnění hrany, dost málo na to, aby se nezačal viditelně "rozpouštět"
+i vlastní obsah headeru (wordmark, bank taby) — ověřeno screenshotem
+zblízka, žádné viditelné useknutí textu.
+
+Ověřeno screenshoty (430×800, scroll 40px — Send tlačítko těsně pod
+hranou headeru): žádný artefakt na textu headeru, přechod na hraně
+plynulý. `npm test`: 617 passed / 0 failed / 0 crashed (73 probes) —
+žádná regrese.
+
+### 2026-08-18w — Skrytí controlleru → scroll → zobrazit: stale scroll-cache způsobovala "špatná pozice, pak skok"
+
+Frank 2026-08-17: "když skryju controller, kousek scrolluju a controller
+opět aktivuju, objeví se v jiné pozici a cca za 1s skočí zpět do správné
+pozice." TODO už mělo přesné podezření (`applySendAnchorDock`/
+`trackSendAnchorDock` cachují pozice) — dnes systematicky ověřeno
+(`superpowers:systematic-debugging`), root cause potvrzen a opraven.
+
+**Root cause:** `_sendAnchorPillHomeTop`/`_sendAnchorPillDockedTop`
+(feel-fader.html ~5915-5916) se ukládaly jako syrová
+`getBoundingClientRect().top` (viewport-relativní) hodnota při HIDE. Mezi
+HIDE a SHOW scroll stránku posune, ale hodnota se nikdy nepřepočítala —
+`trackSendAnchorDock()`'s glide (~6144-6146) ji použil jako cíl animace
+tak, jak byla PŘED scrollem, takže tlačítko nejdřív "nahodilo" starou
+pozici a teprve po `settle()` (reparentování zpět do normálního flow,
+~900-1400ms) přistálo na skutečné, aktuální pozici — přesně nahlášený
+vzorec.
+
+**Ověření mechanismu bylo samo o sobě zajímavé:** první dva pokusy o
+reprodukci (`tmp-repro-send-anchor-scroll-stale{,-v2}.mjs`) dávaly
+nesedící čísla — ukázalo se, že Chromova **CSS scroll anchoring** (ve
+výchozím stavu zapnutá) sama potichu posouvala `window.scrollY`, kdykoliv
+se box při instantním show/hide přerostl nad viewportem (živě naměřeno:
+scrollY 180→92 jen z toho, že se box vrátil na plnou výšku) — matoucí
+proměnná nesouvisející s hledanou chybou. `v3` skript ji vypnul
+(`overflow-anchor:none` na `html`/`body`) a porovnal cache-hodnotu (s
+korekcí o `scrollY`) proti nezávisle změřené ground-truth pozici (druhá,
+nekontaminovaná session, real instant-show code path) — shoda na pixel
+(`diff=0`) POTVRDILA formuli fixu, ale první verze testu omylem
+aplikovala korekci JEN v test skriptu, ne v ověřovaném app kódu, takže
+neprokázala nic (prošla i na nezměněném před-fix kódu — odhaleno
+`git stash` bisekcí, výsledek identický 355.1875/355.1875 na obou
+verzích). **Skutečné, rozlišující ověření** nakonec `tmp-repro-send-
+anchor-scroll-stale.mjs`: porovnání pozice v polovině animace (~120ms) se
+skutečnou usazenou pozicí — před fixem 542 vs. 355 (**187px rozjezd**,
+skoro přesně scroll delta 180px — to je ten hlášený skok), po fixu 378
+vs. 355 (23px, normální průběžný stav plynulé animace, ne bug).
+
+**Fix:** `_sendAnchorPillHomeTop`/`_sendAnchorPillDockedTop` ukládány
+dokument-relativně (`+ window.scrollY` při zápisu, ~5955/5963),
+`trackSendAnchorDock()` při čtení odečítá AKTUÁLNÍ `window.scrollY`
+(~6144-6146) — hodnota tak přežije libovolný scroll mezi HIDE a SHOW.
+`_sendAnchorPillOffsetHome`/`Docked` (delta dvou rects ze STEJNÉHO
+okamžiku) scroll-korekci nepotřebovaly, scroll se v odečtu ruší sám —
+beze změny.
+
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) — žádná
+regrese.
+
+### 2026-08-18v — Live HUD: drag zapnutý i na dotyku (mobil)
+
+Frank: "je to dragable jen na PC, ne když si to zobrazím v telefonu" —
+reverze dřívějšího záměrného rozhodnutí (`liveHudManipulable()`,
+feel-fader.html ~5427, gatovalo drag+position-memory+scale-reading jen na
+`any-pointer:fine`, komentář "enlarge/drag need a mouse... (Frank
+2026-07-27)"). Rozsah potvrzen s Frankem: jen drag, NE zvětšovací
+tlačítko — to má vlastní, nezávislý CSS gate
+(`@media not all and (any-pointer:fine){.live-hud-size-btn{display:none}}`,
+~236) a zůstává na dotyku skryté beze změny.
+
+Fix: media query v `liveHudManipulable()` rozšířena z `(any-pointer:fine)`
+na `(any-pointer:fine),(any-pointer:coarse)` — jediná změna, žádná úprava
+samotného pointer-event drag mechanismu (~5635+) byla potřeba, ten už
+touch pointery zvládal (`event.button` čte 0 i pro touch pointerdown per
+spec).
+
+Ověřeno (`scratch/tmp-live-hud-touch-drag-check.mjs`, Puppeteer
+`emulate(KnownDevices['iPhone 13'])` — skutečná touch emulace, ne jen
+media-feature override, protože `emulateMediaFeatures` nepodporuje
+`pointer`/`any-pointer` přímo): na emulovaném touch-only zařízení
+(`any-pointer:coarse=true`, `:fine=false`) je `liveHudManipulable()===true`
+(dřív `false`), zvětšovací tlačítko zůstává `display:none`. `npm test`:
+617 passed / 0 failed / 0 crashed (73 probes) — žádná regrese.
+
+### 2026-08-18u — "Enable Keyboard (HID)?" dialog — vizuální audit, beze změny
+
+Frank (screenshot): prověřit konzistenci s ostatními notifikacemi. Ověřeno
+screenshoty vedle sebe (HID confirm, "Remove bank" confirm, info toast):
+
+- **Barva tlačítka je v pořádku.** "Enable HID" = `tone:'primary'` →
+  `--red` (#e45745) — STEJNÁ červená jako `Send to device`/`Save setup`/
+  `Apply setup` (appka má jedinou "hlavní akce" barvu napříč celou UI,
+  potvrzeno vedle sebe na screenshotu). "Remove bank" dialog používá
+  `tone:'danger'` → `--danger` (#b42318, viditelně tmavší/sytější) —
+  dvě odlišitelné barvy, HID dialog správně sahá po té nedestruktivní.
+- **Jediný reálný rozdíl:** text zprávy je delší/technoštější než u
+  ostatních dialogů (26 slov, zmiňuje konkrétní macOS chování — Keyboard
+  Setup Assistant) vs. typicky 8-16 slov u ostatních ("This removes the
+  bank from the local configuration..."). Posouzeno jako odůvodněné —
+  jde skutečně o komplexnější informaci (OS-level vedlejší efekt), ne o
+  nekonzistentní styl psaní.
+
+Frank potvrdil, že je to takhle v pořádku — žádná změna kódu. Zaznamenáno
+jako uzavřený audit, ne jako "nenalezeno/přeskočeno".
+
+### 2026-08-18t — Live bank na zařízení: pulzující zelená tečka místo tiché ikonky
+
+Frank: "zatím je tam ta malá ikonka na liště, ale chtěl bych tam přidat
+něco víc." Vizuální brainstorming (4 varianty v prohlížeči — badge tečka,
+celý tab glow+tint, jen zvětšená/zelená ikonka, levý okrajový pruh) →
+Frank vybral **A (pulzující tečka)**, s klíčovou opravou: appka má DVA
+nezávislé stavy na bank tabu — `.active` (banka právě editovaná v
+appce) a `.is-live` (banka, kterou hraje hardware), nemusí to být tatáž
+banka. První kolo mockupů oba stavy omylem spojilo do jedné pilulky;
+Frank na to upozornil, druhé kolo mockupů je ukázalo na dvou různých
+tabech vedle sebe (needitovaná live banka + editovaná ne-live banka) —
+potvrdil, že tečka takhle funguje čitelně bez kolize.
+
+Po výběru A ještě Frank všiml: "když bude tečka, není už potřeba ta
+ikona faderů" — celá stará SVG ikonka (`.bank-tab-device`) šla pryč, ne
+jen zbarvit.
+
+Implementace (feel-fader.html):
+- JS marker span (`liveMarker` v `renderBankTabs()` ~2995,
+  `setActiveTab()` ~3014-3018) — beze změny STRUKTURY (pořád JS-vkládaný
+  `<span>` keyed na `isLive`), jen obsah/třída: žádné vnořené `<svg>`,
+  třída `bank-tab-device` → `bank-tab-live-dot`. `title="Active on
+  device"` a `aria-hidden="true"` zůstaly, `aria-label` na tlačítku
+  (" · active on device") beze změny — přístupnost nedotčena.
+- CSS: `.bank-tab-device`/`.bank-tab-device svg` smazány, nahrazeny
+  `.bank-tab-live-dot` (~1949) — `position:absolute` v pravém horním
+  rohu tabu (`.bank-block-tab` už mělo `position:relative`), `background:
+  var(--green)`, pulz přes `@keyframes bank-live-pulse` (opacity 1↔.4,
+  1.8s), `@media(prefers-reduced-motion:reduce)` vypíná animaci (existující
+  app-wide konvence).
+- **Vědomě REAL `<span>`, ne `::before`/`::after` pseudo-element**: tab
+  už má `.drag-before::before`/`.drag-after::after` pro drag-reorder
+  indikátor (~1927-1931) — kdyby tečka byla taky pseudo-element na
+  stejném selektoru, kolidovala by s ním při přetahování zrovna té live
+  banky. Reálný child span tohle obchází úplně.
+- **Prstenec kolem tečky NENÍ `var(--bg)`** (plná barva) — bank tab strip
+  sedí přímo v headeru (`#bank-tabs` uvnitř `<header>`, ne na kartě),
+  takže tvrdá barva na průsvitném glass pozadí by nesedla. Header už má
+  přesně tenhle případ vyřešený u `.h-status-dot.on` (connection status
+  tečka, stejný řádek) — měkký `rgba(52,199,89,...)` glow prstenec místo
+  plné barvy. Sjednoceno na stejný vzor místo vymýšlení nového.
+
+**Regresní test přepsán, ne jen opraven:** `bank-glyph-neutral-probe.mjs`
+existoval specificky k ověření, že stará ikonka NENÍ zelená (dřívější
+záměrné rozhodnutí, důvod nedohledán v této TODO historii) — tohle
+session's rozhodnutí ho vědomě obrací. Přejmenováno na
+`bank-live-dot-probe.mjs` (+ zápis v `run-all-probes.mjs`), přepsáno na
+nové invarianty: tečka existuje/je zelená/pulzuje/stará ikonka je pryč,
+PLUS explicitní test dvoustavové nezávislosti (live banka bez `.active`
+pořád má tečku; `.active` banka bez live nemá tečku).
+
+**Vedlejší nález při ladění (systematic-debugging, ne jen re-run):**
+`send-dock-gap-symmetry-probe.mjs` padal deterministicky (32px/30px) i
+v izolaci — vypadalo to jako regrese z dnešních změn. Bisekce přes `git
+stash` (feel-fader.html vrácen na čistý HEAD, test spuštěn znovu)
+ukázala IDENTICKÉ 32/30 selhání i BEZ jediné dnešní změny → potvrzeno
+pre-existing, prostředím/časováním podmíněné (stejná třída jevu jako
+dřívější zdokumentované "jen pod plnou zátěží" flaky testy, viz
+2026-08-17d/17j), ne nic způsobeného touto session. Podobně
+`bank-live-dot-probe.mjs`'s "pulse animation" assert jednou selhal jen
+uvnitř plné 73-probe sady, čistě 9/9 v izolaci — stejná třída.
+
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu — obě výše zmíněné flaky položky ten den prošly bez zásahu.
+
+### 2026-08-18s — Sdílený `--control-glass-bg` token: z "gradient sheen" na skutečné frosted sklo
+
+Frank: "tyto tlačítka vypadají strašně cheap s tím gradientem" → "celý
+sdílený styl se mi nezdá, poladíme ho globálně" (rozsah — token, ne jen
+`.uacc-tag` — potvrzen dřív, 2026-08-18). Brainstorming potvrdil obojí
+podezření: silný diagonální lesk (starší "glossy button" look) A chybějící
+skutečné rozmazání pod prvkem (na rozdíl od headeru/HUD, které
+`backdrop-filter` mají). 4 vizuální varianty porovnány v prohlížeči
+(companion) — Frank vybral **C: skoro plochá výplň + reálný
+`backdrop-filter`**, stejný princip jako `--chrome-glass-bg`/
+`--chrome-glass-filter`, jen jemnější (menší blur, míň sytosti — tohle
+jsou malé kontrolky, ne celoplošná lišta).
+
+Změny (feel-fader.html):
+- `--control-glass-bg` (~61 light, ~144 dark): `linear-gradient(145deg,...)`
+  → plochá `rgba(255,255,255,.38)` / `rgba(30,30,35,.42)`.
+- Nový `--control-glass-filter:blur(10px) saturate(160%)` — jedna hodnota
+  sdílená oběma motivy (stejný vzor jako `--chrome-glass-filter`, který
+  taky není v `html.dark` přepsaný).
+- `--control-glass-border`/`--control-glass-shadow`/`-hover` doladěny na
+  jemnější hodnoty odpovídající plošší výplni (byly kalibrované na starý
+  gradient, se starým vzhledem by teď plochá výplň + tak silný border/stín
+  vypadala nepatřičně kontrastně).
+- `backdrop-filter`/`-webkit-backdrop-filter:var(--control-glass-filter)`
+  přidán ke všem 15 základním selektorům, které `--control-glass-bg`
+  používají (`.ui-glass`, `.send-btn.idle/.blocked`, `.roller-mode-row::before`
+  ×2, `.stepper input` ×2, `.ks-bound-stepper`, `.ks-convention-stepper`,
+  `.uacc-tag`, `.hid-switch-track`, `.controller-switch` checked,
+  `.btn-ghost`, `.toast-icon`, `.tx:hover`, `.toast-action`,
+  `.bank-block-tab.active`) — `:hover`-only varianty, které jen mění
+  `background`/`box-shadow` na už-blurovaném základu, nepřidávaly nic
+  nového (blur zůstává z base pravidla).
+
+Ověřeno (`scratch/tmp-control-glass-blur-check.mjs`, oba motivy):
+`.stepper input` a `.uacc-tag` mají `background-image:none` (žádný
+gradient) a computed `backdrop-filter:blur(10px) saturate(1.6)`. `npm
+test`: 611 passed / 0 failed / 0 crashed (73 probes) — žádná regrese.
+
+Hodnoty hover-stínu (`--control-glass-shadow-hover`) jsou odhad
+proporčně odvozený ze staré hover-delty, ne z vizuálního brainstormingu
+(ten hover neukazoval) — čeká na Frankovo oko na reálném zařízení.
+
+### 2026-08-18r — HID toggle track: plná zelená místo vybledlé, sjednoceno se Sent tlačítkem
+
+Frank (screenshot): "chci mít aplikaci konzistentní" — HID toggle a Sent
+tlačítko UŽ odkazovaly na stejnou `--green:#34c759` proměnnou, ale
+vizuálně nesedělo, protože track (`.hid-switch input:checked +
+.hid-switch-track`, feel-fader.html ~770) míchal `color-mix(in
+srgb,var(--green) 44%,transparent)` přes vlastní glass pozadí místo plné
+barvy jako `.send-btn.sent{background:var(--green)}`.
+
+Fix: `background` na checked tracku → plné `var(--green)` (žádný mix).
+`border-color`/`box-shadow` glow zůstaly na měkkém mixu (72 %/25 %) — to
+odpovídá stejné konvenci, jakou má i Sent tlačítko u vlastního glow
+(`box-shadow:...rgba(52,199,89,.4)`, taky ne 100%). `.controller-switch`
+(sdílí `.hid-switch-track` třídu pro jiný přepínač, ~780) zůstal beze
+změny — má vlastní override na neutrální `--control-glass-bg`, scoped na
+jiný rodičovský selektor, nedotčen.
+
+Ověřeno (`scratch/tmp-hid-switch-green-check.mjs`): computed
+`background-color` na checked `.hid-switch-track` (mimo `.controller-switch`)
+je `rgb(52,199,89)` — přesně shodné s `--green`. (Poznámka k testování:
+programové `input.checked=true` + `dispatchEvent('change')` by spustilo
+reálný `onHidToggle()` a konfirmační dialog, který checked stav vrátí
+zpět na false do potvrzení — test proto nastavuje jen IDL checkedness bez
+change eventu, CSS `:checked` na to reaguje stejně.)
+
+`npm test`: 611 passed / 0 failed / 0 crashed (73 probes) — žádná regrese.
+
+### 2026-08-18q — Skrytí controlleru: smrštění teď rovnoměrné i vodorovně, ne jen zplošťující
+
+Frank: "když skryju controller, smrští se to ve směru svislé osy. Chtěl bych,
+aby se controller změnil rovnoměrně i ve vodorovném směru" — potvrzeno v
+brainstormingu, že šlo o dojem "placnutí" shora dolů (výška jde přes
+`grid-template-rows` k 0, šířka zůstávala skoro celou dobu plná), ne o
+konkrétní nesoulad okrajů s něčím vedle.
+
+Řešení zvoleno z už dřív zvažovaných dvou cest (viz starší poznámka v TODO):
+přidat souběžnou horizontální komponentu vedle stávajícího mechanismu, NE
+předělat celý kolaps na jednotný `scale()`. Důvod zamítnutí druhé cesty:
+vertikální kolaps přes `grid-template-rows` je vstup pro JS měření pozic
+(`applySendAnchorDock`/`trackSendAnchorDock`, Send tlačítko + Live HUD
+anchor tracking) — přepnout by riskovalo rozbít tohle propojení, přidání
+je bezpečnější.
+
+Fix: `.stage-collapse.is-collapsed>.stage{transform:scale(.94)...}` →
+`transform:scaleX(.85) scaleY(.94)...` (feel-fader.html ~317-324) — scaleY
+zůstal beze změny (patří k existující anti-squish ochraně z 2026-07-23,
+nezávisle na tomhle fixu), scaleX je nová, výraznější horizontální složka,
+běží na stejné `var(--dur-stage)`/`var(--ease-out)` křivce jako rodičovský
+`grid-template-rows` kolaps, takže obě osy dosednou ve stejný moment.
+`transform-origin` zůstal na středu (default) — smršťování je tak
+symetrické z obou stran.
+
+Ověřeno (`scratch/tmp-stage-collapse-scalex-check.mjs`): computed transform
+po dokončení přechodu je `matrix(0.85,0,0,0.94,...)` — scaleX skutečně
+0.85, odlišné od scaleY (0.94), ne uniformní `scale()` jako dřív; expanded
+stav beze změny (`none`). `npm test`: 611 passed / 0 failed / 0 crashed
+(73 probes) — žádná regrese.
+
+Přesná hodnota `.85` je vizuální odhad, ne měřená z fyzického zařízení —
+čeká na Frankovo potvrzení "cítí se to rovnoměrně" na reálném telefonu,
+případně doladit.
+
+### 2026-08-18p — Custom kurzor ve tvaru fader capu implementován
+
+Návaznost na 2026-08-18 (specifikace domluvena, čekalo na implementaci —
+viz historie výše). Tvar a velikost doladěny přes vizuální brainstorming
+companion (4 varianty siluety porovnány vedle sebe v prohlížeči, pak 3
+velikosti přes reálné UI cíle): Frank vybral **variantu A — čistá kapsle**
+podle proporcí skutečné fotky (`#thumb-l`), bez highlight pruhu nebo grip
+rýh; velikost **20×32px** (poměr stran 5:8 shodný s fotkou).
+
+Implementace: nová sdílená proměnná `--cursor-fader` (feel-fader.html ~81
+`:root`, ~147 `html.dark`) — inline SVG data URI (`%23` misto `#` v barvě,
+ne base64 — čitelnější diff), `fill` natvrdo zrcadlí aktuální `--t1` hex
+(light `#1d1d1f` / dark `#f5f5f7`), protože data URI nemůže odkazovat na
+CSS `var()`. Barva se tak přepíná úplně stejně jako zbytek theme systému —
+čistě CSS cascade `:root` vs `html.dark`, žádná nová JS logika v
+`applyTheme()` nebyla potřeba. Hotspot zvolen `10 4` (vrchní střed capu,
+kde fyzicky sedí prst) — TODO počítal s doladěním při implementaci, zatím
+ponecháno, čeká na Frankovo ověření na reálném zařízení.
+
+Všech 32 výskytů `cursor:pointer` (CSS pravidla i jeden inline `style=`)
+přepsáno na `cursor:var(--cursor-fader),pointer` (`replace_all`, ověřen
+počet 32 před i po). Fallback na `pointer` pokrývá prohlížeče, které by
+kurzor-URL z nějakého důvodu odmítly.
+
+Ověřeno automatizovaně (`scratch/tmp-cursor-fader-check.mjs`, Puppeteer):
+`getComputedStyle(...).cursor` v light i dark motivu resolvuje na `url(...)`
+(ne prostý `"pointer"`), obsahuje správný `--t1` hex pro daný motiv, a mezi
+motivy se liší (potvrzuje, že `html.dark` override skutečně vyhrává). Žádné
+console/page erory při přepínání motivu.
+
+`npm test`: 611 passed / 0 failed / 0 crashed (73 probes) — čistě, žádná
+regrese.
 
 ### 2026-08-18 — `welcome-heading-gap-probe.mjs` opraven na aktuální onboarding layout
 

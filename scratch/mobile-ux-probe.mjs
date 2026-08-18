@@ -602,6 +602,7 @@ async function runProfile(browser, url, profile) {
       controllerBottom: controller?.bottom ?? null,
       bankTabs,
       bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
+      darkToggle: (() => { const r = document.querySelector('.dark-toggle')?.getBoundingClientRect(); return r ? { left: r.left } : null; })(),
       midiHelpAbsent: !document.getElementById('midi-help-banner'),
       rollerSummaryAbsent: !document.getElementById('section-summary-0-roller'),
       faderSummariesAbsent: !document.getElementById('section-summary-0-fader1') && !document.getElementById('section-summary-0-fader2'),
@@ -627,8 +628,21 @@ async function runProfile(browser, url, profile) {
     appState.controller && appState.controller.left >= -1 && appState.controller.right <= appState.viewportWidth + 1,
     appState.controller ? `${appState.controller.left.toFixed(1)}–${appState.controller.right.toFixed(1)} px` : 'missing');
   addCheck(checks, 'App entry has no second onboarding card', appState.introCardAbsent, String(appState.introCardAbsent));
-  const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer
-    && appState.bankTabs.every(tab => tab.left >= appState.bankTabContainer.left - 1 && tab.right <= appState.bankTabContainer.right + 1);
+  // .bank-block-tabs is overflow-x:auto by design — with an unusually long
+  // custom bank name (this test intentionally renames bank 1 to "Bang go b"
+  // to stress the fallback-index mechanism below), the tab ROW can
+  // legitimately need to scroll to reveal bank 3 on the narrowest supported
+  // phone width; that's expected, not broken layout. What must never
+  // happen is the row's own box visually colliding with the dark-toggle
+  // button next to it (was previously "each tab fits inside the container
+  // without scrolling", which stopped holding once .dark-toggle's own
+  // touch-target width bug was fixed elsewhere — Frank 2026-08-17 — and
+  // properly took up its intended 44px, leaving less row width; the row
+  // itself still clears the toggle with room to spare, tabs just now need
+  // a scroll to reach bank 3, which the row already supports).
+  const threeDefaultBanksVisible = appState.bankTabs.length === 3 && appState.bankTabContainer && appState.darkToggle
+    && appState.bankTabs[0].left >= appState.bankTabContainer.left - 1
+    && appState.bankTabContainer.right <= appState.darkToggle.left + 1;
   const minimalistBankIndices = appState.bankTabs.map(tab => tab.fallback).join(',') === '1,2,3'
     && appState.bankTabs.every(tab => tab.fallbackFontSize <= 10
       && (tab.active || tab.fallbackOpacity <= .7));

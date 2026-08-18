@@ -61,7 +61,7 @@ const PROBES = [
   'onb-probe4.mjs',
   'welcome-no-box-probe.mjs',
   'status-hover-reveal-probe.mjs',
-  'bank-glyph-neutral-probe.mjs',
+  'bank-live-dot-probe.mjs',
   'live-hud-square-probe.mjs',
   'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
