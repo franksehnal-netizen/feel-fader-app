@@ -2,8 +2,10 @@
 // see docs/superpowers/specs/2026-07-21-welcome-blur-overlay-design.md).
 // #device-wrap and #send-btn now mount ONCE, at page load, directly into their
 // final app position (#device-home / .send-callout) and never reparent again.
-// First-run onboarding removes the blur to show highlighted hardware clearly;
-// returning-user welcome keeps the original soft blur.
+// First-run onboarding removes the blur to show highlighted hardware clearly.
+// Returning-user welcome originally kept a soft blur too, but Frank
+// 2026-08-18 asked to remove it there as well (solid var(--bg) instead) —
+// both paths are now blur:none.
 // #send-btn gets a `.welcome-floating` class (position:
 // fixed, computed --welcome-float-top/left) to visually escape onto the
 // welcome card while welcome is up. This replaces the old reparenting +
@@ -72,7 +74,7 @@ const returningBackdrop = await p2.evaluate(() => {
   const style = getComputedStyle(document.getElementById('welcome-screen'), '::before');
   return style.backdropFilter || style.webkitBackdropFilter;
 });
-P('returning-user welcome retains the soft background blur', /blur/.test(returningBackdrop), returningBackdrop);
+P('returning-user welcome has no background blur (Frank 2026-08-18)', returningBackdrop === 'none', returningBackdrop);
 async function imgTop() { return p2.evaluate(() => document.getElementById('device-img').getBoundingClientRect().top); }
 const before0 = await imgTop();
 await p2.evaluate(() => hideWelcome());

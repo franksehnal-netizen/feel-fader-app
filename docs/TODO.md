@@ -12,6 +12,86 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-18zk — Bank karta: pole pro název banky omezené na 190px šířky
+
+Frank: "U banky chci omezit velikost pole pro zadávání názvu, tak jak
+to máme u ostatních poli." `.bank-name-input` (feel-fader.html ~687)
+mělo `flex:1;min-width:0` — roztahovalo se na celou dostupnou šířku
+headeru. Ověřeno: šlo o VIZUÁLNÍ šířku (pole už má `maxlength="24"` na
+`<input>`, ~3147, znakový limit beze změny).
+
+Fix: `max-width:min(190px,100%)` — stejný cap jako `.fader-title-input`
+(section title inputy, ~1833), který slouží jako "ostatní pole" vzor.
+`flex:1`/`min-width:0` beze změny, takže pole se pořád roztahuje/zužuje
+uvnitř dostupného prostoru, jen ne přes 190px.
+
+Ověřeno screenshotem (dlouhý testovací název "A Really Long Bank Name
+Here", 700px viewport): renderovaná šířka přesně 190px, delší text se
+uvnitř pole scrolluje, nezabírá celou lištu. `npm test`: 617 passed /
+0 failed / 0 crashed (73 probes).
+
+### 2026-08-18zj — Zelené zvýraznění: jen poslední otevřená sekce, ne všechny najednou
+
+Frank: "Když klikám v mobilním prohlížeči na sekce, můžu jich aktuálně
+aktivovat více. Chci aby mohla být aktivní vždy jen jedna." Navazuje na
+`### 2026-08-18zc` (touch highlight = `isSectionOpen(key)` OR hover) —
+protože sekce se otevírají nezávisle (`_openSections` je `Set`, žádný
+accordion), víc otevřených sekcí = víc zvýraznění zároveň.
+
+Rozsah potvrzen s Frankem: **jen zvýraznění se omezuje na jednu, sekce
+samy zůstávají nezávislé** (víc jich může být rozbalených najednou,
+jako dřív) — NE plný accordion.
+
+Fix: nová `_lastActiveFaderKey` (feel-fader.html ~2603) — nastaví se na
+klíč sekce, kterou uživatel právě OTEVŘEL; při zavření sekce, která
+byla aktivní, se vynuluje (nepropadá se na jinou pořád otevřenou
+sekci). `syncFaderLink(key)` teď navíc podmiňuje `isSectionOpen(key)`
+rovností s `_lastActiveFaderKey` — mouse hover (`_hoveredFaderKey`)
+zůstává nezávislý, funguje jako dřív (OR).
+
+Vědomě nedotčeno: `_openSections.add(section)` na chybovém skoku
+(~4470) — ten už má svůj vlastní odlišný vizuál (`.validation-target`
+flash), nekonfliktuje s touto změnou.
+
+Ověřeno (Puppeteer, přímá manipulace `_openSections`/`toggleSection`):
+otevření fader1 → zvýrazní fader1; otevření roller BEZ zavření fader1 →
+zvýrazní se roller, fader1 přestane (i když zůstává rozbalený); zavření
+roller → zvýraznění zmizí úplně, NEPADÁ zpět na fader1. `npm test`:
+617 passed / 0 failed / 0 crashed (73 probes).
+
+### 2026-08-18zi — Horní lišta: rozmazání spodní hrany vráceno zpět
+
+Frank: "Horní lišta - oddělat to rozmazání spodní hrany, vrátit jak
+bylo předtím." Přímá reverze `### 2026-08-18x` (dnešní dřívější fix,
+stejná session) — `mask-image`/`-webkit-mask-image` na `header{}`
+(feel-fader.html ~202-208) smazány, zbytek pravidla beze změny. Vědomý
+kompromis (Frank potvrzen): Send tlačítko při scrollu pod lištu zase
+mizí ostrou hranou, ne plynule (viz `2026-08-17` originální nález).
+
+`npm test`: 617 passed / 0 failed / 0 crashed (73 probes) na čistém
+re-runu — mezi-běh ukázal 2 už dřív zdokumentované flaky položky
+(`bank-live-dot-probe.mjs`, `send-dock-gap-symmetry-probe.mjs`), žádná
+nová regrese.
+
+### 2026-08-18zh — Welcome screen: blur zrušen (i pro returning-user)
+
+Frank: "Na welcome screenu zrušit blur." `#welcome-screen::before`
+(feel-fader.html ~1804-1809, `backdrop-filter:blur(24px) saturate(150%)`)
+— jediné místo blur na welcome obrazovce (`.bank-card`'s vlastní blur na
+~1800 je nesouvisející, jiná komponenta). Onboarding varianta blur už
+neměla; tohle bylo specificky pro returning-user (ne-onboarding) cestu.
+
+Frank potvrdil: bez blur má být pozadí PLNĚ NEPRŮHLEDNÉ (stejně jako
+onboarding varianta), ne poloprůhledný gradient bez blur. Fix:
+`background:linear-gradient(145deg,var(--glass-dialog),var(--glass-card))`
+→ `background:var(--bg)`, `backdrop-filter` řádek smazán.
+
+**Test aktualizován, ne jen opraven:** `welcome-blur-overlay-probe.mjs`
+z 2026-07-21 designu explicitně ověřoval "returning-user welcome keeps
+the original soft blur" — teď obrácené tvrzení (`backdropFilter ===
+'none'`), komentář v hlavičce souboru aktualizován. `npm test`: 617
+passed / 0 failed / 0 crashed (73 probes) na čistém re-runu.
+
 ### 2026-08-18zg — Light/dark přepnutí: header/HUD blur artefakt odstraněn
 
 Frank: "po změně lišta horní se překresluje, blur se zapne se zpožděním
