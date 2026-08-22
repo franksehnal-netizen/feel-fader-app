@@ -2327,6 +2327,15 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
             <span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span>
           </label>
         </div>
+        <div class="info-row info-row-action" data-tip="Controls how the device filters and interpolates both physical faders. Saved with Send to device.">
+          <span class="info-lbl">Fader response</span>
+          <select id="fader-response-select" class="ui-control ui-glass" onchange="onFaderResponseChange(this.value)" aria-describedby="fader-response-note">
+            <option value="immediate">Immediate</option>
+            <option value="balanced">Balanced</option>
+            <option value="smooth">Smooth</option>
+          </select>
+        </div>
+        <div id="fader-response-note" style="margin:-1px 0 0 100px;font-size:11px;line-height:1.35;color:var(--t3)">Connect a compatible device to change fader response.</div>
       </div>
 
       <div class="settings-divider"></div>
@@ -2812,6 +2821,7 @@ const ROLLER_MODES = ['cc','keyswitch','track_nav'];
 const DEFAULT_CFG = {
   macro_keys: [],
   macro_global: true,   // false = každá banka má vlastní macro_keys
+  fader_response: 'balanced',
   banks: [
     { name:'Bank 1', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:11,channel:0,label:'Expression'}, fader2:{cc:1,channel:0,label:'Dynamics'}, encoder:{cc:32,channel:0}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false, macro_keys:[] },
     { name:'Bank 2', icon:'', uacc_values:[1,2,3,20,21,22,40,41,42,43,50], fader1:{cc:12,channel:1,label:'Expression'}, fader2:{cc:13,channel:1,label:'Dynamics'}, encoder:{cc:32,channel:1}, roller_mode:'cc', ks_notes:[], ks_channel:0, ks_velocity:100, nav_keys_cw:[0x52], nav_keys_ccw:[0x51], nav_invert:false, macro_keys:[] },
@@ -2827,6 +2837,8 @@ const DEVICE_INFO = {
   hid_available: false,
   hid_enabled:   false,
   schema_version: null,   // z CMD_INFO; < 3 = firmware neumí per-bank makra
+  fader_response_presets: false,
+  fader_response: null,
 };
 
 const LS_CFG_KEY        = 'ff-cfg';
@@ -2944,6 +2956,7 @@ function configChangeItems(base = _syncedConfigSnapshot, current = cfg) {
   });
   if (!same(base?.macro_keys || [],current?.macro_keys || [])) items.push('Button macro');
   if ((base?.macro_global !== false) !== (current?.macro_global !== false)) items.push('Button macro scope');
+  if (normalizeFaderResponse(base?.fader_response) !== normalizeFaderResponse(current?.fader_response)) items.push('Fader response');
   (current?.banks || []).forEach((b,i) => {
     if (!same(base?.banks?.[i]?.macro_keys || [], b.macro_keys || []))
       items.push(`${b.name || 'Bank '+(i+1)}: button macro`);
@@ -3627,6 +3640,24 @@ function updateHidToggle(){
   const el=document.getElementById('hid-toggle');
   if(el){ el.checked = !!DEVICE_INFO.hid_enabled; el.disabled = !(_ffConnected || DEVICE_INFO.hid_available); }
 }
+function updateFaderResponseControl(){
+  const select = document.getElementById('fader-response-select');
+  const note = document.getElementById('fader-response-note');
+  if (!select || !note) return;
+  const supported = DEVICE_INFO.fader_response_presets === true;
+  select.value = normalizeFaderResponse(cfg?.fader_response);
+  select.disabled = !supported;
+  note.textContent = supported
+    ? ({immediate:'Fastest response for recording expressive automation.', balanced:'Balanced response for everyday expressive control.', smooth:'Gentler transitions for long expressive movements.'})[select.value]
+    : 'Connect a compatible device to change fader response.';
+}
+function onFaderResponseChange(value){
+  const next = normalizeFaderResponse(value);
+  if (cfg.fader_response === next) return;
+  cfg.fader_response = next;
+  dirty = true;
+  render();
+}
 function openDeviceSettingsAtHid() {
   const body = document.getElementById('device-settings-body');
   if (body?.style.display === 'none') toggleDeviceSettings();
@@ -3706,6 +3737,7 @@ function updateDeviceInfo() {
   setVal('di-serial',   serial);
   setVal('di-firmware', firmware);
   updateHidToggle();
+  updateFaderResponseControl();
   updateMacroUI();
   renderMidiDiagnostics();
 }
@@ -4982,6 +5014,8 @@ function clampChannel(v, dflt) { v = Number(v); return Number.isFinite(v) ? Math
 function clampCcList(arr) { return Array.isArray(arr) ? arr.map(v => clampCc(v, 0)) : []; }
 // HID usage IDs 0–255 (mirrors firmware ff_config.parse_macro_keys / _nav_keys).
 function clampHidList(arr) { return Array.isArray(arr) ? arr.map(v => Number(v)).filter(v => Number.isFinite(v) && v >= 0 && v <= 255).map(v => Math.trunc(v)) : []; }
+const FADER_RESPONSE_PRESETS = ['immediate','balanced','smooth'];
+function normalizeFaderResponse(value) { return FADER_RESPONSE_PRESETS.includes(value) ? value : 'balanced'; }
 
 function normalizeFwConfig(p) {
   if (!p.banks) return p;
@@ -5019,11 +5053,13 @@ function normalizeFwConfig(p) {
     });
     p.macro_keys = clampHidList(p.macro_keys);
     p.macro_global = p.macro_global !== false;   // chybí = true (starý config)
+    p.fader_response = normalizeFaderResponse(p.fader_response);
     return p;
   }
   return {
     macro_keys: clampHidList(p.macro_keys),
     macro_global: p.macro_global !== false,
+    fader_response: normalizeFaderResponse(p.fader_response),
     banks: p.banks.map((raw, i) => {
       // A malformed bank entry (null/string/array/etc.) must not throw when its
       // fields are read below — coerce to a bare object first (P2-1).
@@ -5067,6 +5103,8 @@ function handleSysEx(data){
       if(info.mode)DEVICE_INFO.mode=info.mode;
       if(info.firmware)DEVICE_INFO.firmware=info.firmware;
       if(typeof info.hid_available==='boolean') DEVICE_INFO.hid_available=info.hid_available;
+      DEVICE_INFO.fader_response_presets = info.fader_response_presets === true;
+      if (typeof info.fader_response === 'string') DEVICE_INFO.fader_response = normalizeFaderResponse(info.fader_response);
       DEVICE_INFO.schema_version = Number(info.schema_version) || null;
       if(typeof info.hid_enabled==='boolean')   DEVICE_INFO.hid_enabled=info.hid_enabled;
       if(typeof info.bank==='number' && info.bank>=0) liveBank=info.bank|0;   // sync live-bank indicator on info push
@@ -5196,6 +5234,8 @@ async function serialReadInfo() {
   if (info.serial)   DEVICE_INFO.serial   = info.serial;
   if (typeof info.hid_available === 'boolean') DEVICE_INFO.hid_available = info.hid_available;
   if (typeof info.hid_enabled   === 'boolean') DEVICE_INFO.hid_enabled   = info.hid_enabled;
+  DEVICE_INFO.fader_response_presets = info.fader_response_presets === true;
+  if (typeof info.fader_response === 'string') DEVICE_INFO.fader_response = normalizeFaderResponse(info.fader_response);
   DEVICE_INFO.schema_version = Number(info.schema_version) || null;
   // Sync live-bank indicator to the device's actual current bank on (re)connect,
   // so it isn't stuck at Bank 1 until the next Program Change (firmware reports
@@ -8036,6 +8076,7 @@ window.closeIconPicker   = closeIconPicker;
 window.selectIcon        = selectIcon;
 window.clearIcon         = clearIcon;
 window.toggleDeviceSettings = toggleDeviceSettings;
+window.onFaderResponseChange = onFaderResponseChange;
 window.requestEnableHid = requestEnableHid;
 window.renderMidiDiagnostics = renderMidiDiagnostics;
 window.copyMidiDiagnostics = copyMidiDiagnostics;

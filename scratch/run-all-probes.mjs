@@ -57,6 +57,7 @@ const PROBES = [
   'status-pill-polish-probe.mjs',
   'faders-inert-probe.mjs',
   'fader-live-latency-probe.mjs',
+  'fader-response-probe.mjs',
   'help-trim-probe.mjs',
   'livecolor-probe.mjs',
   'midi-backlog-guard-probe.mjs',
