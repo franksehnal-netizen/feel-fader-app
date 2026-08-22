@@ -1,6 +1,6 @@
 // Regression probe: editing context belongs to the selected bank pill, while
 // physical-device context belongs to the connected Live HUD. No second marker
-// may remain in the bank tab strip.
+// may remain in the bank tab strip; the HUD maps banks with dots instead.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -26,7 +26,10 @@ const result = await p.evaluate(() => {
     activeIsSelected: active.classList.contains('active'),
     activeShadow: getComputedStyle(active).boxShadow,
     anyDeviceMarkerInTabs: !!document.querySelector('.bank-tab-live-rail, .bank-tab-live-dot, .bank-block-tab.is-live'),
-    hudText: bank.textContent,
+    hudDotCount: bank.querySelectorAll('.live-hud-bank-dot').length,
+    hudActiveDot: bank.querySelectorAll('.live-hud-bank-dot.is-active').length,
+    hudLabel: bank.getAttribute('aria-label'),
+    bankCount: cfg.banks.length,
     hudBankDisplay: getComputedStyle(bank).display,
     hudVisible: hud.classList.contains('is-contextual-visible'),
     hudState: hud.dataset.state,
@@ -34,6 +37,6 @@ const result = await p.evaluate(() => {
 });
 P('editing bank remains the selected glass-pill context', result.activeIsSelected && result.activeShadow !== 'none', JSON.stringify(result));
 P('bank tabs contain no device-live marker', !result.anyDeviceMarkerInTabs, JSON.stringify(result));
-P('Live HUD names the active physical bank immediately on connection', result.hudVisible && result.hudState === 'CONNECTED_LIVE' && result.hudBankDisplay === 'flex' && result.hudText.includes('Active') && result.hudText.includes('B1'), JSON.stringify(result));
+P('Live HUD maps the active physical bank immediately on connection', result.hudVisible && result.hudState === 'CONNECTED_LIVE' && result.hudBankDisplay === 'flex' && result.hudDotCount === result.bankCount && result.hudActiveDot === 1 && result.hudLabel === `Active device bank: 1 of ${result.bankCount}`, JSON.stringify(result));
 await p.close();
 await b.close();

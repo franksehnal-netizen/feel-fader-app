@@ -244,9 +244,11 @@ header{
 @media not all and (any-pointer:fine){.live-hud-size-btn{display:none}}
 .live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 31px;gap:7px 5px;height:100%}
 /* The green dot in the header already says that a device is connected. The
-   HUD owns the device context itself: show its active bank as a compact first
-   row as soon as a connected state is known, even before fader values arrive. */
-.live-hud-bank{display:none;height:14px;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--border);color:var(--t1);font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:.01em;white-space:nowrap;text-overflow:ellipsis}
+   HUD owns device context: its first row maps the active physical bank with
+   one neutral dot per bank. This stays distinct from the edited-bank card. */
+.live-hud-bank{display:none;height:14px;align-items:center;justify-content:center;gap:4px;overflow:hidden;border-bottom:1px solid var(--border)}
+.live-hud-bank-dot{width:4px;height:4px;flex:0 0 auto;border-radius:50%;background:var(--t3);opacity:.42}
+.live-hud-bank-dot.is-active{width:6px;height:6px;background:var(--t1);opacity:1;box-shadow:0 0 0 2px color-mix(in srgb,var(--t1) 14%,transparent)}
 .live-hud[data-state^="CONNECTED"] .live-hud-bank{display:flex}
 .live-hud[data-state^="CONNECTED"] .live-hud-inner{height:calc(100% - 18px);margin-top:4px}
 .live-hud-item{min-width:0;color:var(--t2)}
@@ -2223,7 +2225,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <div class="send-sticky-row" id="send-sticky-row" hidden><div class="send-sticky-row-inner" id="send-sticky-row-inner"></div></div>
 </div>
 <div class="live-hud" id="live-strip" data-state="DISCONNECTED" data-side="left" role="group" tabindex="0" aria-label="Live device values. Drag left or right to reposition." aria-hidden="true">
-  <div class="live-hud-bank" id="live-hud-bank">Active · B1 · Bank 1</div>
+  <div class="live-hud-bank" id="live-hud-bank" role="img" aria-label="Active device bank"></div>
   <div class="live-hud-inner">
     <div class="live-hud-item" id="live-f1-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f1-label-long">L</span><span class="live-hud-label-short" id="live-f1-label-short">L</span></span>
@@ -4670,12 +4672,13 @@ function scheduleFaderFrame(){
 }
 function flushFaderFrame(){
   _faderRafPending=false;
-  if(_faderDirty.l){ _faderDirty.l=false; pF('track-l','thumb-l',liveValues.f1); }
-  if(_faderDirty.r){ _faderDirty.r=false; pF('track-r','thumb-r',liveValues.f2); }
+  const changed = {l:_faderDirty.l,r:_faderDirty.r};
+  if(changed.l){ _faderDirty.l=false; pF('track-l','thumb-l',liveValues.f1); }
+  if(changed.r){ _faderDirty.r=false; pF('track-r','thumb-r',liveValues.f2); }
   // High-rate fader CC must stay on a tiny fast path. Rebuilding every label,
   // validation marker and contextual HUD position at up to 125 Hz lets other
   // MIDI-heavy tabs push this page into a visible event backlog.
-  renderLiveFaderValues();
+  renderLiveFaderValues(changed);
 }
 function pF(tid,thid,v){
   const th=document.getElementById(thid);
@@ -5750,16 +5753,39 @@ function updateContextualLiveStrip(){
   strip.classList.toggle('is-idle',!live);
   strip.setAttribute('aria-hidden',String(!visible));
 }
-function renderLiveFaderValues(){
+function renderLiveFaderValues(changed = {l:true,r:true}){
   const allowed = connState() === 'CONNECTED_LIVE';
   const setLiveValue = (id, itemId, value, seen) => {
     const valid = allowed && seen && Number.isFinite(value);
-    setTxt(id, valid ? value : '—');
+    const text = valid ? String(value) : '—';
+    const valueEl = document.getElementById(id);
+    // This runs inside the fader RAF. Do not enqueue a text/layout invalidation
+    // when the rendered value is already current (e.g. the other fader moved).
+    if (valueEl && valueEl.textContent !== text) valueEl.textContent = text;
     const item = document.getElementById(itemId);
     if (item) item.style.setProperty('--live-level-frac', valid ? String(Math.max(0, Math.min(127, value)) / 127) : '0');
   };
-  setLiveValue('live-f1-value', 'live-f1-item', liveValues.f1, liveSeen.f1);
-  setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
+  if (changed.l) setLiveValue('live-f1-value', 'live-f1-item', liveValues.f1, liveSeen.f1);
+  if (changed.r) setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
+}
+
+function renderLiveHudBankDots(bankCount, activeIndex){
+  const bankHud = document.getElementById('live-hud-bank');
+  if (!bankHud) return;
+  const count = Math.max(1, Math.min(8, Number(bankCount) || 1));
+  const active = Math.max(0, Math.min(count - 1, Number(activeIndex) || 0));
+  bankHud.replaceChildren();
+  const dots = document.createDocumentFragment();
+  for (let index = 0; index < count; index++) {
+    const dot = document.createElement('span');
+    dot.className = `live-hud-bank-dot${index === active ? ' is-active' : ''}`;
+    dot.setAttribute('aria-hidden', 'true');
+    dots.appendChild(dot);
+  }
+  bankHud.appendChild(dots);
+  const label = `Active device bank: ${active + 1} of ${count}`;
+  bankHud.setAttribute('aria-label', label);
+  bankHud.title = label;
 }
 
 function renderLiveStrip(errs = validate()){
@@ -5774,7 +5800,7 @@ function renderLiveStrip(errs = validate()){
 
   const bank = cfg.banks[liveBank] || cfg.banks[activeBank];
   if (!bank) { updateContextualLiveStrip(); return; }
-  setTxt('live-hud-bank', `Active · ${bank.icon ? bank.icon+' ' : ''}B${liveBank+1} · ${bank.name || `Bank ${liveBank+1}`}`);
+  renderLiveHudBankDots(cfg.banks.length, liveBank);
   setTxt('live-f1-label-long', 'L');
   setTxt('live-f1-label-short', 'L');
   setTxt('live-f2-label-long', 'R');
