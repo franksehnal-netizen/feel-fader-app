@@ -2023,24 +2023,12 @@ button:focus-visible{outline-offset:3px;}
   .bank-block-tab.active .bank-tab-name{max-width:68px;opacity:1;margin-left:4px}
   .bank-block-tab-add{padding:4px 7px}
 }
-/* Replaces the old small neutral controller-icon glyph — barely noticed
-   next to the bank name (Frank 2026-08-18: "chtěl bych tam přidat něco
-   víc"). A pulsing dot reads at a glance and, since it's absolutely
-   positioned in the corner rather than inline, stays visually distinct
-   from .active (selected-for-editing) even when both states land on the
-   same tab, or on two different tabs at once — confirmed via visual
-   brainstorm against that exact two-state case. Real child <span>, not a
-   ::before/::after pseudo-element, so it can't collide with the tab's own
-   drag-indicator pseudo-elements (.drag-before::before/.drag-after::after,
-   below). */
-.bank-tab-live-dot{
-  position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;
-  background:var(--green);box-shadow:0 0 0 2px rgba(52,199,89,.22),0 0 6px 1px rgba(52,199,89,.55);
-  animation:bank-live-pulse 1.8s ease-in-out infinite;
-}
-@keyframes bank-live-pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@media(prefers-reduced-motion:reduce){.bank-tab-live-dot{animation:none}}
-.bank-block-tab.is-live{box-shadow:none}
+/* Two bank states need distinct visual languages: .active is the bank being
+   EDITED (the quiet glass pill), while .is-live is the bank currently active
+   on the physical device. A thin inset green rail expresses the latter
+   without adding another status dot to the header. Both states can coexist
+   on one tab or live on separate tabs without competing. */
+.bank-tab-live-rail{position:absolute;left:7px;right:7px;bottom:3px;height:2px;border-radius:var(--r-pill);background:var(--green);pointer-events:none}
 .bank-block-tab-add{
   flex:0 0 auto;
   padding:4px 9px;
@@ -3106,7 +3094,7 @@ function renderBankTabs() {
       ? `<span class="bank-tab-ic" aria-hidden="true">${escHtml(b.icon)}</span>`
       : `<span class="bank-tab-fallback" aria-hidden="true">${i+1}</span>`;
     const isLive = i === liveBank && _ffConnected;
-    const liveMarker = isLive ? '<span class="bank-tab-live-dot" title="Active on device" aria-hidden="true"></span>' : '';
+    const liveMarker = isLive ? '<span class="bank-tab-live-rail" aria-hidden="true"></span>' : '';
     const nm = escHtml(b.name || 'Bank '+(i+1));
     return `<button class="bank-block-tab ${i===activeBank?'active':''}${isLive?' is-live':''}" onclick="selectBank(${i},event)" aria-label="Edit ${nm}${isLive?' · active on device':''}" ${i===activeBank?'aria-current="true"':''}
       draggable="true" data-bank-index="${i}" ondragstart="onBankDragStart(event,${i})" ondragover="onBankDragOver(event,${i})" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,${i})" ondragend="onBankDragEnd()">${liveMarker}${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
@@ -3127,13 +3115,13 @@ function setActiveTab(i){
     if (idx===i) btn.setAttribute('aria-current','true'); else btn.removeAttribute('aria-current');
     const isLive = idx===liveBank && _ffConnected;
     btn.classList.toggle('is-live',isLive);
-    btn.querySelector('.bank-tab-live-dot')?.remove();
+    btn.querySelector('.bank-tab-live-rail')?.remove();
     if(isLive){
-      const s=document.createElement('span'); s.className='bank-tab-live-dot'; s.title='Active on device'; s.setAttribute('aria-hidden','true');
-      btn.insertBefore(s, btn.children[0]||null);
+      const rail=document.createElement('span'); rail.className='bank-tab-live-rail'; rail.setAttribute('aria-hidden','true');
+      btn.insertBefore(rail, btn.children[0]||null);
     }
   });
-  markSectionIssues();   // live marker se přestavuje tady, chybová tečka se musí obnovit s ním
+  markSectionIssues();   // tab state se přestavuje tady, chybová tečka se musí obnovit s ním
   const act=el.querySelector('.bank-block-tab.active');
   if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'nearest'});
   _updateTabsFade(el);
@@ -5869,6 +5857,10 @@ function renderConnState(){
     status.setAttribute('aria-label',txt.textContent);
     status.title = txt.title || txt.textContent;
   }
+  // A connection-state change can arrive without a bank click. Refresh the
+  // existing tabs here so the device-live rail appears (or disappears) at
+  // once, using the bank index already reported in CMD_INFO.
+  setActiveTab(activeBank);
   renderLiveStrip();
   renderMidiDiagnostics();
   updateNvmDegradedNotice();

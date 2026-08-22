@@ -12,6 +12,24 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-08-22 — Rozlišení editované a device-live banky bez dalších teček
+
+Původní pulzující zelená tečka v pravém rohu bank chipu duplicitně používala
+stavový jazyk hlavičky a vizuálně soutěžila s červenými validačními tečkami.
+Navíc se po navázání spojení mohla projevit až po dalším kliknutí na banku.
+
+Fix: editovaná banka zůstává světlou skleněnou pilulkou (`.active`), zatímco
+banka skutečně aktivní ve Feel Fader zařízení dostává samostatnou tenkou
+zelenou linku uvnitř spodní hrany (`.bank-tab-live-rail`). Stavy mohou být na
+jedné bance současně nebo na dvou různých bankách, bez záměny významu.
+`renderConnState()` nyní vždy sesynchronizuje existující bank taby, takže po
+zpracování `CMD_INFO` se linka objeví hned — bez kliknutí na banku. Stav
+připojení dál nese jediná zelená tečka vlevo v hlavičce.
+
+Regresní test `bank-live-dot-probe.mjs` byl přepsán pro nový model: ověřuje
+live linku po connection update bez `selectBank()`, zelenou barvu, oddělení
+od editované banky a úplné odstranění staré pulzující tečky.
+
 ### 2026-08-22 — Pět drobných UI regresí v controlleru a bank kartě
 
 - **Live-bank tečka:** `.bank-tab-live-dot` je posunuta z negativního offsetu
