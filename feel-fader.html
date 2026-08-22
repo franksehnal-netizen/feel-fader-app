@@ -243,7 +243,12 @@ header{
 /* Enlarge/drag are mouse-gated, not width-gated: a half-screen desktop window keeps the button; touch-only devices hide it (Frank 2026-07-27). */
 @media not all and (any-pointer:fine){.live-hud-size-btn{display:none}}
 .live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 31px;gap:7px 5px;height:100%}
-.live-hud-bank{display:none}
+/* The green dot in the header already says that a device is connected. The
+   HUD owns the device context itself: show its active bank as a compact first
+   row as soon as a connected state is known, even before fader values arrive. */
+.live-hud-bank{display:none;height:14px;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--border);color:var(--t1);font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:.01em;white-space:nowrap;text-overflow:ellipsis}
+.live-hud[data-state^="CONNECTED"] .live-hud-bank{display:flex}
+.live-hud[data-state^="CONNECTED"] .live-hud-inner{height:calc(100% - 18px);margin-top:4px}
 .live-hud-item{min-width:0;color:var(--t2)}
 .live-hud-item:not(.live-hud-roller){position:relative;overflow:hidden;border-radius:var(--r);padding:4px 2px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;align-items:center;justify-items:center;row-gap:2px}
 /* Fader level as a background wash instead of a separate meter bar — the
@@ -264,7 +269,7 @@ header{
   content:'';position:absolute;z-index:0;inset:0;
   transform:scaleY(var(--live-level-frac,0));transform-origin:bottom;
   background:color-mix(in srgb,var(--t2) 14%,transparent);
-  transition:transform .06s linear,background-color .15s ease;
+  transition:background-color .15s ease;
 }
 .live-hud-item:not(.live-hud-roller):has(.live-hud-tech.has-issue)::before{
   background:color-mix(in srgb,var(--danger) 20%,transparent);
@@ -367,7 +372,11 @@ main{width:100%;}
 .device-img{width:100%;display:block;border-radius:var(--r-lg);box-shadow:0 18px 44px rgba(0,0,0,.18),0 6px 16px rgba(0,0,0,.12);pointer-events:none;transition:box-shadow .6s ease}
 .fader-tracks{position:absolute;top:0;left:0;right:0;bottom:0}
 .fader-track{position:absolute;user-select:none}
-.fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);pointer-events:none;transition:transform .06s linear;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+/* Live MIDI is already frame-coalesced in flushFaderFrame(). A CSS transform
+   transition here only makes the visual thumb chase each new CC value by
+   ~60ms, so leave the realtime path unanimated. The welcome handoff sets its
+   own temporary settle transition inline and remains unchanged. */
+.fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);pointer-events:none;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .fader-thumb img{display:block;width:100%;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}
 
 
@@ -2006,7 +2015,9 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-tab.drag-before::before{left:-1px}
 .bank-block-tab.drag-after::after{right:-1px}
-/* Parent-scoped so the selected edit bank keeps its quiet, shadow-free glass pill. */
+/* The selected edit bank is the primary local-working context, so give its
+   glass pill a little more depth than an inactive chip. Device-live context
+   deliberately lives in the floating HUD, not in this tab strip. */
 .bank-block-tabs .bank-block-tab.active{
   color:var(--t1);
   font-weight:600;
@@ -2015,7 +2026,7 @@ button:focus-visible{outline-offset:3px;}
   -webkit-backdrop-filter:var(--control-glass-filter);
   border-color:var(--control-glass-border);
   border-radius:var(--r-pill);
-  box-shadow:none;
+  box-shadow:var(--control-glass-shadow);
 }
 @media(max-width:600px){
   .bank-block-tab{padding:2px 8px}
@@ -2023,12 +2034,6 @@ button:focus-visible{outline-offset:3px;}
   .bank-block-tab.active .bank-tab-name{max-width:68px;opacity:1;margin-left:4px}
   .bank-block-tab-add{padding:4px 7px}
 }
-/* Two bank states need distinct visual languages: .active is the bank being
-   EDITED (the quiet glass pill), while .is-live is the bank currently active
-   on the physical device. A thin inset green rail expresses the latter
-   without adding another status dot to the header. Both states can coexist
-   on one tab or live on separate tabs without competing. */
-.bank-tab-live-rail{position:absolute;left:7px;right:7px;bottom:3px;height:2px;border-radius:var(--r-pill);background:var(--green);pointer-events:none}
 .bank-block-tab-add{
   flex:0 0 auto;
   padding:4px 9px;
@@ -2218,7 +2223,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <div class="send-sticky-row" id="send-sticky-row" hidden><div class="send-sticky-row-inner" id="send-sticky-row-inner"></div></div>
 </div>
 <div class="live-hud" id="live-strip" data-state="DISCONNECTED" data-side="left" role="group" tabindex="0" aria-label="Live device values. Drag left or right to reposition." aria-hidden="true">
-  <div class="live-hud-bank" id="live-hud-bank">B1 · Bank 1</div>
+  <div class="live-hud-bank" id="live-hud-bank">Active · B1 · Bank 1</div>
   <div class="live-hud-inner">
     <div class="live-hud-item" id="live-f1-item">
       <span class="live-hud-label"><span class="live-hud-label-long" id="live-f1-label-long">L</span><span class="live-hud-label-short" id="live-f1-label-short">L</span></span>
@@ -3093,11 +3098,9 @@ function renderBankTabs() {
     const iconHtml = b.icon
       ? `<span class="bank-tab-ic" aria-hidden="true">${escHtml(b.icon)}</span>`
       : `<span class="bank-tab-fallback" aria-hidden="true">${i+1}</span>`;
-    const isLive = i === liveBank && _ffConnected;
-    const liveMarker = isLive ? '<span class="bank-tab-live-rail" aria-hidden="true"></span>' : '';
     const nm = escHtml(b.name || 'Bank '+(i+1));
-    return `<button class="bank-block-tab ${i===activeBank?'active':''}${isLive?' is-live':''}" onclick="selectBank(${i},event)" aria-label="Edit ${nm}${isLive?' · active on device':''}" ${i===activeBank?'aria-current="true"':''}
-      draggable="true" data-bank-index="${i}" ondragstart="onBankDragStart(event,${i})" ondragover="onBankDragOver(event,${i})" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,${i})" ondragend="onBankDragEnd()">${liveMarker}${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
+    return `<button class="bank-block-tab ${i===activeBank?'active':''}" onclick="selectBank(${i},event)" aria-label="Edit ${nm}" ${i===activeBank?'aria-current="true"':''}
+      draggable="true" data-bank-index="${i}" ondragstart="onBankDragStart(event,${i})" ondragover="onBankDragOver(event,${i})" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,${i})" ondragend="onBankDragEnd()">${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
     ? `<button class="bank-block-tab-add" onclick="addBank()" title="Add bank" aria-label="Add bank">+</button>`
@@ -3113,15 +3116,8 @@ function setActiveTab(i){
   el.querySelectorAll('.bank-block-tab').forEach((btn,idx)=>{
     btn.classList.toggle('active', idx===i);
     if (idx===i) btn.setAttribute('aria-current','true'); else btn.removeAttribute('aria-current');
-    const isLive = idx===liveBank && _ffConnected;
-    btn.classList.toggle('is-live',isLive);
-    btn.querySelector('.bank-tab-live-rail')?.remove();
-    if(isLive){
-      const rail=document.createElement('span'); rail.className='bank-tab-live-rail'; rail.setAttribute('aria-hidden','true');
-      btn.insertBefore(rail, btn.children[0]||null);
-    }
   });
-  markSectionIssues();   // tab state se přestavuje tady, chybová tečka se musí obnovit s ním
+  markSectionIssues();
   const act=el.querySelector('.bank-block-tab.active');
   if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'nearest'});
   _updateTabsFade(el);
@@ -4737,7 +4733,12 @@ function renderMidiDiagnostics() {
   setTxt('diag-left',d.left); setTxt('diag-right',d.right); setTxt('diag-roller',d.roller);
   setTxt('diag-last-event',d.lastEvent); setTxt('diag-device',d.device); setTxt('diag-hash',d.hash);
 }
-function recordMidiDiagnostic(data) {
+function recordMidiDiagnostic(data, coalesceHighRate = false) {
+  // High-rate fader CCs may arrive around 125 Hz. Once a diagnostics refresh
+  // is already queued, avoid allocating an array and formatting a human text
+  // for every intermediate value — the visible diagnostics remain throttled
+  // to the same 250ms cadence either way.
+  if (coalesceHighRate && _midiDiagnosticRenderTimer !== null) return;
   const bytes = Array.from(data || []), status = bytes[0] || 0, type = status & 0xF0, ch = (status & 0x0F)+1;
   let text;
   if (status === 0xF0) text = `SysEx · ${bytes.length} bytes`;
@@ -4871,12 +4872,17 @@ function connectInputs(){
 function onMidiMsg(event){
   const data=event.data, st=data[0];
   monitorMidiBacklog(event);
-  recordMidiDiagnostic(data);
   if(st===0xF0){
+    recordMidiDiagnostic(data);
     handleSysEx(data);return;
   }
   const type=st&0xF0, ch=st&0x0F;
   const bank=cfg.banks[liveBank];
+  const isLiveFaderCc = type===0xB0 && !!bank && (
+    ch===bank.fader1.channel && data[1]===bank.fader1.cc
+    || ch===bank.fader2.channel && data[1]===bank.fader2.cc
+  );
+  recordMidiDiagnostic(data, isLiveFaderCc);
   if(!bank)return;
   if(type===0xB0){
     const cc=data[1],val=data[2];
@@ -5768,7 +5774,7 @@ function renderLiveStrip(errs = validate()){
 
   const bank = cfg.banks[liveBank] || cfg.banks[activeBank];
   if (!bank) { updateContextualLiveStrip(); return; }
-  setTxt('live-hud-bank', `${bank.icon ? bank.icon+' ' : ''}B${liveBank+1} · ${bank.name || `Bank ${liveBank+1}`}`);
+  setTxt('live-hud-bank', `Active · ${bank.icon ? bank.icon+' ' : ''}B${liveBank+1} · ${bank.name || `Bank ${liveBank+1}`}`);
   setTxt('live-f1-label-long', 'L');
   setTxt('live-f1-label-short', 'L');
   setTxt('live-f2-label-long', 'R');
@@ -5857,10 +5863,6 @@ function renderConnState(){
     status.setAttribute('aria-label',txt.textContent);
     status.title = txt.title || txt.textContent;
   }
-  // A connection-state change can arrive without a bank click. Refresh the
-  // existing tabs here so the device-live rail appears (or disappears) at
-  // once, using the bank index already reported in CMD_INFO.
-  setActiveTab(activeBank);
   renderLiveStrip();
   renderMidiDiagnostics();
   updateNvmDegradedNotice();

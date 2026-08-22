@@ -54,6 +54,8 @@ const welcome = await p.evaluate(async () => {
   const frozenL=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
   const frozenR=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
   await new Promise(resolve=>setTimeout(resolve,100));
+  const settleLeftTransition = getComputedStyle(l.thumb).transitionProperty;
+  const settleRightTransition = getComputedStyle(r.thumb).transitionProperty;
   const welcomeDevice=document.getElementById('device-wrap');
   const successAnimationNames = [
     getComputedStyle(document.getElementById('device-img')).animationName,
@@ -81,8 +83,8 @@ const welcome = await p.evaluate(async () => {
     leftExpected:l.expected,
     right:settledRight,
     rightExpected:r.expected,
-    leftTransition:getComputedStyle(l.thumb).transitionProperty,
-    rightTransition:getComputedStyle(r.thumb).transitionProperty,
+    settleLeftTransition,
+    settleRightTransition,
     sameDeviceNode:deviceImg===document.getElementById('device-img'),
     successAnimationNames,
     glowShadows
@@ -96,7 +98,7 @@ out('welcome left settles on device snapshot', Math.abs(welcome.left-welcome.lef
 out('welcome right settles on device snapshot', Math.abs(welcome.right-welcome.rightExpected)<1.5,
   `${welcome.right.toFixed(1)}px / ${welcome.rightExpected}px`);
 out('welcome settle stays on transform compositor path',
-  welcome.leftTransition.startsWith('transform') && welcome.rightTransition.startsWith('transform'));
+  welcome.settleLeftTransition.startsWith('transform') && welcome.settleRightTransition.startsWith('transform'));
 out('connect confirmation uses the restrained halo, outline and shimmer treatment',
   ['welcome-device-glow','welcome-device-halo','welcome-device-shimmer'].every(name=>welcome.successAnimationNames.includes(name)) &&
   welcome.glowShadows.every(shadow=>!shadow.includes('160px')&&!shadow.includes('90px')),

@@ -1,6 +1,6 @@
-// Regression probe: separate the selected editing bank (.active glass pill)
-// from the bank active on the physical device (.is-live green inset rail).
-// A connection update must paint the rail immediately, without a tab click.
+// Regression probe: editing context belongs to the selected bank pill, while
+// physical-device context belongs to the connected Live HUD. No second marker
+// may remain in the bank tab strip.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -14,28 +14,26 @@ const result = await p.evaluate(() => {
   addBank(); addBank();
   activeBank = 2;
   liveBank = 0;
-  _ffConnected = false;
-  renderBankTabs();
-  const before = [...document.querySelectorAll('.bank-block-tab')].map(tab => tab.classList.contains('is-live'));
-
-  // Simulates the post-CMD_INFO connection state: no selectBank() call.
+  _midiState = 'granted';
   _ffConnected = true;
+  render();
   renderConnState();
   const tabs = [...document.querySelectorAll('.bank-block-tab')];
+  const active = tabs[2];
+  const bank = document.getElementById('live-hud-bank');
+  const hud = document.getElementById('live-strip');
   return {
-    before,
-    liveTabHasRail: tabs[0]?.classList.contains('is-live'),
-    liveTabIsNotActive: !tabs[0]?.classList.contains('active'),
-    activeTabHasNoRail: !tabs[2]?.classList.contains('is-live'),
-    activeTabIsActive: !!tabs[2]?.classList.contains('active'),
-    railColor: getComputedStyle(tabs[0].querySelector('.bank-tab-live-rail')).backgroundColor,
-    oldDotGone: !document.querySelector('.bank-tab-live-dot'),
+    activeIsSelected: active.classList.contains('active'),
+    activeShadow: getComputedStyle(active).boxShadow,
+    anyDeviceMarkerInTabs: !!document.querySelector('.bank-tab-live-rail, .bank-tab-live-dot, .bank-block-tab.is-live'),
+    hudText: bank.textContent,
+    hudBankDisplay: getComputedStyle(bank).display,
+    hudVisible: hud.classList.contains('is-contextual-visible'),
+    hudState: hud.dataset.state,
   };
 });
-P('live device rail appears immediately on connection, with no tab click', result.before.every(v => v === false) && result.liveTabHasRail, JSON.stringify(result));
-P('live rail uses the green inset accent', result.railColor.includes('52, 199, 89'), result.railColor);
-P('live bank is correctly not flagged as the edit target', result.liveTabIsNotActive);
-P('selected bank stays active but has no live rail', result.activeTabHasNoRail && result.activeTabIsActive, JSON.stringify(result));
-P('old pulsing live dot is fully gone', result.oldDotGone);
+P('editing bank remains the selected glass-pill context', result.activeIsSelected && result.activeShadow !== 'none', JSON.stringify(result));
+P('bank tabs contain no device-live marker', !result.anyDeviceMarkerInTabs, JSON.stringify(result));
+P('Live HUD names the active physical bank immediately on connection', result.hudVisible && result.hudState === 'CONNECTED_LIVE' && result.hudBankDisplay === 'flex' && result.hudText.includes('Active') && result.hudText.includes('B1'), JSON.stringify(result));
 await p.close();
 await b.close();

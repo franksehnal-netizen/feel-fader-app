@@ -12,23 +12,44 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
-### 2026-08-22 — Rozlišení editované a device-live banky bez dalších teček
+### 2026-08-22 — Zrychlený realtime fader mirror
 
-Původní pulzující zelená tečka v pravém rohu bank chipu duplicitně používala
-stavový jazyk hlavičky a vizuálně soutěžila s červenými validačními tečkami.
-Navíc se po navázání spojení mohla projevit až po dalším kliknutí na banku.
+Pohyb hardware faderů v appce působil zpožděně, ačkoliv MIDI handler už
+správně slučuje příchozí CC zprávy do jednoho `requestAnimationFrame` snímku.
+Příčinou byl CSS přechod `transform .06s` na thumbu (a stejný přechod
+background-washe v Live HUD): při rychlé sérii zpráv se neustále restartoval
+a obraz za hodnotou uměle zaostával.
 
-Fix: editovaná banka zůstává světlou skleněnou pilulkou (`.active`), zatímco
-banka skutečně aktivní ve Feel Fader zařízení dostává samostatnou tenkou
-zelenou linku uvnitř spodní hrany (`.bank-tab-live-rail`). Stavy mohou být na
-jedné bance současně nebo na dvou různých bankách, bez záměny významu.
-`renderConnState()` nyní vždy sesynchronizuje existující bank taby, takže po
-zpracování `CMD_INFO` se linka objeví hned — bez kliknutí na banku. Stav
-připojení dál nese jediná zelená tečka vlevo v hlavičce.
+Fix: realtime transform thumbů i Live HUD wash už nemají CSS easing;
+`flushFaderFrame()` zůstává jediným frame-coalesced mechanismem. Delší
+transform transition pro uvítací napojení zařízení zůstává nedotčená, protože
+se nastavuje jen dočasně inline. `recordMidiDiagnostic()` nyní při fader CC,
+pro který už je queued diagnostický refresh, vrací před `Array.from()` a
+formatováním textu; diagnostika se tak stále obnoví po 250 ms, ale bez
+alokací pro každý krok faderu.
 
-Regresní test `bank-live-dot-probe.mjs` byl přepsán pro nový model: ověřuje
-live linku po connection update bez `selectBank()`, zelenou barvu, oddělení
-od editované banky a úplné odstranění staré pulzující tečky.
+Přidán `fader-live-latency-probe.mjs`: hlídá nulový live transform transition,
+neanimovaný HUD fill, nejvýše jednu diagnostickou kopii pro burst a zachování
+poslední fader hodnoty. Upravený welcome test dál ověřuje samostatný dočasný
+transform transition při connect handoffu.
+
+### 2026-08-22 — Aktivní banka zařízení patří do Live HUD, ne do lišty bank
+
+Po krátkém ověření zelené linky v chipu Frank potvrdil, že ji nechce:
+podtržení v malé liště působilo jako navigační stav. Stav připojení už jasně
+nese jediná zelená tečka vlevo v hlavičce, proto ani text „Connected“ není
+potřeba opakovat.
+
+Fix: bank taby ukazují výhradně lokální pracovní kontext. Editovaná banka
+(`.active`) má výraznější skleněnou pilulku s jemným stínem; z tabů jsou
+odstraněny všechny device-live markery včetně pulzující tečky a zelené linky.
+Do floating Live HUD se vrací existující, dosud skrytý první řádek
+`Active · B1 · Bank 1`. Zobrazí se při připojeném zařízení ihned po `CMD_INFO`,
+i když ještě nepřišla žádná hodnota faderu, a aktualizuje se z `liveBank`.
+
+Regresní test `bank-live-dot-probe.mjs` nyní ověřuje oddělení obou kontextů:
+silnější editovanou pilulku, nulový device marker v bank liště a okamžitě
+viditelný text aktivní banky v připojeném Live HUD.
 
 ### 2026-08-22 — Pět drobných UI regresí v controlleru a bank kartě
 
