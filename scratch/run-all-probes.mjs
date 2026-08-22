@@ -7,10 +7,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const PORT = 8100;
+const require = createRequire(import.meta.url);
+const puppeteer = require('puppeteer-core');
 
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -121,35 +124,65 @@ function startServer() {
   });
 }
 
-function runProbe(name) {
+function runProbe(name, browserWSEndpoint) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [path.join(__dirname, name)], { cwd: root });
+    const nodeOptions = [process.env.NODE_OPTIONS, '--require=./scratch/shared-browser-hook.cjs']
+      .filter(Boolean).join(' ');
+    const child = spawn(process.execPath, [path.join(__dirname, name)], {
+      cwd: root,
+      env: {
+        ...process.env,
+        FF_SHARED_BROWSER_WS: browserWSEndpoint,
+        NODE_OPTIONS: nodeOptions,
+      },
+    });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
+    child.on('error', (error) => resolve({ name, code: -1, out: `${out}\n${error.stack || error}` }));
     child.on('close', (code) => resolve({ name, code, out }));
   });
 }
 
 const server = await startServer();
+const sharedBrowser = await puppeteer.launch({
+  executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  headless: true,
+  args: ['--no-sandbox', '--js-flags=--expose-gc'],
+  ignoreDefaultArgs: ['--hide-scrollbars'],
+});
 let totalPass = 0, totalFail = 0, crashed = [];
 
-for (const probe of probesToRun) {
-  const { code, out } = await runProbe(probe);
-  const pass = (out.match(/^\s*PASS /gm) || []).length;
-  const fail = (out.match(/^\s*FAIL /gm) || []).length;
-  totalPass += pass; totalFail += fail;
-  if (pass === 0 && fail === 0) {
-    crashed.push(probe);
-    console.log(`CRASH ${probe} (exit ${code}) — no PASS/FAIL lines found`);
-    console.log(out.split('\n').slice(0, 6).join('\n'));
-  } else {
-    console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} — ${pass} pass, ${fail} fail`);
-    if (fail > 0) console.log(out.trim());
+const probeConcurrency = Math.min(
+  probesToRun.length,
+  Math.max(1, Number.parseInt(process.env.FF_PROBE_CONCURRENCY || '4', 10) || 4),
+);
+let nextProbeIndex = 0;
+async function runProbeWorker() {
+  while (true) {
+    const probeIndex = nextProbeIndex++;
+    if (probeIndex >= probesToRun.length) return;
+    const probe = probesToRun[probeIndex];
+    const { code, out } = await runProbe(probe, sharedBrowser.wsEndpoint());
+    const pass = (out.match(/^\s*PASS /gm) || []).length;
+    const fail = (out.match(/^\s*FAIL /gm) || []).length;
+    totalPass += pass; totalFail += fail;
+    if (pass === 0 && fail === 0) {
+      crashed.push(probe);
+      console.log(`CRASH ${probe} (exit ${code}) — no PASS/FAIL lines found`);
+      console.log(out.split('\n').slice(0, 6).join('\n'));
+    } else {
+      console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} — ${pass} pass, ${fail} fail`);
+      if (fail > 0) console.log(out.trim());
+    }
   }
 }
-
-server.close();
+try {
+  await Promise.all(Array.from({ length: probeConcurrency }, () => runProbeWorker()));
+} finally {
+  await sharedBrowser.close();
+  server.close();
+}
 const probeLabel = probesToRun.length === 1 ? 'probe' : 'probes';
 console.log(`\n${totalPass} passed, ${totalFail} failed, ${crashed.length} crashed (${probesToRun.length} ${probeLabel})`);
 process.exit(totalFail > 0 || crashed.length > 0 ? 1 : 0);

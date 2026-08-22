@@ -16,3 +16,10 @@ question during a single session and has no ongoing regression value.
 this directory is either intentionally tracked (the regression suite) or
 intentionally left untracked (session scratch). If in doubt, don't commit;
 it's easy to add later, harder to tell apart from real scratch once mixed in.
+
+`npm test` starts one shared headless Chrome and runs up to four probes at a
+time. `shared-browser-hook.cjs` gives every probe its own incognito context, so
+storage, pages and permissions remain isolated. Set `FF_PROBE_CONCURRENCY=1`
+when debugging order/timing, or run one listed probe via
+`npm test -- <probe.mjs>`. Running a probe directly still launches its own
+browser as before.
