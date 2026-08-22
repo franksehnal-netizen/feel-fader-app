@@ -54,6 +54,20 @@ P('initially: sticky send row is hidden', before.rowHidden, JSON.stringify(befor
 P('initially: switch is checked (ON = controller visible)', before.switchChecked === true, JSON.stringify(before));
 
 await p.click('#controller-toggle-input');
+// Send begins its tracked move immediately, while the row itself opens with
+// the same long stage clock. The controller must already be visually gone
+// when the moving pill passes its former area; otherwise the two layers read
+// as a ghosted overlap (Frank 2026-08-22).
+const collapseHandoff = await p.evaluate(() => new Promise(resolve => setTimeout(() => {
+  const stage = document.querySelector('.stage');
+  const row = document.getElementById('send-sticky-row');
+  resolve({
+    stageOpacity: Number(getComputedStyle(stage).opacity),
+    rowHeight: Math.round(row.getBoundingClientRect().height),
+    sendIsFloating: document.querySelector('.send-anchor')?.parentElement === document.body,
+  });
+}, 460)));
+P('collapse handoff: controller is fully faded before moving Send overlaps its former area', collapseHandoff.stageOpacity <= 0.01 && collapseHandoff.rowHeight > 0 && collapseHandoff.sendIsFloating, JSON.stringify(collapseHandoff));
 // 2026-07-26/27: the collapse is one coupled transition (box + content move
 // together, no sequential delay); reparenting waits for transitionend with a
 // 1400ms safety fallback (feel-fader.html applyControllerVisibility). The box

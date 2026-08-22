@@ -27,6 +27,8 @@ const result = await p.evaluate(() => {
     background: cs.backgroundColor,
     position: cs.position,
     animationName: cs.animationName,
+    dotRect: dot.getBoundingClientRect().toJSON(),
+    tabsRect: dot.closest('.bank-block-tabs')?.getBoundingClientRect().toJSON(),
     oldGlyphGone: !document.querySelector('.bank-tab-device'),
   };
 });
@@ -34,6 +36,9 @@ P('Live dot renders when a bank is live-on-device', result.found, JSON.stringify
 P('Dot is solid --green (52,199,89), not the old neutral --t2 glyph', result.found && result.background.includes('52, 199, 89'), result.background);
 P('Dot is absolutely positioned (floats in the tab corner, independent of .active)', result.found && result.position === 'absolute', result.position);
 P('Dot has a pulse animation applied', result.found && result.animationName !== 'none', result.animationName);
+P('Whole live dot stays inside the vertically clipped bank-tab rail', result.found
+  && result.dotRect.top >= result.tabsRect.top
+  && result.dotRect.bottom <= result.tabsRect.bottom, JSON.stringify({dot:result.dotRect,tabs:result.tabsRect}));
 P('Old .bank-tab-device glyph is gone (fully replaced, not just hidden)', result.oldGlyphGone);
 
 // The two states (is-live vs active/selected-for-editing) must be able to

@@ -8,9 +8,33 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-(žádné otevřené položky)
+Žádné otevřené položky.
 
 ## Hotovo
+
+### 2026-08-22 — Pět drobných UI regresí v controlleru a bank kartě
+
+- **Live-bank tečka:** `.bank-tab-live-dot` je posunuta z negativního offsetu
+  dovnitř chipu (`2px` od horního i pravého kraje). Je tak celá viditelná i
+  při zachovaném vertikálním clipu horizontálně scrollovatelné bank lišty.
+- **Kurzory:** odstraněn custom `--cursor-fader` SVG kurzor ze světlého i
+  tmavého tématu. Interaktivní prvky mají opět standardní `pointer`; ostatní
+  semantické kurzory (`text`, `grab`, `not-allowed`) zůstaly nedotčené.
+- **Kolaps controlleru:** opacity při skrytí je synchronizovaná s původním
+  záměrem animace (`.32s`, ne chybně rozjetých `.64s`). Send tak začne svůj
+  docking až nad plně neviditelným controllerem; scale a 1,1s layoutová
+  choreografie se neměnily.
+- **Desktop akce banky:** pro desktop s myší (od 768px) jsou action ikony
+  24×24px, s jemnou výchozí opacity, a přes `margin-left:auto` kotví v pravém
+  horním rohu karty. Mobilní/touch varianta zůstává 28×28px ve stávajícím
+  layoutu.
+- **BUTTON hover:** vizuální bod zůstal přesný, ale `#zone-macro::before`
+  přidává neviditelnou 28px hover plochu. Nyní spolehlivě aktivuje zelené
+  propojení Button/Macro sekce, aniž by se rozšířil viditelný glow.
+
+Přidány regresní probe testy pro celou bank-dot geometrii, standardní kurzory,
+čas kritického mezisnímku při kolapsu, desktopové action ikony a skutečný
+mouse hover BUTTON hotspotu.
 
 ### 2026-08-18zt — BUTTON sekce: zjednodušen text v těle
 
