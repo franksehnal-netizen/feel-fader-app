@@ -5162,6 +5162,20 @@ async function _serialEnsureOpen() {
   _serialPort = port;
 }
 
+async function releaseSerialPort({forget = false} = {}) {
+  const port = _serialPort;
+  _serialPort = null;
+  if (!port) return;
+  try { if (port.readable || port.writable) await port.close(); } catch (_) {}
+  // In DEV mode CircuitPython exposes a REPL console and a data port with the
+  // same USB identity. Retrying a timed-out remembered console forever hides
+  // the picker, so forget that failed grant and let the user select the data
+  // endpoint on the next explicit Connect & load click.
+  if (forget && typeof port.forget === 'function') {
+    try { await port.forget(); } catch (_) {}
+  }
+}
+
 // Wave 2 — jediné místo, které čte serial. Jedna transakce naráz; v2 odpovědi
 // se párují podle typu + rid, cizí/stale řádky se zahazují (to je ta ochrana,
 // drain je jen best-effort úklid nulové ceny).
@@ -5312,7 +5326,7 @@ async function doStart() {
     hideWelcome();                              // transition → main page
   } catch(e) {
     const cancelled = e && (e.name === 'AbortError' || e.name === 'NotFoundError' || /cancel|no port selected/i.test(e.message || ''));
-    if (!cancelled && _serialPort) { try { await _serialPort.close(); } catch(_) {} _serialPort = null; }
+    if (!cancelled) await releaseSerialPort({forget:true});
     if (btn) { btn.disabled = false; btn.textContent = cancelled ? 'Connect & load' : 'Try again'; }
     if (msg) {
       msg.textContent = cancelled ? '' : 'Connection failed';

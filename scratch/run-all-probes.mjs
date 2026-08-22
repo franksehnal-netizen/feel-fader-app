@@ -85,6 +85,7 @@ const PROBES = [
   'live-strip-validation-signal-probe.mjs',
   'per-bank-macro-probe.mjs',
   'serial-utf8-chunk-probe.mjs',
+  'serial-port-retry-probe.mjs',
   'connect-reveal-sync-probe.mjs',
   'live-note-centered-probe.mjs',
   'nav-hid-live-combo-probe.mjs',
