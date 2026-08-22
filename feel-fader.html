@@ -5205,8 +5205,19 @@ function _readReply(port, v2, expect, rid, timeoutMs) {
     const reader = port.readable.getReader();
     const dec = new TextDecoder();
     let buf = '';
-    const timer = setTimeout(() => { try { reader.releaseLock(); } catch(_){} reject(new Error('timeout')); }, timeoutMs);
-    const done = (fn, v) => { clearTimeout(timer); try { reader.releaseLock(); } catch(_){} fn(v); };
+    let settled = false;
+    const done = (fn, v, cancel = false) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // releaseLock() cannot end an in-flight read. Cancel it first on a
+      // timeout, otherwise the abandoned reader can keep the serial stream
+      // locked and leave the UI indefinitely at “sending”.
+      if (cancel) { try { reader.cancel(); } catch (_) {} }
+      try { reader.releaseLock(); } catch(_){}
+      fn(v);
+    };
+    const timer = setTimeout(() => done(reject, new Error('timeout'), true), timeoutMs);
     (async () => {
       try {
         while (true) {
@@ -5451,9 +5462,7 @@ async function doSend() {
   } catch(e) {
     console.warn('[Send] failed:', e);
     const errReason = /^ERR:(.+)$/.exec(e.message || '');
-    if (!errReason && e.message !== 'timeout' && e.name !== 'AbortError' && _serialPort) {
-      try { await _serialPort.close(); } catch(_) {} _serialPort = null;
-    }
+    if (!errReason && e.name !== 'AbortError') await releaseSerialPort({forget:true});
     if (errReason) toast('e', 'Device rejected config: ' + errReason[1] + ' — kept as unsaved.');
     else if (e.message === 'timeout') toast('e', 'No confirmation from device — kept as unsaved. Retry send.');
     else toast('e', serialErrMsg(e, 'Send failed'));
