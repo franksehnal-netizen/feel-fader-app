@@ -4840,6 +4840,7 @@ function diagnosticRollerMapping(bank) {
     return `Keyswitch · Ch ${(bank.ks_channel ?? 0)+1} · ${range}`;
   }
   if (mode === 'track_nav') return `Navigation · ${keyComboLabel(bank.nav_keys_cw || [0x52])} / ${keyComboLabel(bank.nav_keys_ccw || [0x51])} · HID ${DEVICE_INFO.hid_enabled?'on':'off'}`;
+  if (mode === 'cc_relative') return `Relative CC · Ch ${(bank.encoder?.channel ?? 0)+1} · CC ${bank.encoder?.cc ?? 32}`;
   return `Articulation · Ch ${(bank.encoder?.channel ?? 0)+1} · CC ${bank.encoder?.cc ?? 32}`;
 }
 function midiDiagnosticsData() {
@@ -5986,8 +5987,8 @@ function renderLiveStrip(errs = validate()){
     // scope, confirmed 2026-08-10).
     rollerValue = `${keyComboLabel(bank.nav_keys_cw || [0x52])} / ${keyComboLabel(bank.nav_keys_ccw || [0x51])}`;
   }
-  setTxt('live-roller-label', mode === 'keyswitch' ? 'ROLLER · KEYSWITCH' : mode === 'track_nav' ? 'ROLLER · NAVIGATION' : 'ROLLER · ARTICULATION');
-  setTxt('live-roller-label-short', mode === 'keyswitch' ? 'KS' : mode === 'track_nav' ? 'NAV' : 'ART');
+  setTxt('live-roller-label', mode === 'keyswitch' ? 'ROLLER · KEYSWITCH' : mode === 'track_nav' ? 'ROLLER · NAVIGATION' : mode === 'cc_relative' ? 'ROLLER · RELATIVE CC' : 'ROLLER · ARTICULATION');
+  setTxt('live-roller-label-short', mode === 'keyswitch' ? 'KS' : mode === 'track_nav' ? 'NAV' : mode === 'cc_relative' ? 'REL' : 'ART');
   const ksNotes = bank.ks_notes || [];
   const ksRange = ksNotes.length ? `${noteName(Math.min(...ksNotes))}–${noteName(Math.max(...ksNotes))}` : 'no notes';
   setTxt('live-roller-tech', mode === 'keyswitch'
