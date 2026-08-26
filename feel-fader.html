@@ -537,14 +537,14 @@ header,.live-hud{view-transition-name:none}
 /* Roller mode — compact segmented pill. Keyswitch uses a quieter glass state. */
 .roller-mode-row{
   --roller-index:0;
-  position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;
+  position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;
   margin:10px 0 12px;padding:3px;border:1px solid var(--border-s);border-radius:var(--r-pill);
   background:color-mix(in srgb,var(--bg-input) 88%,transparent);
   box-shadow:inset 0 1px 3px rgba(0,0,0,.10);
 }
 .roller-mode-row::before{
   content:'';position:absolute;z-index:0;left:3px;top:3px;bottom:3px;pointer-events:none;
-  width:calc((100% - 10px)/3);border:1px solid var(--control-glass-border);border-radius:var(--r-pill);background:var(--control-glass-bg);
+  width:calc((100% - 12px)/4);border:1px solid var(--control-glass-border);border-radius:var(--r-pill);background:var(--control-glass-bg);
   backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);
   transform:translateX(calc(var(--roller-index) * (100% + 2px)));
   box-shadow:var(--control-glass-shadow);
@@ -2835,7 +2835,7 @@ const MAX_BANKS = 8;
 // A-3 (final review 2026-08-17): single source for the roller mode list —
 // dřív duplikováno jako inline literál na 4 místech (encoderPanel ×2,
 // rollerModeKey, setRollerMode).
-const ROLLER_MODES = ['cc','keyswitch','track_nav'];
+const ROLLER_MODES = ['cc','keyswitch','track_nav','cc_relative'];
 
 const DEFAULT_CFG = {
   macro_keys: [],
@@ -3508,7 +3508,7 @@ function keyswitchBody(bi) {
 }
 
 function rollerModeTitle(mode) {
-  return mode === 'keyswitch' ? 'Keyswitch' : mode === 'track_nav' ? 'Navigation' : 'Articulation';
+  return mode === 'keyswitch' ? 'Keyswitch' : mode === 'track_nav' ? 'Navigation' : mode === 'cc_relative' ? 'Relative CC' : 'Articulation';
 }
 function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc', errs = validate()) {
   return mode === 'keyswitch' ? keyswitchBody(bi)
@@ -3531,7 +3531,7 @@ function encoderPanel(ctrl, bi, errs = validate()) {
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
       <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${ROLLER_MODES.indexOf(rmode)}">
         ${ROLLER_MODES.map((m,mi) => {
-          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)'};
+          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)', cc_relative:'Relative CC'};
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
           return `<button type="button" class="roller-mode-btn${active?' active':''}"
             data-roller-mode="${m}" aria-pressed="${active}" tabindex="${active?'0':'-1'}"
