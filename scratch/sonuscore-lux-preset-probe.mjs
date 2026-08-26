@@ -15,6 +15,8 @@ const result = await page.evaluate(() => {
   cfg.banks[0].ks_notes = [];
   cfg.banks[0].ks_channel = 3;
   cfg.banks[0].ks_velocity = 20;
+  cfg.banks[0].fader1 = {cc:74,channel:6,label:'My expression'};
+  cfg.banks[0].fader2 = {cc:75,channel:7,label:'My dynamics'};
   activeBank = 0;
   applyLibraryPreset(name, 'all');
   const bank = cfg.banks[0];
@@ -25,6 +27,7 @@ const result = await page.evaluate(() => {
     notes: bank.ks_notes,
     channel: bank.ks_channel,
     velocity: bank.ks_velocity,
+    faders: [bank.fader1, bank.fader2],
     preview
   };
 });
@@ -32,6 +35,7 @@ P('preset contains the verified C0–D#0 MIDI notes', JSON.stringify(result.pres
 P('full setup switches the roller to keyswitch mode', result.mode === 'keyswitch', JSON.stringify(result));
 P('full setup applies the keyswitch channel and velocity', result.channel === 0 && result.velocity === 100, JSON.stringify(result));
 P('preview describes a four-note keyswitch sequence on channel 1', result.preview.includes('4 keyswitch notes') && result.preview.includes('Ch 1'), result.preview);
+P('built-in setup leaves fader mapping untouched and omits it from preview', result.faders[0].cc === 74 && result.faders[0].channel === 6 && result.faders[1].cc === 75 && result.faders[1].channel === 7 && !result.preview.includes('Faders'), JSON.stringify(result));
 
 const violins = await page.evaluate(() => {
   const name = 'Sonuscore LUX — Violins 1';

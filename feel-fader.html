@@ -7811,7 +7811,6 @@ function libraryPresetPreviewRows(name, preset) {
     }
     if (Object.prototype.hasOwnProperty.call(preset,'icon')) rows.push(['Bank icon', preset.icon || 'Remove icon']);
   } else {
-    rows.push(['Faders', `Expression · CC ${preset.fader1_cc ?? 11}; Dynamics · CC ${preset.fader2_cc ?? 1} · channels stay unchanged`]);
     rows.push(['Roller', `${rollerModeTitle(preset.roller_mode || 'cc')} · CC ${preset.encoder_cc ?? 32} · channel stays unchanged`]);
     const keyswitches = preset.ks_notes || [];
     rows.push(['Sequence', keyswitches.length
@@ -8191,8 +8190,6 @@ function applyLibraryPreset(name, scope = 'all') {
     if (scope === 'all' && Object.prototype.hasOwnProperty.call(preset,'icon')) bank.icon = preset.icon;
   } else {
     if (scope === 'all') {
-      bank.fader1.cc = preset.fader1_cc ?? 11;
-      bank.fader2.cc = preset.fader2_cc ?? 1;
       bank.encoder.cc = preset.encoder_cc ?? 32;
       bank.roller_mode = preset.roller_mode || 'cc';
     }
@@ -8219,7 +8216,7 @@ function applyLibraryPreset(name, scope = 'all') {
     const sequence = Array.isArray(preset.ks_notes)
       ? `${preset.ks_notes.length} keyswitches`
       : `${preset.uacc_values.length} articulations`;
-    toast('s', `"${name}" setup applied — Expression CC${preset.fader1_cc ?? 11}, Dynamics CC${preset.fader2_cc ?? 1}, ${sequence}`);
+    toast('s', `"${name}" roller setup applied — ${sequence}`);
   }
 }
 
