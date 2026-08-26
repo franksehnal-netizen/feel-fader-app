@@ -94,6 +94,7 @@ const PROBES = [
   'onb-swipe-probe.mjs',
   'roller-mode-timing-sync-probe.mjs',
   'cc-relative-mode-selector-probe.mjs',
+  'cc-relative-panel-content-probe.mjs',
   'is-feel-fader-probe.mjs',
   'sysex-info-faders-probe.mjs',
   'render-validate-once-probe.mjs',

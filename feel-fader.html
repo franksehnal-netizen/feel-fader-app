@@ -3513,6 +3513,7 @@ function rollerModeTitle(mode) {
 function rollerModeBodyHtml(ctrl, bi, mode = cfg.banks[bi].roller_mode || 'cc', errs = validate()) {
   return mode === 'keyswitch' ? keyswitchBody(bi)
        : mode === 'track_nav' ? trackNavBody(bi)
+       : mode === 'cc_relative' ? ccRelativeBody(ctrl, bi, errs)
        : ccEncoderBody(ctrl, bi, errs);
 }
 function encoderPanel(ctrl, bi, errs = validate()) {
@@ -3575,6 +3576,24 @@ function trackNavBody(bi){
         <span class="field-label">INVERT</span>
         <input type="checkbox" ${b.nav_invert?'checked':''} onchange="cfg.banks[${bi}].nav_invert=this.checked;dirty=true;render()" aria-label="Invert navigation direction">
       </div>
+    </div>
+  </div>`;
+}
+
+function ccRelativeBody(ctrl, bi, errs = validate()) {
+  const encErr = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
+  return `
+  <div class="enc-unified-body">
+    <div class="uacc-note" style="margin:8px 0">Rotating the roller sends a relative CC (1 = step up, 127 = step down) on this CC/channel. The keyswitch note list lives in the Keyswitch Stepper Max for Live device on the track, not here.</div>
+    <div class="section-field-row" style="margin-top:10px">
+      ${stepperFieldHtml(`b${bi}-encoder-ch`, 'MIDI CHANNEL', ctrl.channel+1, 1, 16,
+        `stepCtrl(${bi},'encoder','channel',-1)`, `stepCtrl(${bi},'encoder','channel',1)`,
+        `onCtrl(${bi},'encoder','channel',+this.value-1)`, 'Roller MIDI channel',
+        `\n                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"`)}
+      ${stepperFieldHtml(`b${bi}-encoder-cc`, 'MIDI CC', ctrl.cc, 0, 127,
+        `stepCtrl(${bi},'encoder','cc',-1)`, `stepCtrl(${bi},'encoder','cc',1)`,
+        `onCtrl(${bi},'encoder','cc',+this.value)`, 'Roller MIDI CC',
+        `\n                aria-invalid="${encErr?'true':'false'}" aria-describedby="err-b${bi}-roller"`)}
     </div>
   </div>`;
 }
