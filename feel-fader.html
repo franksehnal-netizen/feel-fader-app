@@ -246,9 +246,9 @@ header{
 /* The green dot in the header already says that a device is connected. The
    HUD owns device context: its first row maps the active physical bank with
    one neutral dot per bank. This stays distinct from the edited-bank card. */
-.live-hud-bank{display:none;height:14px;align-items:center;justify-content:center;gap:4px;overflow:hidden;border-bottom:1px solid var(--border)}
-.live-hud-bank-dot{width:4px;height:4px;flex:0 0 auto;border-radius:50%;background:var(--t3);opacity:.42}
-.live-hud-bank-dot.is-active{width:6px;height:6px;background:var(--t1);opacity:1;box-shadow:0 0 0 2px color-mix(in srgb,var(--t1) 14%,transparent)}
+.live-hud-bank{display:none;height:12px;align-items:center;justify-content:center;gap:4px;overflow:hidden}
+.live-hud-bank-dot{width:3px;height:3px;flex:0 0 auto;border-radius:50%;background:var(--t2);opacity:.28}
+.live-hud-bank-dot.is-active{width:5px;height:5px;background:var(--t1);opacity:.78;box-shadow:none}
 .live-hud[data-state^="CONNECTED"] .live-hud-bank{display:flex}
 .live-hud[data-state^="CONNECTED"] .live-hud-inner{height:calc(100% - 18px);margin-top:4px}
 .live-hud-item{min-width:0;color:var(--t2)}
@@ -833,6 +833,19 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 .info-row{display:flex;flex-direction:row;align-items:baseline;gap:8px;}
 .info-row.info-row-action{align-items:center;justify-content:flex-start;}
 .info-row.info-row-action .info-lbl{min-width:100px;}
+.response-select{position:relative;min-width:164px;}
+.response-select-trigger{width:100%;min-height:32px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 6px 12px;border-radius:11px;color:var(--t1);font:600 12px 'Mulish',sans-serif;text-align:left;}
+.response-select-trigger svg{width:14px;height:14px;color:var(--t3);transition:transform .18s var(--ease-out);flex:none;}
+.response-select.is-open .response-select-trigger{border-color:color-mix(in srgb,var(--green) 48%,var(--control-glass-border));box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 13%,transparent),var(--control-glass-shadow);}
+.response-select.is-open .response-select-trigger svg{transform:rotate(180deg);}
+.response-select-menu{display:grid;gap:3px;margin-top:6px;padding:5px;border:1px solid var(--control-glass-border);border-radius:13px;background:color-mix(in srgb,var(--bg) 83%,white);box-shadow:0 10px 24px rgba(32,32,40,.13),inset 0 1px 0 rgba(255,255,255,.58);}
+html.dark .response-select-menu{background:color-mix(in srgb,var(--bg) 90%,white);box-shadow:0 10px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);}
+.response-select-option{display:flex;flex-direction:column;gap:1px;width:100%;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:var(--t1);font:600 12px 'Mulish',sans-serif;text-align:left;cursor:pointer;transition:background .14s ease,color .14s ease,transform var(--dur-press) ease;}
+.response-select-option small{font-size:10px;font-weight:500;line-height:1.25;color:var(--t3);}
+.response-select-option:hover,.response-select-option:focus-visible{background:color-mix(in srgb,var(--green) 12%,transparent);outline:none;}
+.response-select-option[aria-selected="true"]{background:var(--green);color:#fff;box-shadow:0 2px 7px color-mix(in srgb,var(--green) 30%,transparent);}
+.response-select-option[aria-selected="true"] small{color:rgba(255,255,255,.78);}
+.response-select-option:active{transform:scale(.98);}
 .hid-switch{display:inline-flex;align-items:center;cursor:pointer;position:relative}
 .hid-switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .hid-switch-track{position:relative;width:34px;height:20px;border-radius:var(--r-pill);border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow);transition:background var(--dur-switch) var(--ease-out),border-color var(--dur-switch) var(--ease-out),box-shadow var(--dur-switch) var(--ease-out)}
@@ -2329,11 +2342,17 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         </div>
         <div class="info-row info-row-action" data-tip="Controls how the device filters and interpolates both physical faders. Saved with Send to device.">
           <span class="info-lbl">Fader response</span>
-          <select id="fader-response-select" class="ui-control ui-glass" onchange="onFaderResponseChange(this.value)" aria-describedby="fader-response-note">
-            <option value="immediate">Immediate</option>
-            <option value="balanced">Balanced</option>
-            <option value="smooth">Smooth</option>
-          </select>
+          <div class="response-select" id="fader-response-select">
+            <button type="button" class="response-select-trigger ui-control ui-glass" id="fader-response-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="fader-response-menu" aria-describedby="fader-response-note" onclick="toggleFaderResponseMenu()" onkeydown="onFaderResponseTriggerKeydown(event)">
+              <span id="fader-response-value">Balanced</span>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="response-select-menu" id="fader-response-menu" role="listbox" aria-labelledby="fader-response-trigger" hidden>
+              <button type="button" class="response-select-option" role="option" data-response="immediate" aria-selected="false" onclick="onFaderResponseChange('immediate')" onkeydown="onFaderResponseOptionKeydown(event)"><span>Immediate</span><small>Direct response for precise performance</small></button>
+              <button type="button" class="response-select-option" role="option" data-response="balanced" aria-selected="true" onclick="onFaderResponseChange('balanced')" onkeydown="onFaderResponseOptionKeydown(event)"><span>Balanced</span><small>Natural control with subtle filtering</small></button>
+              <button type="button" class="response-select-option" role="option" data-response="smooth" aria-selected="false" onclick="onFaderResponseChange('smooth')" onkeydown="onFaderResponseOptionKeydown(event)"><span>Smooth</span><small>Gentle glide for long expressive moves</small></button>
+            </div>
+          </div>
         </div>
         <div id="fader-response-note" style="margin:-1px 0 0 100px;font-size:11px;line-height:1.35;color:var(--t3)">Connect a compatible device to change fader response.</div>
       </div>
@@ -3642,22 +3661,82 @@ function updateHidToggle(){
 }
 function updateFaderResponseControl(){
   const select = document.getElementById('fader-response-select');
+  const trigger = document.getElementById('fader-response-trigger');
+  const value = document.getElementById('fader-response-value');
   const note = document.getElementById('fader-response-note');
-  if (!select || !note) return;
+  if (!select || !trigger || !value || !note) return;
   const supported = DEVICE_INFO.fader_response_presets === true;
-  select.value = normalizeFaderResponse(cfg?.fader_response);
-  select.disabled = !supported;
+  const response = normalizeFaderResponse(cfg?.fader_response);
+  const labels = {immediate:'Immediate', balanced:'Balanced', smooth:'Smooth'};
+  value.textContent = labels[response];
+  trigger.disabled = !supported;
+  select.querySelectorAll('[data-response]').forEach(option => {
+    option.setAttribute('aria-selected', String(option.dataset.response === response));
+  });
+  if (!supported) closeFaderResponseMenu();
   note.textContent = supported
-    ? ({immediate:'Fastest response for recording expressive automation.', balanced:'Balanced response for everyday expressive control.', smooth:'Gentler transitions for long expressive movements.'})[select.value]
+    ? ({immediate:'Fastest response for recording expressive automation.', balanced:'Balanced response for everyday expressive control.', smooth:'Gentler transitions for long expressive movements.'})[response]
     : 'Connect a compatible device to change fader response.';
+}
+function closeFaderResponseMenu({focusTrigger=false}={}){
+  const select = document.getElementById('fader-response-select');
+  const trigger = document.getElementById('fader-response-trigger');
+  const menu = document.getElementById('fader-response-menu');
+  if (!select || !trigger || !menu) return;
+  select.classList.remove('is-open');
+  trigger.setAttribute('aria-expanded','false');
+  menu.hidden = true;
+  if (focusTrigger) trigger.focus();
+}
+function toggleFaderResponseMenu(){
+  const select = document.getElementById('fader-response-select');
+  const trigger = document.getElementById('fader-response-trigger');
+  const menu = document.getElementById('fader-response-menu');
+  if (!select || !trigger || !menu || trigger.disabled) return;
+  const open = menu.hidden;
+  select.classList.toggle('is-open', open);
+  trigger.setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+}
+function focusFaderResponseOption(direction){
+  const options = [...document.querySelectorAll('#fader-response-menu [data-response]')];
+  const active = document.activeElement;
+  const selected = options.findIndex(option => option.getAttribute('aria-selected') === 'true');
+  const current = options.indexOf(active);
+  const base = current >= 0 ? current : selected;
+  options[(base + direction + options.length) % options.length]?.focus();
+}
+function onFaderResponseTriggerKeydown(event){
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const menu = document.getElementById('fader-response-menu');
+    if (menu?.hidden) toggleFaderResponseMenu();
+    focusFaderResponseOption(event.key === 'ArrowDown' ? 1 : -1);
+  } else if (event.key === 'Escape') {
+    closeFaderResponseMenu();
+  }
+}
+function onFaderResponseOptionKeydown(event){
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    focusFaderResponseOption(event.key === 'ArrowDown' ? 1 : -1);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    closeFaderResponseMenu({focusTrigger:true});
+  }
 }
 function onFaderResponseChange(value){
   const next = normalizeFaderResponse(value);
-  if (cfg.fader_response === next) return;
+  if (cfg.fader_response === next) { closeFaderResponseMenu(); return; }
   cfg.fader_response = next;
+  closeFaderResponseMenu();
   dirty = true;
   render();
 }
+document.addEventListener('pointerdown', event => {
+  const select = document.getElementById('fader-response-select');
+  if (select && !select.contains(event.target)) closeFaderResponseMenu();
+});
 function openDeviceSettingsAtHid() {
   const body = document.getElementById('device-settings-body');
   if (body?.style.display === 'none') toggleDeviceSettings();
@@ -7519,6 +7598,96 @@ var LIBRARY_PRESETS = {
     icon: '🎹',
     uacc_values: [1,2,3,20,21,40,41,42,100,101]
   },
+  'Sonuscore LUX — Orchestral Strings': {
+    // LUX Ensemble: C0 Legato, C#0 Sustain, D0 Marcato, D#0 Tremolo.
+    // Feel Fader's default C-2 naming convention maps C0 to MIDI 24.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: [24,25,26,27],
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Sonuscore LUX — Violins 1': {
+    // LUX Violins 1: C0 Legato, C#0 Sustain, D0 Marcato, D#0 Staccato,
+    // E0 Spiccato, F0 Pizzicato, F#0 Tremolo, G0 Portamento.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: [24,25,26,27,28,29,30,31],
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Sonuscore LUX — Violas': {
+    // LUX Violas: C0 Legato, C#0 Sustain, D0 Marcato, D#0 Staccato,
+    // E0 Spiccato, F0 Pizzicato, F#0 Tremolo, G0 Trills.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: [24,25,26,27,28,29,30,31],
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Sonuscore LUX — Celli': {
+    // LUX Celli: C0 Legato, C#0 Sustain, D0 Marcato, D#0 Staccato,
+    // E0 Spiccato, F0 Pizzicato, F#0 Tremolo, G0 Portamento.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: [24,25,26,27,28,29,30,31],
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Sonuscore LUX — Basses': {
+    // LUX Basses: C0 Legato, C#0 Sustain, D0 Marcato, D#0 Staccato,
+    // E0 Spiccato, F0 Pizzicato, F#0 Tremolo, G0 Trills.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: [24,25,26,27,28,29,30,31],
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Spitfire Symphonic Orchestra — Celli (All techniques)': {
+    // SSO Celli All techniques: contiguous keyswitches C-1 through A#-1.
+    // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: Array.from({length:11}, (_, index) => index + 12),
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Spitfire Symphonic Orchestra — Basses (All techniques)': {
+    // SSO Basses All techniques: contiguous keyswitches C-1 through A#-1.
+    // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: Array.from({length:11}, (_, index) => index + 12),
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Spitfire Symphonic Orchestra — Ensembles (All techniques)': {
+    // SSO Ensembles All techniques: contiguous keyswitches C-1 through A#-1.
+    // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: Array.from({length:11}, (_, index) => index + 12),
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Spitfire Symphonic Orchestra — Violas (All techniques)': {
+    // SSO Violas All techniques: contiguous keyswitches C-1 through B-1.
+    // Feel Fader's default C-2 naming convention maps that range to MIDI 12–23.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: Array.from({length:12}, (_, index) => index + 12),
+    ks_channel: 0,
+    ks_velocity: 100
+  },
+  'Spitfire Symphonic Orchestra — Violins 1 (All techniques)': {
+    // SSO Violins 1 All techniques: contiguous keyswitches C-2 through G0.
+    // Feel Fader's default C-2 naming convention maps that range to MIDI 0–31.
+    icon: '🎻',
+    roller_mode: 'keyswitch',
+    ks_notes: Array.from({length:32}, (_, index) => index),
+    ks_channel: 0,
+    ks_velocity: 100
+  },
 };
 
 const CUSTOM_PRESETS_STORAGE_KEY = 'ff-custom-library-presets-v1';
@@ -7622,7 +7791,7 @@ function closeQuickSetupMenu(bi, returnFocus = false) {
 let _libraryPreviewName = null;
 let _libraryPreviewReturnFocus = null;
 function libraryPresetHasArticulations(preset) {
-  return !!(preset?.custom ? preset.articulations : Array.isArray(preset?.uacc_values));
+  return !!(preset?.custom ? preset.articulations : (Array.isArray(preset?.uacc_values) || Array.isArray(preset?.ks_notes)));
 }
 function libraryPresetPreviewRows(name, preset) {
   const rows = [];
@@ -7644,7 +7813,10 @@ function libraryPresetPreviewRows(name, preset) {
   } else {
     rows.push(['Faders', `Expression · CC ${preset.fader1_cc ?? 11}; Dynamics · CC ${preset.fader2_cc ?? 1} · channels stay unchanged`]);
     rows.push(['Roller', `${rollerModeTitle(preset.roller_mode || 'cc')} · CC ${preset.encoder_cc ?? 32} · channel stays unchanged`]);
-    rows.push(['Sequence', `${(preset.uacc_values || []).length} UACC articulation values`]);
+    const keyswitches = preset.ks_notes || [];
+    rows.push(['Sequence', keyswitches.length
+      ? `${keyswitches.length} keyswitch notes · Ch ${(preset.ks_channel ?? 0)+1}`
+      : `${(preset.uacc_values || []).length} UACC articulation values`]);
     rows.push(['Bank icon', cfg.banks[activeBank]?.icon ? 'Keep current icon' : (preset.icon || 'No icon')]);
   }
   return rows.map(([label,value]) => `<div class="library-preview-row"><span class="library-preview-row-label">${escHtml(label)}</span><span class="library-preview-row-value">${escHtml(value)}</span></div>`).join('');
@@ -8024,7 +8196,15 @@ function applyLibraryPreset(name, scope = 'all') {
       bank.encoder.cc = preset.encoder_cc ?? 32;
       bank.roller_mode = preset.roller_mode || 'cc';
     }
-    bank.uacc_values = [...preset.uacc_values];
+    if (Array.isArray(preset.ks_notes)) {
+      bank.ks_notes = clampCcList(preset.ks_notes);
+      bank.ks_channel = clampChannel(preset.ks_channel ?? 0, 0);
+      bank.ks_velocity = clampCc(preset.ks_velocity, 100);
+      // A keyswitch sequence is only useful when the roller sends notes.
+      if (scope === 'articulations') bank.roller_mode = 'keyswitch';
+    } else {
+      bank.uacc_values = [...preset.uacc_values];
+    }
     // Set built-in instrument icons only when the bank does not already have one.
     if (scope === 'all' && !bank.icon && preset.icon) bank.icon = preset.icon;
   }
@@ -8035,7 +8215,12 @@ function applyLibraryPreset(name, scope = 'all') {
   render();
   if (scope === 'articulations') toast('s', `Articulations from "${name}" applied`);
   else if (preset.custom) toast('s', `My setup "${name}" applied`);
-  else toast('s', `"${name}" setup applied — Expression CC${preset.fader1_cc ?? 11}, Dynamics CC${preset.fader2_cc ?? 1}, ${preset.uacc_values.length} articulations`);
+  else {
+    const sequence = Array.isArray(preset.ks_notes)
+      ? `${preset.ks_notes.length} keyswitches`
+      : `${preset.uacc_values.length} articulations`;
+    toast('s', `"${name}" setup applied — Expression CC${preset.fader1_cc ?? 11}, Dynamics CC${preset.fader2_cc ?? 1}, ${sequence}`);
+  }
 }
 
 // Make all functions globally accessible (fix for Cloudflare script injection)
