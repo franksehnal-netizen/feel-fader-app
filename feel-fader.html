@@ -5141,7 +5141,7 @@ function normalizeFwConfig(p) {
       // ks_velocity untouched — they reach data-mode="${rmode}" and
       // value="${...}" template interpolation unescaped (DOM XSS via
       // attribute breakout on a hostile JSON backup import).
-      bank.roller_mode = (bank.roller_mode === 'keyswitch' || bank.roller_mode === 'track_nav') ? bank.roller_mode : 'cc';
+      bank.roller_mode = (bank.roller_mode === 'keyswitch' || bank.roller_mode === 'track_nav' || bank.roller_mode === 'cc_relative') ? bank.roller_mode : 'cc';
       bank.ks_channel = clampChannel(bank.ks_channel, 0);
       bank.ks_velocity = clampCc(bank.ks_velocity, 100);
       bank.nav_keys_cw = clampHidList(bank.nav_keys_cw).length ? clampHidList(bank.nav_keys_cw) : [0x52];
@@ -5175,7 +5175,7 @@ function normalizeFwConfig(p) {
       fader1:      { cc: clampCc(Array.isArray(b.fader_cc) ? b.fader_cc[0] : 11, 11), channel: clampChannel(Array.isArray(b.fader_ch) ? b.fader_ch[0] : (b.channel ?? 0), 0), label: mL[0] || (prev.fader1 && prev.fader1.label) || 'Expression' },
       fader2:      { cc: clampCc(Array.isArray(b.fader_cc) ? b.fader_cc[1] : 1, 1),  channel: clampChannel(Array.isArray(b.fader_ch) ? b.fader_ch[1] : (b.channel ?? 0), 0), label: mL[1] || (prev.fader2 && prev.fader2.label) || 'Dynamics' },
       encoder:     { cc: clampCc(typeof b.encoder === 'number' ? b.encoder : 32, 32), channel: clampChannel(typeof b.encoder_ch === 'number' ? b.encoder_ch : (b.channel ?? 0), 0) },
-      roller_mode: (b.roller_mode === 'keyswitch' || b.roller_mode === 'track_nav') ? b.roller_mode : 'cc',
+      roller_mode: (b.roller_mode === 'keyswitch' || b.roller_mode === 'track_nav' || b.roller_mode === 'cc_relative') ? b.roller_mode : 'cc',
       ks_notes:    clampCcList(Array.isArray(b.ks_notes) ? b.ks_notes : []),
       ks_channel:  typeof b.ks_channel === 'number' ? b.ks_channel : (typeof b.encoder_ch === 'number' ? b.encoder_ch : 0),
       ks_velocity: typeof b.ks_velocity === 'number' ? b.ks_velocity : 100,
@@ -8196,7 +8196,7 @@ function applyLibraryPreset(name, scope = 'all') {
       [bank.fader1, bank.fader2, bank.encoder].forEach(c => { c.cc = clampCc(c.cc, 0); c.channel = clampChannel(c.channel, 0); });
     }
     if (scope === 'all' && preset.roller) {
-      bank.roller_mode = (preset.roller.roller_mode === 'keyswitch' || preset.roller.roller_mode === 'track_nav') ? preset.roller.roller_mode : 'cc';
+      bank.roller_mode = (preset.roller.roller_mode === 'keyswitch' || preset.roller.roller_mode === 'track_nav' || preset.roller.roller_mode === 'cc_relative') ? preset.roller.roller_mode : 'cc';
       bank.nav_keys_cw = clampHidList(preset.roller.nav_keys_cw).length ? clampHidList(preset.roller.nav_keys_cw) : [0x52];
       bank.nav_keys_ccw = clampHidList(preset.roller.nav_keys_ccw).length ? clampHidList(preset.roller.nav_keys_ccw) : [0x51];
       bank.nav_invert = !!preset.roller.nav_invert;
