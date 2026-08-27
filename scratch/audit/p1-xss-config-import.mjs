@@ -75,7 +75,7 @@ const res2 = await p.evaluate(async ()=>{
     ksVelocity: cfg.banks[0].ks_velocity,
   };
 });
-const validRollerModes = ['cc','keyswitch','track_nav'];
+const validRollerModes = ['cc','keyswitch','track_nav','cc_relative'];
 P('roller_mode je omezen na známé hodnoty (SEC-004)', validRollerModes.includes(res2.rollerMode), JSON.stringify(res2));
 P('ks_channel je clampnuté číslo (SEC-004)', Number.isFinite(res2.ksChannel), JSON.stringify(res2));
 P('ks_velocity je clampnuté číslo (SEC-004)', Number.isFinite(res2.ksVelocity), JSON.stringify(res2));

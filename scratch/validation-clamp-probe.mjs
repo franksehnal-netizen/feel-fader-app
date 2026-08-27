@@ -87,7 +87,7 @@ r = await p.evaluate(() => {
   cfg = savedCfg; activeBank = savedActive; customLibraryPresets = savedCustom;
   return out;
 });
-P('applyLibraryPreset restricts roller_mode to known values', ['cc','keyswitch','track_nav'].includes(r.rollerMode), JSON.stringify(r));
+P('applyLibraryPreset restricts roller_mode to known values', ['cc','keyswitch','track_nav','cc_relative'].includes(r.rollerMode), JSON.stringify(r));
 P('applyLibraryPreset clamps ks_velocity to a number', Number.isFinite(r.ksVelocity), JSON.stringify(r));
 P('applyLibraryPreset payload never executes', r.xss3===false, JSON.stringify(r));
 
