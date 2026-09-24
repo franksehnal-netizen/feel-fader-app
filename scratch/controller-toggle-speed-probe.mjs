@@ -25,6 +25,8 @@ await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}
 // the whole choreography was intentionally doubled from .55s/.32s to
 // 1.1s/.64s for a calmer feel; the coupling structure and curves are
 // unchanged, only the numbers below were updated to match.
+// Hide opacity back to .32s on 2026-08-22 (docs/TODO.md "Kolaps controlleru"):
+// content is fully invisible before Send starts docking.
 const durations = await p.evaluate(() => {
   const wrapBase = getComputedStyle(document.getElementById('stage-collapse'));
   const innerBase = getComputedStyle(document.querySelector('#stage-collapse > .stage'));
@@ -46,7 +48,7 @@ const hideDurations = await p.evaluate(() => {
   return out;
 });
 P('Box (hide) collapses in 1.1s, no delay — SAME curve as show (symmetric)', hideDurations.wrapDuration === '1.1s' && hideDurations.wrapDelay === '0s', JSON.stringify(hideDurations));
-P('Content (hide) opacity front-loaded 0.64s, transform 1.1s, no delay', hideDurations.innerDuration === '0.64s, 1.1s' && hideDurations.innerDelay === '0s, 0s', JSON.stringify(hideDurations));
+P('Content (hide) opacity front-loaded 0.32s, transform 1.1s, no delay', hideDurations.innerDuration === '0.32s, 1.1s' && hideDurations.innerDelay === '0s, 0s', JSON.stringify(hideDurations));
 
 // The real behavioral guarantee: no BAD squish. "severity" = opacity × how
 // clipped the device is; a flattened-rectangle squish (content fully visible
