@@ -22,13 +22,17 @@ P('crc32Hex standard check value', crc === 'cbf43926', crc);
 
 // Runs one update against a simulated device. opts.dropAckOnce: swallow the
 // first CMD_UC ACK (forces timeout → retransmit → ERR:offset resync);
-// opts.errOn: reply ERR to that command.
+// opts.errOn: reply ERR to that command; opts.neverAckOffset: swallow every
+// CMD_UC ACK at that byte offset (forces retry-exhaustion via repeated
+// timeouts); opts.chunkTimeoutMs: overrides FW_CHUNK_TIMEOUT_MS for the run
+// so timeout-heavy cases don't need to wait out the real 3000 ms default.
 const run = (opts) => p.evaluate(async (MAIN, opts) => {
   skipWelcome(); protocolVersion = 2;
   DEVICE_INFO.firmware = '1.3.0'; DEVICE_INFO.update = { supported:true, slot:'a' };
   FW_MANIFEST = { latest:'1.3.1', notes:'', files:[{ name:'ff_main.py', size:MAIN.length,
     crc: crc32Hex(new TextEncoder().encode(MAIN)) }] };
-  const dev = { cmds:[], file:'', ended:false, dropped:false };
+  FW_CHUNK_TIMEOUT_MS = opts.chunkTimeoutMs || 3000;
+  const dev = { cmds:[], ucOffsets:[], file:'', ended:false, dropped:false };
   class FakePort {
     constructor(){ this._chunks=[]; this._resolvers=[]; }
     push(str){ const v=new TextEncoder().encode(str);
@@ -48,6 +52,8 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
     if (cmd === 'CMD_UB' || cmd === 'CMD_UA') return port.push(`ACK:${rid}\n`);
     if (cmd === 'CMD_UC') {
       const [name, off, b64] = rest;
+      dev.ucOffsets.push(+off);
+      if (opts.neverAckOffset != null && +off === opts.neverAckOffset) return;   // always swallow, never respond
       if (+off !== dev.file.length) return port.push(`ERR:${rid}:offset:${dev.file.length}\n`);
       dev.file += atob(b64);
       if (opts.dropAckOnce && !dev.dropped) { dev.dropped = true; return; }
@@ -59,8 +65,8 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
   _fwUpdateTarget = null;
   const toasts = [];
   const origToast = toast; window.toast = (t, m) => { toasts.push(t + ':' + m); };
-  try { await runFirmwareUpdate(FW_MANIFEST); } finally { window.toast = origToast; }
-  return { cmds: dev.cmds, fileOk: dev.file === MAIN, fileLen: dev.file.length, ended: dev.ended,
+  try { await runFirmwareUpdate(FW_MANIFEST); } finally { FW_CHUNK_TIMEOUT_MS = 3000; window.toast = origToast; }
+  return { cmds: dev.cmds, ucOffsets: dev.ucOffsets, fileOk: dev.file === MAIN, fileLen: dev.file.length, ended: dev.ended,
            target: _fwUpdateTarget, toasts, updating: _fwUpdating };
 }, MAIN, opts);
 
@@ -70,8 +76,20 @@ P('device received byte-identical file', r.fileOk, String(r.fileLen));
 P('outcome pending until reconnect', r.target && r.target.from === '1.3.0' && r.target.to === '1.3.1', JSON.stringify(r.target));
 P('flag cleared after run', r.updating === false);
 
+const offerWhilePending = await p.evaluate(() => {
+  renderFirmwareOffer();
+  return { avail: firmwareUpdateAvailable(), rowHidden: document.getElementById('fw-update-row').hidden };
+});
+P('offer hidden while update outcome is still pending', offerWhilePending.avail === false && offerWhilePending.rowHidden === true, JSON.stringify(offerWhilePending));
+
 r = await run({ dropAckOnce:true });
 P('lost ACK → retransmit → offset resync, no duplicate bytes', r.fileOk && r.ended, `${r.fileLen} ${r.cmds.join(',')}`);
+
+r = await run({ dropAckOnce:true, neverAckOffset:512, chunkTimeoutMs:50 });
+const chunk2Sends = r.ucOffsets.filter(o => o === 512).length;
+P('retries reset after resync: next chunk still gets a full 1+3 retry budget',
+  chunk2Sends === 4 && r.cmds.includes('CMD_UA') && !r.ended, `chunk2Sends=${chunk2Sends} cmds=${r.cmds.join(',')}`);
+P('retry exhaustion after resync → "device is unchanged" toast', r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')), r.toasts.join(' | '));
 
 r = await run({ errOn:'CMD_UC' });
 P('ERR mid-transfer → CMD_UA sent, no UE', r.cmds.includes('CMD_UA') && !r.ended, r.cmds.join(','));
@@ -88,13 +106,17 @@ const outcome = await p.evaluate(() => {
   _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
   DEVICE_INFO.firmware = '1.3.1'; checkFirmwareUpdateOutcome();
   const ok = seen.pop(); const cleared = _fwUpdateTarget === null;
+  renderFirmwareOffer();
+  const availAfter = firmwareUpdateAvailable();
+  const rowHiddenAfter = document.getElementById('fw-update-row').hidden;
   _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
   DEVICE_INFO.firmware = '1.3.0'; checkFirmwareUpdateOutcome();
   const rb = seen.pop();
   window.toast = orig;
-  return { ok, rb, cleared };
+  return { ok, rb, cleared, availAfter, rowHiddenAfter };
 });
 P('reconnect on new version → success toast', outcome.ok?.startsWith('s:') && outcome.ok.includes('1.3.1') && outcome.cleared, outcome.ok);
+P('offer stays hidden after outcome resolves (device already on latest)', outcome.availAfter === false && outcome.rowHiddenAfter === true, JSON.stringify(outcome));
 P('reconnect on old version → rolled back toast', outcome.rb?.startsWith('e:') && outcome.rb.includes('rolled back'), outcome.rb);
 
 const survives = await p.evaluate(async () => {

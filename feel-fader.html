@@ -3895,7 +3895,8 @@ async function fetchFirmwareManifest() {
 }
 function firmwareUpdateAvailable() {
   return !!(FW_MANIFEST && protocolVersion === 2 && DEVICE_INFO.update?.supported === true
-    && DEVICE_INFO.firmware && cmpFwVersion(DEVICE_INFO.firmware, FW_MANIFEST.latest) < 0);
+    && DEVICE_INFO.firmware && cmpFwVersion(DEVICE_INFO.firmware, FW_MANIFEST.latest) < 0
+    && !_fwUpdateTarget);
 }
 function renderFirmwareOffer() {
   const avail = firmwareUpdateAvailable();
@@ -3915,6 +3916,7 @@ function featureFwWarning(feature) {
     + `<a href="#" onclick="openDeviceSettingsAtFirmware();return false">Update firmware</a></div>`;
 }
 const FW_CHUNK = 512;
+let FW_CHUNK_TIMEOUT_MS = 3000;   // probe override for the always-timeout retry-exhaustion case
 let _fwUpdateTarget = null;   // {from,to} po CMD_UE; vyhodnotí se při prvním úspěšném CMD_INFO
 const _FW_CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -3959,12 +3961,12 @@ async function uploadFirmware(m, files, onProgress) {
     while (off < f.size) {
       const chunk = f.bytes.subarray(off, off + FW_CHUNK);
       try {
-        const next = Number(await serialRequest('CMD_UC', `${f.name}:${off}:${bytesToB64(chunk)}`, 3000));
+        const next = Number(await serialRequest('CMD_UC', `${f.name}:${off}:${bytesToB64(chunk)}`, FW_CHUNK_TIMEOUT_MS));
         if (!Number.isInteger(next) || next <= off || next > f.size) throw new Error('ERR:protocol');
         done += next - off; off = next; retries = 0;
       } catch (e) {
         const resync = /^ERR:offset:(\d+)$/.exec(e.message || '');
-        if (resync) { const exp = +resync[1]; done += exp - off; off = exp; continue; }
+        if (resync) { const exp = +resync[1]; done += exp - off; off = exp; retries = 0; continue; }
         if (e.message === 'timeout' && ++retries <= 3) continue;
         throw e;
       }
@@ -3980,7 +3982,7 @@ function setFwProgress(v) {
   if (btn) btn.hidden = v != null;
 }
 function startFirmwareUpdate() {
-  if (!firmwareUpdateAvailable() || _fwUpdating) return;
+  if (!firmwareUpdateAvailable() || _fwUpdating || _fwUpdateTarget) return;
   const m = FW_MANIFEST;
   openConfirm({
     title: `Update firmware to ${m.latest}?`,
