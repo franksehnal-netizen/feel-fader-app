@@ -101,6 +101,7 @@ const PROBES = [
   'render-validate-once-probe.mjs',
   'cc-relative-whitelist-probe.mjs',
   'fader-response-menu-hide-probe.mjs',
+  'fw-update-offer-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

@@ -833,6 +833,8 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 .info-row{display:flex;flex-direction:row;align-items:baseline;gap:8px;}
 .info-row.info-row-action{align-items:center;justify-content:flex-start;}
 .info-row.info-row-action .info-lbl{min-width:100px;}
+.fw-update-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
+.fw-update-dot[hidden],#fw-update-row[hidden]{display:none}
 .response-select{position:relative;min-width:164px;}
 .response-select-trigger{width:100%;min-height:32px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 6px 12px;border-radius:11px;color:var(--t1);font:600 12px 'Mulish',sans-serif;text-align:left;}
 .response-select-trigger svg{width:14px;height:14px;color:var(--t3);transition:transform .18s var(--ease-out);flex:none;}
@@ -2322,6 +2324,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       <div style="display:flex;align-items:center;gap:7px">
         <div class="panel-dot"></div>
         <span class="panel-name" style="margin:0">Device &amp; Settings</span>
+        <span class="fw-update-dot" id="fw-update-dot" hidden title="Firmware update available"></span>
       </div>
       <span id="device-settings-chevron" style="font-size:11px;color:var(--t3)">▼</span>
     </button>
@@ -2333,6 +2336,9 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         <div class="info-row"><span class="info-lbl"><span data-i18n="device.product">Product</span></span><span class="info-val">Feel Fader</span></div>
         <div class="info-row"><span class="info-lbl">Manufacturer</span><span class="info-val">Acoustic Empire</span></div>
         <div class="info-row"><span class="info-lbl">Firmware</span><span class="info-val" id="di-firmware" style="color:var(--t2)">—</span></div>
+        <div class="info-row info-row-action" id="fw-update-row" hidden>
+          <span class="info-lbl" id="fw-update-label">Firmware update available</span>
+        </div>
         <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t2)">—</span></div>
         <div class="info-row info-row-action" data-tip="Enable HID to let the device send keystrokes — required for the Navigation roller mode and the button long-press macro.">
           <span class="info-lbl">Keyboard (HID)</span>
@@ -2859,6 +2865,7 @@ const DEVICE_INFO = {
   schema_version: null,   // z CMD_INFO; < 3 = firmware neumí per-bank makra
   fader_response_presets: false,
   fader_response: null,
+  update: null,           // z CMD_INFO: {supported, slot} — firmware umí in-app update (fw ≥ 1.3.0)
 };
 
 const LS_CFG_KEY        = 'ff-cfg';
@@ -3839,6 +3846,49 @@ function updateDeviceInfo() {
   updateFaderResponseControl();
   updateMacroUI();
   renderMidiDiagnostics();
+}
+// ─── In-app firmware update ─────────────────────────────────────────────────
+// Spec: feel-fader-firmware docs/superpowers/specs/2026-09-24-in-app-firmware-update-design.md
+const FW_MANIFEST_URL = './firmware/manifest.json';
+let FW_MANIFEST = null;     // validovaný manifest | null (offline/404/invalid → žádná nabídka)
+let _fwUpdating = false;
+function cmpFwVersion(a, b) {
+  const pa = String(a || '').split('.').map(n => parseInt(n, 10) || 0);
+  const pb = String(b || '').split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+function isValidFwManifest(m) {
+  return !!m && typeof m.latest === 'string' && /^\d+\.\d+\.\d+$/.test(m.latest)
+    && Array.isArray(m.files) && m.files.length > 0 && m.files.length <= 8
+    && m.files.every(f => f && typeof f.name === 'string' && /^[a-z0-9_]+\.py$/.test(f.name)
+      && Number.isInteger(f.size) && f.size > 0 && typeof f.crc === 'string' && /^[0-9a-f]{8}$/.test(f.crc));
+}
+async function fetchFirmwareManifest() {
+  try {
+    const r = await fetch(FW_MANIFEST_URL, { cache: 'no-cache' });
+    const m = r.ok ? await r.json() : null;
+    FW_MANIFEST = isValidFwManifest(m) ? m : null;
+  } catch (_) {
+    FW_MANIFEST = null;
+  }
+  renderFirmwareOffer();
+}
+function firmwareUpdateAvailable() {
+  return !!(FW_MANIFEST && protocolVersion === 2 && DEVICE_INFO.update?.supported === true
+    && DEVICE_INFO.firmware && cmpFwVersion(DEVICE_INFO.firmware, FW_MANIFEST.latest) < 0);
+}
+function renderFirmwareOffer() {
+  const avail = firmwareUpdateAvailable();
+  const dot = document.getElementById('fw-update-dot');
+  if (dot) dot.hidden = !avail || _fwUpdating;
+  const row = document.getElementById('fw-update-row');
+  if (row) row.hidden = !(avail || _fwUpdating);
+  const lbl = document.getElementById('fw-update-label');
+  if (lbl && FW_MANIFEST) lbl.textContent = `Firmware ${FW_MANIFEST.latest} available`;
 }
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
@@ -4994,6 +5044,7 @@ function connectInputs(){
   } else {
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
     DEVICE_INFO.schema_version = null;   // stale value could drive a false/suppressed firmware-mismatch warning for the next device
+    DEVICE_INFO.update = null; renderFirmwareOffer();
     liveSeen.f1 = false; liveSeen.f2 = false; encLiveVal = null; ksLiveNote = null;
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {
@@ -5362,6 +5413,9 @@ async function serialReadInfo() {
   DEVICE_INFO.fader_response_presets = info.fader_response_presets === true;
   if (typeof info.fader_response === 'string') DEVICE_INFO.fader_response = normalizeFaderResponse(info.fader_response);
   DEVICE_INFO.schema_version = Number(info.schema_version) || null;
+  DEVICE_INFO.update = (info.update && typeof info.update === 'object')
+    ? { supported: info.update.supported === true, slot: String(info.update.slot || '') }
+    : null;
   // Sync live-bank indicator to the device's actual current bank on (re)connect,
   // so it isn't stuck at Bank 1 until the next Program Change (firmware reports
   // its bank_index in CMD_INFO; liveBank sync-on-load 2026-07-29).
@@ -5371,6 +5425,7 @@ async function serialReadInfo() {
   storageSet(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId);
   const _faders = applyInfoFaders(info);   // set liveValues BEFORE render (render recreates value spans)
   updateDeviceInfo(); updateHidToggle();
+  fetchFirmwareManifest();   // best effort, bez await — nabídka se dorenderuje sama
   render();   // re-render roller selector — track_nav gating depends on hid_enabled
   if (_faders) {
     positionThumbs();                       // thumbs live in the (persistent) stage, not rebuilt by render
