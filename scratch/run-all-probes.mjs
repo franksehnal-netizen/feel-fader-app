@@ -102,6 +102,7 @@ const PROBES = [
   'cc-relative-whitelist-probe.mjs',
   'fader-response-menu-hide-probe.mjs',
   'fw-update-offer-probe.mjs',
+  'fw-feature-min-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

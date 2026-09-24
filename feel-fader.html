@@ -676,6 +676,8 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
   height:1px;background:var(--border);margin:5px 6px;
 }
 .uacc-note{font-size:12px;color:var(--t2);margin-top:8px}
+.fw-min-note{font-size:12px;color:var(--t1);background:color-mix(in srgb,var(--amber) 14%,transparent);border-radius:8px;padding:8px 10px;margin:8px 0}
+.fw-min-note a{color:inherit;font-weight:600}
 .hid-inline-notice{display:flex;align-items:center;gap:10px;margin:8px 0;padding:9px 10px;border:1px solid color-mix(in srgb,var(--amber) 34%,var(--border));border-radius:var(--r-sm);background:color-mix(in srgb,var(--amber) 7%,var(--glass-soft));color:var(--t2)}
 .hid-inline-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;font-size:11px;line-height:1.4}
 .hid-inline-copy strong{color:var(--t1);font-size:11px}
@@ -3592,6 +3594,7 @@ function ccRelativeBody(ctrl, bi, errs = validate()) {
   const encErr = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
   return `
   <div class="enc-unified-body">
+    ${featureFwWarning('cc_relative')}
     <div class="uacc-note" style="margin:8px 0">Rotating the roller sends a relative CC (1 = step up, 127 = step down) on this CC/channel. The keyswitch note list lives in the Keyswitch Stepper Max for Live device on the track, not here.</div>
     <div class="section-field-row" style="margin-top:10px">
       ${stepperFieldHtml(`b${bi}-encoder-ch`, 'MIDI CHANNEL', ctrl.channel+1, 1, 16,
@@ -3773,6 +3776,14 @@ function openDeviceSettingsAtHid() {
     toggle?.focus({preventScroll:true});
   });
 }
+function openDeviceSettingsAtFirmware() {
+  const body = document.getElementById('device-settings-body');
+  if (body?.style.display === 'none') toggleDeviceSettings();
+  requestAnimationFrame(() => {
+    const row = document.getElementById('di-firmware')?.closest('.info-row');
+    row?.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  });
+}
 function openHelpAt(anchorId) {
   const body = document.getElementById('help-body');
   if (body?.style.display === 'none') toggleHelp();
@@ -3889,6 +3900,14 @@ function renderFirmwareOffer() {
   if (row) row.hidden = !(avail || _fwUpdating);
   const lbl = document.getElementById('fw-update-label');
   if (lbl && FW_MANIFEST) lbl.textContent = `Firmware ${FW_MANIFEST.latest} available`;
+}
+const FEATURE_MIN_FW = { cc_relative: '1.3.0' };
+function featureFwWarning(feature) {
+  const min = FEATURE_MIN_FW[feature];
+  const fw = DEVICE_INFO.firmware;
+  if (!min || !fw || cmpFwVersion(fw, min) >= 0) return '';
+  return `<div class="fw-min-note" role="note">Requires firmware ${escHtml(min)} — this device runs ${escHtml(fw)}. `
+    + `<a href="#" onclick="openDeviceSettingsAtFirmware();return false">Update firmware</a></div>`;
 }
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
