@@ -103,6 +103,7 @@ const PROBES = [
   'fader-response-menu-hide-probe.mjs',
   'fw-update-offer-probe.mjs',
   'fw-feature-min-probe.mjs',
+  'fw-update-flow-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
