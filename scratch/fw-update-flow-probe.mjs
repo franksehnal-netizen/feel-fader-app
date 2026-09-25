@@ -32,6 +32,7 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
   FW_MANIFEST = { latest:'1.3.1', notes:'', files:[{ name:'ff_main.py', size:MAIN.length,
     crc: crc32Hex(new TextEncoder().encode(MAIN)) }] };
   FW_CHUNK_TIMEOUT_MS = opts.chunkTimeoutMs || 3000;
+  FW_END_TIMEOUT_MS = opts.endTimeoutMs || 10000;
   const dev = { cmds:[], ucOffsets:[], file:'', ended:false, dropped:false };
   class FakePort {
     constructor(){ this._chunks=[]; this._resolvers=[]; }
@@ -59,13 +60,13 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
       if (opts.dropAckOnce && !dev.dropped) { dev.dropped = true; return; }
       return port.push(`ACK:${rid}:${dev.file.length}\n`);
     }
-    if (cmd === 'CMD_UE') { dev.ended = true; return port.push(`ACK:${rid}\n`); }
+    if (cmd === 'CMD_UE') { dev.ended = true; if (opts.swallowUE) return; return port.push(`ACK:${rid}\n`); }
   };
   _serialPort = port;
   _fwUpdateTarget = null;
   const toasts = [];
   const origToast = toast; window.toast = (t, m) => { toasts.push(t + ':' + m); };
-  try { await runFirmwareUpdate(FW_MANIFEST); } finally { FW_CHUNK_TIMEOUT_MS = 3000; window.toast = origToast; }
+  try { await runFirmwareUpdate(FW_MANIFEST); } finally { FW_CHUNK_TIMEOUT_MS = 3000; FW_END_TIMEOUT_MS = 10000; window.toast = origToast; }
   return { cmds: dev.cmds, ucOffsets: dev.ucOffsets, fileOk: dev.file === MAIN, fileLen: dev.file.length, ended: dev.ended,
            target: _fwUpdateTarget, toasts, updating: _fwUpdating };
 }, MAIN, opts);
@@ -95,6 +96,17 @@ r = await run({ errOn:'CMD_UC' });
 P('ERR mid-transfer → CMD_UA sent, no UE', r.cmds.includes('CMD_UA') && !r.ended, r.cmds.join(','));
 P('ERR mid-transfer → "device is unchanged" toast, no pending outcome', r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')) && r.target === null, r.toasts.join(' | '));
 
+r = await run({ swallowUE:true, endTimeoutMs:50 });
+P('CMD_UE ack lost (timeout, non-ERR) → no CMD_UA, outcome left pending for reconnect to resolve',
+  !r.cmds.includes('CMD_UA') && r.target && r.target.from === '1.3.0' && r.target.to === '1.3.1',
+  JSON.stringify({ cmds: r.cmds, target: r.target }));
+P('CMD_UE ack lost → "restarting — checking the result" info toast', r.toasts.some(t => t.startsWith('i:') && t.includes('restarting')), r.toasts.join(' | '));
+
+r = await run({ errOn:'CMD_UE' });
+P('CMD_UE ERR response keeps today\'s behavior: CMD_UA sent, "unchanged" toast, no pending outcome',
+  r.cmds.includes('CMD_UA') && r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')) && r.target === null,
+  JSON.stringify({ cmds: r.cmds, toasts: r.toasts, target: r.target }));
+
 fileBody = MAIN.slice(0, -1) + 'y';   // same size, wrong CRC
 r = await run({});
 P('bad download → nothing sent to device', r.cmds.length === 0, r.cmds.join(','));
@@ -119,6 +131,37 @@ P('reconnect on new version → success toast', outcome.ok?.startsWith('s:') && 
 P('offer stays hidden after outcome resolves (device already on latest)', outcome.availAfter === false && outcome.rowHiddenAfter === true, JSON.stringify(outcome));
 P('reconnect on old version → rolled back toast', outcome.rb?.startsWith('e:') && outcome.rb.includes('rolled back'), outcome.rb);
 
+const rollbackAction = await p.evaluate(() => {
+  let openedUrl = null; const origOpen = window.open; window.open = (u) => { openedUrl = u; };
+  _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
+  DEVICE_INFO.firmware = '1.3.0';
+  checkFirmwareUpdateOutcome();
+  const btn = [...document.querySelectorAll('.toast.e .toast-action')].pop();
+  const label = btn ? btn.textContent : null;
+  btn?.click();
+  window.open = origOpen;
+  return { label, openedUrl };
+});
+P('rollback toast offers a Contact support action that opens mailto',
+  rollbackAction.label === 'Contact support' && rollbackAction.openedUrl === 'mailto:support@acoustic-empire.cz',
+  JSON.stringify(rollbackAction));
+
+const reconnectFail = await p.evaluate(async () => {
+  navigator.serial.getPorts = async () => [{}];   // granted=true path in onDeviceConnected
+  _fwUpdateTarget = { from: '1.3.0', to: '1.3.1' };
+  dirty = false;
+  // CMD_INFO write rejects immediately (fast, no need to wait out a real timeout) —
+  // simulates the reconnect sync failing while an update outcome is still pending.
+  _serialPort = { readable: {}, writable: { getWriter(){ return { write(){ return Promise.reject(new Error('write failed')); }, releaseLock(){} }; } } };
+  const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  await onDeviceConnected();
+  window.toast = orig;
+  return { toasts: seen, target: _fwUpdateTarget };
+});
+P('reconnect sync failure with pending fw update → specific recovery toast, target kept',
+  reconnectFail.toasts.some(t => t.startsWith('e:') && t.includes("didn't respond after the update")) && reconnectFail.target !== null,
+  JSON.stringify(reconnectFail));
+
 const survives = await p.evaluate(async () => {
   _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
   _serialPort = { readable:{ getReader(){ return { read(){ return new Promise(()=>{}); }, releaseLock(){}, cancel(){} }; } },
@@ -133,10 +176,10 @@ const blocked = await p.evaluate(async () => {
   const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);
   _fwUpdating = true;
   const writes = []; _serialPort = { readable:null, writable:{ getWriter(){ return { write(c){ writes.push(c); return Promise.resolve(); }, releaseLock(){} }; } } };
-  await doSend(); await sendHidRequest(true);
+  await doSend(); await sendHidRequest(true); await syncLoadFromDevice();
   _fwUpdating = false; window.toast = orig;
   return { writes: writes.length, msgs: seen.filter(m => m.includes('Firmware update in progress')).length };
 });
-P('Send and HID toggle blocked during update', blocked.writes === 0 && blocked.msgs === 2, JSON.stringify(blocked));
+P('Send, HID toggle, and syncLoadFromDevice blocked during update', blocked.writes === 0 && blocked.msgs === 3, JSON.stringify(blocked));
 P('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();

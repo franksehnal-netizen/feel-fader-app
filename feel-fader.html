@@ -676,7 +676,7 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
   height:1px;background:var(--border);margin:5px 6px;
 }
 .uacc-note{font-size:12px;color:var(--t2);margin-top:8px}
-.fw-min-note{font-size:12px;color:var(--t1);background:color-mix(in srgb,var(--amber) 14%,transparent);border-radius:8px;padding:8px 10px;margin:8px 0}
+.fw-min-note{font-size:12px;color:var(--t1);background:color-mix(in srgb,var(--amber) 14%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:8px 0}
 .fw-min-note a{color:inherit;font-weight:600}
 .hid-inline-notice{display:flex;align-items:center;gap:10px;margin:8px 0;padding:9px 10px;border:1px solid color-mix(in srgb,var(--amber) 34%,var(--border));border-radius:var(--r-sm);background:color-mix(in srgb,var(--amber) 7%,var(--glass-soft));color:var(--t2)}
 .hid-inline-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;font-size:11px;line-height:1.4}
@@ -3879,9 +3879,11 @@ function cmpFwVersion(a, b) {
 }
 function isValidFwManifest(m) {
   return !!m && typeof m.latest === 'string' && /^\d+\.\d+\.\d+$/.test(m.latest)
+    && (m.notes === undefined || typeof m.notes === 'string')
     && Array.isArray(m.files) && m.files.length > 0 && m.files.length <= 8
-    && m.files.every(f => f && typeof f.name === 'string' && /^[a-z0-9_]+\.py$/.test(f.name)
-      && Number.isInteger(f.size) && f.size > 0 && typeof f.crc === 'string' && /^[0-9a-f]{8}$/.test(f.crc));
+    && m.files.every(f => f && typeof f.name === 'string' && /^[a-z0-9_]+\.py$/.test(f.name) && f.name.length <= 32
+      && Number.isInteger(f.size) && f.size > 0 && f.size <= 200000 && typeof f.crc === 'string' && /^[0-9a-f]{8}$/.test(f.crc))
+    && new Set(m.files.map(f => f.name)).size === m.files.length;
 }
 async function fetchFirmwareManifest() {
   try {
@@ -3912,11 +3914,14 @@ function featureFwWarning(feature) {
   const min = FEATURE_MIN_FW[feature];
   const fw = DEVICE_INFO.firmware;
   if (!min || !fw || cmpFwVersion(fw, min) >= 0) return '';
-  return `<div class="fw-min-note" role="note">Requires firmware ${escHtml(min)} — this device runs ${escHtml(fw)}. `
+  const text = `Requires firmware ${escHtml(min)} — this device runs ${escHtml(fw)}.`;
+  if (!firmwareUpdateAvailable()) return `<div class="fw-min-note" role="note">${text}</div>`;
+  return `<div class="fw-min-note" role="note">${text} `
     + `<a href="#" onclick="openDeviceSettingsAtFirmware();return false">Update firmware</a></div>`;
 }
 const FW_CHUNK = 512;
 let FW_CHUNK_TIMEOUT_MS = 3000;   // probe override for the always-timeout retry-exhaustion case
+let FW_END_TIMEOUT_MS = 10000;    // probe override for the CMD_UE ack timeout
 let _fwUpdateTarget = null;   // {from,to} po CMD_UE; vyhodnotí se při prvním úspěšném CMD_INFO
 const _FW_CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -3973,7 +3978,13 @@ async function uploadFirmware(m, files, onProgress) {
       onProgress(done / total);
     }
   }
-  await serialRequest('CMD_UE', null, 10000);
+  try {
+    await serialRequest('CMD_UE', null, FW_END_TIMEOUT_MS);
+  } catch (e) {
+    const err = new Error(e.message);
+    err.atCmdUE = true;
+    throw err;
+  }
 }
 function setFwProgress(v) {
   const el = document.getElementById('fw-update-progress');
@@ -4004,6 +4015,13 @@ async function runFirmwareUpdate(m) {
   } catch (e) {
     if (e.message === 'download') {
       toast('e', 'Could not download the firmware. Check your connection and try again.');
+    } else if (e.atCmdUE && !/^ERR:/.test(e.message || '')) {
+      // Non-ERR failure on the CMD_UE ack (timeout / port closed) — the device
+      // may have already committed and be mid-reset. Don't send CMD_UA (it
+      // would race the reset, or hit ERR:state if the reset already landed);
+      // let the reconnect's CMD_INFO settle it via checkFirmwareUpdateOutcome().
+      _fwUpdateTarget = { from, to: m.latest };
+      toast('i', 'Device is restarting — checking the result…');
     } else {
       try { await serialRequest('CMD_UA', null, 2000); } catch (_) {}
       toast('e', 'Update failed — the device is unchanged.');
@@ -4017,7 +4035,8 @@ function checkFirmwareUpdateOutcome() {
   const { from, to } = _fwUpdateTarget;
   _fwUpdateTarget = null;
   if (DEVICE_INFO.firmware === to) toast('s', `Firmware updated to ${to}`);
-  else toast('e', `Update was rolled back — device runs ${DEVICE_INFO.firmware || from}. Contact support@acoustic-empire.cz.`);
+  else toast('e', `Update was rolled back — device runs ${DEVICE_INFO.firmware || from}.`,
+    { label: 'Contact support', onClick: () => window.open('mailto:support@acoustic-empire.cz') });
 }
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
@@ -5267,6 +5286,7 @@ function showDeviceLoadedFeedback() {
   showSendInlineFeedback('✓ Device loaded');
 }
 async function syncLoadFromDevice() {
+  if (_fwUpdating) { toast('i', 'Firmware update in progress — wait until the device restarts.'); return; }
   hideSyncBanner();
   try { await loadConfigFromDevice(); renderConnState(); showDeviceLoadedFeedback(); }
   catch(e) { toast('e', "Couldn't sync with device — showing local config"); }
@@ -5676,7 +5696,13 @@ async function onDeviceConnected() {
         renderConnState();
       }
     } catch(e) {
-      if (!dirty) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
+      if (_fwUpdateTarget) {
+        // Reconnect after CMD_UE failed to sync — the update may still have
+        // committed and the device may need more than one replug to come
+        // back on the new firmware's USB identity. Keep _fwUpdateTarget set
+        // so the next successful CMD_INFO still runs checkFirmwareUpdateOutcome().
+        toast('e', "Device didn't respond after the update — unplug and reconnect it (twice if needed) to restore the previous firmware.");
+      } else if (!dirty) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
         toast('e', "Couldn't sync with device — showing local config");
       }
       renderConnState();

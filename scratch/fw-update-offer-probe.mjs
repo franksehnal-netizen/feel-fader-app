@@ -58,6 +58,9 @@ for (const bad of [
   { ...manifest, files:[{ name:'../code.py', size:5, crc:'3610a686' }] },
   { ...manifest, files:[] },
   { latest:'1.3.1' },
+  { ...manifest, files:[{ name:'a'.repeat(30)+'.py', size:5, crc:'3610a686' }] },   // name length 33 > 32
+  { ...manifest, files:[{ name:'ff_main.py', size:5, crc:'3610a686' }, { name:'ff_main.py', size:6, crc:'3610a686' }] },   // duplicate names
+  { ...manifest, files:[{ name:'ff_main.py', size:200001, crc:'3610a686' }] },   // size > 200000
 ]) {
   manifest = bad; await setup('1.3.0', true); s = await state();
   P('invalid manifest rejected: ' + JSON.stringify(bad).slice(0, 50), !s.dot && !s.row, JSON.stringify(s));
