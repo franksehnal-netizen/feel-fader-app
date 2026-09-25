@@ -12,6 +12,27 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-09-25 – UX audit očima skladatele, sprint 2 (workflow, logická část)
+
+Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):
+
+- **C-1 jména keyswitchů:** `ks_names` (MIDI nota → jméno, max 24 znaků) jen
+  v appce – z `CMD_W` se odfiltrují (`deviceConfigJson`, sériový rámec firmwaru
+  má 8 KB). Chip i Live HUD vedou jménem, nota je vedlejší. Pojmenování
+  dvojklikem nebo F2 na chipu (Enter uloží, Esc zruší, prázdné = jméno noty).
+  Při načtení ze zařízení se jména převezmou jen při shodné sekvenci not,
+  aplikace knihovny je nahradí. LUX presety jména mají, SSO ne (nemáme je).
+- **C-3 jedna cesta k artikulacím:** knihovny v dropdownu šablon otevřou stejný
+  preview jako library picker, „Clear all“ se ptá, toast šablony nese její jméno.
+- **C-4 bank dostane jméno knihovny:** jen když se jmenuje `Bank N`; vestavěné
+  presety mají krátké `bank_name` (BBCSO, SSO Celli, LUX Violins 1…), vlastní
+  setup dá své jméno (24 znaků = firmware META_NAME_MAX). Preview to ohlásí.
+- **C-7 Relative CC:** hlavní text je DAW-neutrální, Keyswitch Stepper (M4L)
+  je jen označená poznámka pro Ableton Live.
+
+Nové probes: `library-names-bank`, `keyswitch-names`, `articulation-templates-unified`;
+`cc-relative-panel-content` rozšířen o C-7.
+
 ### 2026-09-25 – UX audit očima skladatele, sprint 1 (důvěra)
 
 Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):

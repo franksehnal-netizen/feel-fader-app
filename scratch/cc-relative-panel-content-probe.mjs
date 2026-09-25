@@ -22,6 +22,9 @@ const r = await p.evaluate(() => {
     chValue: document.getElementById('b0-encoder-ch')?.value,
     ccValue: document.getElementById('b0-encoder-cc')?.value,
     mentionsStepper: /Keyswitch Stepper/.test(content.textContent),
+    // UX audit 2026-09-25 C-7: lead text must not assume Ableton.
+    lead: content.querySelector('.uacc-note')?.textContent || '',
+    stepperNote: [...content.querySelectorAll('.uacc-note')].map(el => el.textContent).find(t => /Keyswitch Stepper/.test(t)) || '',
   };
 });
 P('cc_relative panel has no articulation list', r.hasUaccGrid === false, JSON.stringify(r));
@@ -29,5 +32,7 @@ P('cc_relative panel has no keyswitch note input', r.hasKsInput === false, JSON.
 P('cc_relative panel shows the configured channel (2 -> displayed 3)', r.chValue === '3', JSON.stringify(r));
 P('cc_relative panel shows the configured CC (40)', r.ccValue === '40', JSON.stringify(r));
 P('cc_relative panel explains where the note list lives', r.mentionsStepper === true, JSON.stringify(r));
+P('cc_relative lead text is DAW-neutral', /your DAW or plugin/i.test(r.lead) && !/Ableton|Max for Live/.test(r.lead), r.lead);
+P('Keyswitch Stepper is presented as an Ableton-only extra', /^In Ableton Live/.test(r.stepperNote.trim()), r.stepperNote);
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

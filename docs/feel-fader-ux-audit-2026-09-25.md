@@ -8,7 +8,7 @@
 >
 > **Přiznaná omezení:** appka běžela z `file://`, proto header ukazuje „MIDI blocked" (artefakt, ne nález). Full‑page screenshoty mají artefakty sticky headeru a švu pozadí (není nález). Stav s reálným HW (živé hodnoty, Send přes serial) hodnocen z kódu.
 
-> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Sprint 1b hotový – presety ověřeny a opraveny (F‑2) a opraven nově nalezený **F‑4: chybná UACC tabulka**. Detail v `docs/TODO.md`.
+> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Sprint 1b hotový – presety ověřeny a opraveny (F‑2) a opraven nově nalezený **F‑4: chybná UACC tabulka**. Sprint 2 (logika) hotový – C‑1, C‑3, C‑4, C‑7; C‑2 a C‑5 (vizuální) čekají na Frankovo oko. Detail v `docs/TODO.md`.
 
 ---
 
