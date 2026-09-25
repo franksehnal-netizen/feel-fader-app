@@ -780,7 +780,7 @@ async function runProfile(browser, url, profile) {
     _ffConnected = true;
     liveValues = { f1: 23, f2: 108 };
     liveSeen = { f1: true, f2: true };
-    encLiveVal = 44;
+    encLiveVal = 48;
     dirty = false;
     renderConnState();
     // Task A: sections start closed, so the page is shorter than before by
@@ -833,7 +833,7 @@ async function runProfile(browser, url, profile) {
     mobileStrip.square && Math.abs(mobileStrip.width - 96) <= 1 && Math.abs(mobileStrip.height - 96) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
       && mobileStrip.washHeights.every(h => h > 0)
-      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Snap Pizzicato'
+      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Soft (Brushed)'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
   addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',

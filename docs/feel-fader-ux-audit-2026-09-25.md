@@ -8,7 +8,7 @@
 >
 > **Přiznaná omezení:** appka běžela z `file://`, proto header ukazuje „MIDI blocked" (artefakt, ne nález). Full‑page screenshoty mají artefakty sticky headeru a švu pozadí (není nález). Stav s reálným HW (živé hodnoty, Send přes serial) hodnocen z kódu.
 
-> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Otevřené z F‑2: revize presetů EW/OT/Kontakt Factory. Detail v `docs/TODO.md`.
+> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Sprint 1b hotový – presety ověřeny a opraveny (F‑2) a opraven nově nalezený **F‑4: chybná UACC tabulka**. Detail v `docs/TODO.md`.
 
 ---
 
@@ -65,6 +65,35 @@ Konzistence: typová škála se znovu rozjela (14 velikostí proti 7 v kontraktu
 `Kontakt Factory`, `EW Hollywood Strings/Brass`, `OT Berlin Strings/Brass` jsou čisté `uacc_values` na CC32. UACC nativně podporuje Spitfire. Kontakt factory instrumenty UACC nemají. EW (Play/Opus) a OT (SINE) přepínají artikulace keyswitchem nebo vlastním, uživatelsky mapovaným CC. **Ověřit proti aktuálním verzím knihoven**, ale riziko je vysoké.
 Badge „Starting point" a upozornění v preview („confirm CC and articulation support…") odpovědnost přesouvá na uživatele, problém ale neřeší. Skladatel nemá jak poznat, že preset *principiálně* nebude fungovat.
 **Doporučení:** (a) presety bez ověřené UACC podpory buď přepsat na keyswitch sekvence (jako LUX/SSO), nebo odstranit; (b) místo „Starting point" zobrazit u každé položky **mechanismus** („UACC · CC32" / „Keyswitch C0–G0"); (c) Kontakt Factory odstranit.
+
+**Ověření (2026-09-25, web + manuály):**
+
+| Preset | Výsledek | Zdroj |
+|---|---|---|
+| Spitfire (BBCSO, Chamber Strings, Brass, Woodwinds) | UACC podporují, ale **jen po přepnutí articulation locku v pluginu na „Locked to UACC"** – ve výchozím stavu CC32 nereaguje | SCS manuál App. E; Spitfire Help „Switching Articulations" |
+| EW Hollywood Strings / Brass (Opus) | **UACC ne.** Výchozí je keyswitch, trigger lze per artikulace přemapovat v Opus palette, ale bez UACC tabulky | soundsonline, Opus review, Cakewalk forum |
+| OT Berlin Strings / Brass (SINE) | **UACC ne.** SINE přiřazuje artikulacím rovnoměrně rozložené CC hodnoty; na UACC je nutné je ručně přemapovat | Babylonwaves Art Conductor (SINE), VI-Control |
+| Kontakt Factory | **Nemá žádný artikulační standard** (úvaha, ne ověřeno zdrojem) | – |
+
+**Opraveno (2026-09-25):** presety EW/OT/Kontakt Factory odstraněny (z library pickeru i z dropdownu šablon). Spitfire presety postavené znovu na hodnotách UACC v2 a jejich preview říká „set the articulation lock to Locked to UACC“.
+
+#### F‑4 (P1, nový) – Tabulka `UACC_NAMES` neodpovídá UACC v2 specifikaci
+Porovnání se spec (SCS manuál Appendix E + tabulka na syntheticorchestra.com, oba shodné) ukazuje, že `UACC_NAMES` (~2620) sedí jen u 70–73 (trilly) a 90/91 (FX). Zbytek je posunutý nebo vymyšlený:
+
+| Hodnota | Appka | UACC v2 spec |
+|---|---|---|
+| 1 | Legato | Long – Generic |
+| 20 | Long – Sustain | Legato – Generic |
+| 26 | Long – Sul Ponticello | Legato – Muted |
+| 40 | Short – Détaché | Short – Generic |
+| 43 | Short – Pizzicato | Short – Very short soft |
+| 52 | Short – Harmonics | Short – Marcato |
+| 56 | – | Short – Plucked (pizzicato) |
+| 100 / 101 | Crescendo / Diminuendo | Up (rips & runs) / Down (falls & runs) |
+
+Dopad: štítky chipů, Live HUD i výběr hodnot v presetech a šablonách (`legato: [1..5]` jsou ve spec Long varianty) jsou pro Spitfire knihovny zavádějící. Skladatel vidí „Pizzicato", knihovna hraje něco jiného. Uložené hodnoty v configu jsou čísla, takže oprava tabulky nevyžaduje migraci. Změní se jen popisky, které pak odpovídají skutečnosti. Komentář „compatible with East West, Orchestral Tools, Cinesamples" je nepravdivý.
+
+**Opraveno (2026-09-25):** `UACC_NAMES` přepsána podle v2 spec (1–19, 20–36, 40–61, 70–82, 90–105, 110–112). Šablony: „UACC common techniques“ (nahrazuje „Spitfire UACC (full)“), Legato 20–33, Shorts 40–61. Hlídá `uacc-v2-spec-probe`.
 
 #### F‑3 – „CC 0–127" u artikulací je věcně špatně
 Pole pro přidání artikulace: placeholder `CC 0–127`, `aria-label="Articulation MIDI CC"`, toast `uacc_range`, a `uaccName()` vrací pro neznámou hodnotu `CC ${v}`. Hned nad tím je pole **MIDI CC = 32**. Skladatel čte: „artikulace je CC", ale ve skutečnosti je to **hodnota 0–127 posílaná na CC32**.

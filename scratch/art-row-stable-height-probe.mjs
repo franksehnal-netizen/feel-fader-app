@@ -19,9 +19,9 @@ const r = await p.evaluate(async () => {
   // Drive both states through the real renderLiveStrip() code path (not by
   // hand-writing textContent/classList afterward — that bypasses the actual
   // is-long/is-very-long computation and can mask or fake the bug). Use real
-  // UACC_NAMES entries: value 1 = 'Legato' (6 chars, plain), value 26 =
-  // 'Long — Sul Ponticello' (22 chars, triggers is-very-long) — the exact
-  // pairing TODO #2 itself names ("Short — D…" ↔ "Long — Sul...").
+  // UACC_NAMES entries: value 1 = 'Long' (4 chars, plain), value 17 =
+  // 'Long — Higher (Sul Tasto)' (25 chars, triggers is-very-long) — the same
+  // short ↔ very-long pairing TODO #2 itself names ("Short — D…" ↔ "Long — Sul...").
   // .live-hud has CSS transitions up to .38s (width/height/padding/border-radius)
   // and .36s (transform/top/left) — wait 600ms after each render, comfortably
   // past all of them, or the measurement catches the HUD's own reveal/reposition
@@ -31,7 +31,7 @@ const r = await p.evaluate(async () => {
   await new Promise(res => setTimeout(res, 600));
   const techShort = document.getElementById('live-roller-tech').getBoundingClientRect().top;
 
-  encLiveVal = 26;
+  encLiveVal = 17;
   renderLiveStrip();
   await new Promise(res => setTimeout(res, 600));
   const techLong = document.getElementById('live-roller-tech').getBoundingClientRect().top;

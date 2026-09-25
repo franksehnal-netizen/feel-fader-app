@@ -26,14 +26,19 @@ Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):
   se jmenuje `Value N` místo `CC N`.
 - **F-2 (část) mechanismus v library pickeru:** místo všude stejného
   „Starting point" ukazuje každá vestavěná knihovna `UACC · CC32` nebo
-  `Keyswitch C0–G0`. Revize presetů EW/OT/Kontakt Factory čeká na rozhodnutí.
+  `Keyswitch C0–G0`.
+- **F-2 + F-4 UACC:** `UACC_NAMES` odpovídá UACC v2 spec (dřív posunutá: 1 bylo
+  „Legato“, pizzicato na 43 místo 56). Presety EW Hollywood, OT Berlin a Kontakt
+  Factory odstraněny – tyto knihovny UACC nemají. Spitfire presety a šablony
+  postavené znovu na spec hodnotách, preview UACC presetu připomene
+  „Locked to UACC“ v pluginu. Configy ukládají čísla, migrace není potřeba.
 - **C-6 zkratky:** Ctrl/⌘+S spustí Send (jen s neuloženými změnami, mimo
   welcome, nikdy browserové „Uložit stránku"), Ctrl/⌘+Z mimo textová pole
   vrátí poslední změnu. Aktivní key capture má přednost, takže Ctrl+S jde
   dál nahrát jako makro. Uvedeno v Help & Guide.
 
 Nové probes: `roller-mode-browse-no-dirty`, `articulation-value-wording`,
-`send-undo-shortcuts`, `library-mechanism-label`. `fw-update-flow-probe`
+`send-undo-shortcuts`, `library-mechanism-label`, `uacc-v2-spec`. `fw-update-flow-probe`
 simuluje neuložené úpravy skutečnou změnou jména banku (holý `dirty = true`
 bez změny configu už `reflectDirty()` oprávněně shodí).
 
