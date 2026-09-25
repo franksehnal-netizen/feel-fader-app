@@ -4015,7 +4015,7 @@ async function runFirmwareUpdate(m) {
     toast('i', 'Device is restarting with the new firmware…');
   } catch (e) {
     if (e.message === 'download') {
-      toast('e', 'Could not download the firmware. Check your connection and try again.');
+      toast('e', 'Could not download the firmware. Check your connection and try again.', null, { sticky: true });
     } else if (e.atCmdUE && !/^ERR:/.test(e.message || '')) {
       // Non-ERR failure on the CMD_UE ack (timeout / port closed) — the device
       // may have already committed and be mid-reset. Don't send CMD_UA (it
@@ -4031,7 +4031,7 @@ async function runFirmwareUpdate(m) {
       if (_serialPort && _serialPort.readable) {
         try { await serialRequest('CMD_UA', null, 2000); } catch (_) {}
       }
-      toast('e', 'Update failed — the device is unchanged.');
+      toast('e', 'Update failed — the device is unchanged.', null, { sticky: true });
     }
   } finally {
     _fwUpdating = false; setFwProgress(null); renderFirmwareOffer();
@@ -4043,7 +4043,7 @@ function checkFirmwareUpdateOutcome() {
   _fwUpdateTarget = null;
   if (DEVICE_INFO.firmware === to) toast('s', `Firmware updated to ${to}`);
   else toast('e', `Update was rolled back — device runs ${DEVICE_INFO.firmware || from}.`,
-    { label: 'Contact support', onClick: () => window.open('mailto:support@acoustic-empire.cz') });
+    { label: 'Contact support', onClick: () => window.open('mailto:support@acoustic-empire.cz') }, { sticky: true });
 }
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
@@ -5721,7 +5721,7 @@ async function _onDeviceConnected() {
         // committed and the device may need more than one replug to come
         // back on the new firmware's USB identity. Keep _fwUpdateTarget set
         // so the next successful CMD_INFO still runs checkFirmwareUpdateOutcome().
-        toast('e', "Device didn't respond after the update — unplug and reconnect it (twice if needed) to restore the previous firmware.");
+        toast('e', "Device didn't respond after the update — unplug and reconnect it (twice if needed) to restore the previous firmware.", null, { sticky: true });
       } else if (!dirty) {   // audit C4 — desync musí být vidět; header zůstává v „searching"
         toast('e', "Couldn't sync with device — showing local config");
       }
@@ -6309,7 +6309,7 @@ function toggleStatusReveal(event) {
   status.setAttribute('aria-expanded', revealed ? 'true' : 'false');
 }
 function setTxt(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function toast(t,m,action=null){
+function toast(t,m,action=null,{sticky=false}={}){
   const icons={s:'✓',e:'✕',i:'i',sent:'✓'},c=document.getElementById('toasts'),el=document.createElement('div');
   el.className='toast '+t;
   el.setAttribute('role', t === 'e' ? 'alert' : 'status');
@@ -6334,7 +6334,7 @@ function toast(t,m,action=null){
   c.appendChild(el);
   [...c.children].filter(item=>!item.classList.contains('is-leaving')).slice(0,-3)
     .forEach(oldToast=>oldToast.querySelector('.tx')?.click());
-  timer=setTimeout(dismiss,action?6500:(t==='e'?5200:3400));
+  if(!sticky) timer=setTimeout(dismiss,action?6500:(t==='e'?5200:3400));
 }
 
 // ════════════════════════════════════════════════════════════════

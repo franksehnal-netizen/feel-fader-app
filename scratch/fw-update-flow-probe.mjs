@@ -71,7 +71,7 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
   _serialPort = port;
   _fwUpdateTarget = null;
   const toasts = [];
-  const origToast = toast; window.toast = (t, m) => { toasts.push(t + ':' + m); };
+  const origToast = toast; window.toast = (t, m, a, o) => { toasts.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : '')); };
   // Unplugged device: nothing re-openable, and requestPort() inside Chrome's 5 s
   // user-activation window opens a chooser whose promise never settles.
   const origGetPorts = navigator.serial.getPorts, origRequestPort = navigator.serial.requestPort;
@@ -123,6 +123,7 @@ r = await run({ unplugAtOffset:512, hangGuardMs:3000 });
 P('unplug mid-transfer → run finishes (no hang on a re-open chooser)', !r.hung && r.updating === false, JSON.stringify({ hung: r.hung, updating: r.updating }));
 P('unplug mid-transfer → never opens the serial chooser', r.requestPortCalls === 0, `requestPortCalls=${r.requestPortCalls}`);
 P('unplug mid-transfer → "device is unchanged" toast, no pending outcome', r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')) && r.target === null, r.toasts.join(' | '));
+P('"device is unchanged" toast is sticky (user is handling the cable, not watching)', r.toasts.some(t => t.includes('unchanged') && t.endsWith('[sticky]')), r.toasts.join(' | '));
 
 r = await run({ swallowUE:true, endTimeoutMs:50 });
 P('CMD_UE ack lost (timeout, non-ERR) → no CMD_UA, outcome left pending for reconnect to resolve',
@@ -139,10 +140,11 @@ fileBody = MAIN.slice(0, -1) + 'y';   // same size, wrong CRC
 r = await run({});
 P('bad download → nothing sent to device', r.cmds.length === 0, r.cmds.join(','));
 P('bad download → download error toast', r.toasts.some(t => t.includes('Could not download')), r.toasts.join(' | '));
+P('download error toast is sticky', r.toasts.some(t => t.includes('Could not download') && t.endsWith('[sticky]')), r.toasts.join(' | '));
 fileBody = MAIN;
 
 const outcome = await p.evaluate(() => {
-  const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  const seen = []; const orig = toast; window.toast = (t, m, a, o) => seen.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : ''));
   _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
   DEVICE_INFO.firmware = '1.3.1'; checkFirmwareUpdateOutcome();
   const ok = seen.pop(); const cleared = _fwUpdateTarget === null;
@@ -158,6 +160,7 @@ const outcome = await p.evaluate(() => {
 P('reconnect on new version → success toast', outcome.ok?.startsWith('s:') && outcome.ok.includes('1.3.1') && outcome.cleared, outcome.ok);
 P('offer stays hidden after outcome resolves (device already on latest)', outcome.availAfter === false && outcome.rowHiddenAfter === true, JSON.stringify(outcome));
 P('reconnect on old version → rolled back toast', outcome.rb?.startsWith('e:') && outcome.rb.includes('rolled back'), outcome.rb);
+P('rolled back toast is sticky, success toast is not', outcome.rb?.endsWith('[sticky]') && !outcome.ok?.endsWith('[sticky]'), JSON.stringify({ ok: outcome.ok, rb: outcome.rb }));
 
 const rollbackAction = await p.evaluate(() => {
   let openedUrl = null; const origOpen = window.open; window.open = (u) => { openedUrl = u; };
@@ -181,7 +184,7 @@ const reconnectFail = await p.evaluate(async () => {
   // CMD_INFO write rejects immediately (fast, no need to wait out a real timeout) —
   // simulates the reconnect sync failing while an update outcome is still pending.
   _serialPort = { readable: {}, writable: { getWriter(){ return { write(){ return Promise.reject(new Error('write failed')); }, releaseLock(){} }; } } };
-  const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  const seen = []; const orig = toast; window.toast = (t, m, a, o) => seen.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : ''));
   await onDeviceConnected();
   window.toast = orig;
   return { toasts: seen, target: _fwUpdateTarget };
@@ -189,6 +192,23 @@ const reconnectFail = await p.evaluate(async () => {
 P('reconnect sync failure with pending fw update → specific recovery toast, target kept',
   reconnectFail.toasts.some(t => t.startsWith('e:') && t.includes("didn't respond after the update")) && reconnectFail.target !== null,
   JSON.stringify(reconnectFail));
+P('"didn\'t respond after the update" toast is sticky', reconnectFail.toasts.some(t => t.includes("didn't respond") && t.endsWith('[sticky]')), JSON.stringify(reconnectFail.toasts));
+
+// Real toast(): sticky has no auto-dismiss timer, only the ✕ closes it.
+const sticky = await p.evaluate(async () => {
+  toast('e', 'probe sticky', null, { sticky: true });
+  toast('e', 'probe normal');
+  const find = (m) => [...document.querySelectorAll('#toasts .toast')].find(el => el.textContent.includes(m));
+  await new Promise(r => setTimeout(r, 5800));
+  const s = find('probe sticky'), n = find('probe normal');
+  const stickyAlive = !!s && !s.classList.contains('is-leaving');
+  const normalGone = !n || n.classList.contains('is-leaving');
+  s?.querySelector('.tx')?.click();
+  const closable = !s || s.classList.contains('is-leaving') || !s.isConnected;
+  return { stickyAlive, normalGone, closable };
+});
+P('sticky toast survives past the error timeout, normal one auto-dismisses, ✕ closes sticky',
+  sticky.stickyAlive && sticky.normalGone && sticky.closable, JSON.stringify(sticky));
 
 const survives = await p.evaluate(async () => {
   _fwUpdateTarget = { from:'1.3.0', to:'1.3.1' };
@@ -220,7 +240,7 @@ const serialReconnect = (o) => p.evaluate(async (o) => {
   };
   const dev = mkPort();
   const origGetPorts = navigator.serial.getPorts; navigator.serial.getPorts = async () => [dev];
-  const origToast = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  const origToast = toast; window.toast = (t, m, a, o) => seen.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : ''));
   _serialPort = null; _ffConnected = false; dirty = true;
   _fwUpdateTarget = o.pending ? { from:'1.3.0', to:'1.3.1' } : null;
   FW_SERIAL_RECONNECT_GRACE_MS = 50;
@@ -243,7 +263,7 @@ P('serial connect while MIDI reconnect is already resolving → one CMD_INFO, on
   sr.infoWrites === 1 && sr.toasts.filter(t => t.startsWith('s:')).length === 1, JSON.stringify(sr));
 
 const blocked = await p.evaluate(async () => {
-  const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  const seen = []; const orig = toast; window.toast = (t, m, a, o) => seen.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : ''));
   _fwUpdating = true;
   const writes = []; _serialPort = { readable:null, writable:{ getWriter(){ return { write(c){ writes.push(c); return Promise.resolve(); }, releaseLock(){} }; } } };
   await doSend(); await sendHidRequest(true); await syncLoadFromDevice();
