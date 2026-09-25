@@ -38,8 +38,10 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
     constructor(){ this._chunks=[]; this._resolvers=[]; }
     push(str){ const v=new TextEncoder().encode(str);
       if (this._resolvers.length) this._resolvers.shift()({ value:v, done:false }); else this._chunks.push(v); }
-    get readable(){ const s=this; return { getReader(){ return {
-      read(){ return s._chunks.length ? Promise.resolve({ value:s._chunks.shift(), done:false })
+    // Chrome nulls port.readable together with erroring the in-flight read on device loss.
+    get readable(){ const s=this; if (s.lost) return null; return { getReader(){ return {
+      read(){ if (s.unplugged) { s.lost = true; return Promise.reject(new DOMException('The device has been lost.', 'NetworkError')); }
+        return s._chunks.length ? Promise.resolve({ value:s._chunks.shift(), done:false })
         : new Promise(r => s._resolvers.push(r)); },
       releaseLock(){}, cancel(){ s._resolvers.splice(0).forEach(r => r({ value:undefined, done:true })); } }; } }; }
     get writable(){ const s=this; return { getWriter(){ return {
@@ -54,6 +56,10 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
     if (cmd === 'CMD_UC') {
       const [name, off, b64] = rest;
       dev.ucOffsets.push(+off);
+      if (opts.unplugAtOffset != null && +off === opts.unplugAtOffset) {
+        // Physical unplug: in-flight read rejects, then Chrome's 'disconnect' task nulls _serialPort.
+        port.unplugged = true; setTimeout(() => { _serialPort = null; }, 0); return;
+      }
       if (opts.neverAckOffset != null && +off === opts.neverAckOffset) return;   // always swallow, never respond
       if (+off !== dev.file.length) return port.push(`ERR:${rid}:offset:${dev.file.length}\n`);
       dev.file += atob(b64);
@@ -66,9 +72,26 @@ const run = (opts) => p.evaluate(async (MAIN, opts) => {
   _fwUpdateTarget = null;
   const toasts = [];
   const origToast = toast; window.toast = (t, m) => { toasts.push(t + ':' + m); };
-  try { await runFirmwareUpdate(FW_MANIFEST); } finally { FW_CHUNK_TIMEOUT_MS = 3000; FW_END_TIMEOUT_MS = 10000; window.toast = origToast; }
+  // Unplugged device: nothing re-openable, and requestPort() inside Chrome's 5 s
+  // user-activation window opens a chooser whose promise never settles.
+  const origGetPorts = navigator.serial.getPorts, origRequestPort = navigator.serial.requestPort;
+  let requestPortCalls = 0, hung = false;
+  if (opts.unplugAtOffset != null) {
+    navigator.serial.getPorts = async () => [];
+    navigator.serial.requestPort = () => { requestPortCalls++; return new Promise(() => {}); };
+  }
+  try {
+    const res = await Promise.race([runFirmwareUpdate(FW_MANIFEST).then(() => 'done'),
+      new Promise(r => setTimeout(() => r('hung'), opts.hangGuardMs || 60000))]);
+    hung = res === 'hung';
+  } finally {
+    FW_CHUNK_TIMEOUT_MS = 3000; FW_END_TIMEOUT_MS = 10000; window.toast = origToast;
+    navigator.serial.getPorts = origGetPorts; navigator.serial.requestPort = origRequestPort;
+  }
+  const updatingAfter = _fwUpdating;
+  if (hung) _fwUpdating = false;   // don't poison later cases
   return { cmds: dev.cmds, ucOffsets: dev.ucOffsets, fileOk: dev.file === MAIN, fileLen: dev.file.length, ended: dev.ended,
-           target: _fwUpdateTarget, toasts, updating: _fwUpdating };
+           target: _fwUpdateTarget, toasts, updating: updatingAfter, hung, requestPortCalls };
 }, MAIN, opts);
 
 let r = await run({});
@@ -95,6 +118,11 @@ P('retry exhaustion after resync → "device is unchanged" toast', r.toasts.some
 r = await run({ errOn:'CMD_UC' });
 P('ERR mid-transfer → CMD_UA sent, no UE', r.cmds.includes('CMD_UA') && !r.ended, r.cmds.join(','));
 P('ERR mid-transfer → "device is unchanged" toast, no pending outcome', r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')) && r.target === null, r.toasts.join(' | '));
+
+r = await run({ unplugAtOffset:512, hangGuardMs:3000 });
+P('unplug mid-transfer → run finishes (no hang on a re-open chooser)', !r.hung && r.updating === false, JSON.stringify({ hung: r.hung, updating: r.updating }));
+P('unplug mid-transfer → never opens the serial chooser', r.requestPortCalls === 0, `requestPortCalls=${r.requestPortCalls}`);
+P('unplug mid-transfer → "device is unchanged" toast, no pending outcome', r.toasts.some(t => t.startsWith('e:') && t.includes('unchanged')) && r.target === null, r.toasts.join(' | '));
 
 r = await run({ swallowUE:true, endTimeoutMs:50 });
 P('CMD_UE ack lost (timeout, non-ERR) → no CMD_UA, outcome left pending for reconnect to resolve',
@@ -171,6 +199,48 @@ const survives = await p.evaluate(async () => {
   return _fwUpdateTarget !== null;
 });
 P('failed CMD_INFO after reset keeps the pending outcome', survives);
+
+// Post-update reset on Windows: the MIDI port often never re-registers, but the
+// granted serial port comes back and fires navigator.serial 'connect'.
+const serialReconnect = (o) => p.evaluate(async (o) => {
+  const infoWrites = []; const seen = [];
+  const mkPort = () => {
+    let resolvers = [], chunks = [];
+    const push = (s) => { const v = new TextEncoder().encode(s); resolvers.length ? resolvers.shift()({ value:v, done:false }) : chunks.push(v); };
+    const port = { readable:null, writable:null, getInfo(){ return { usbProductId: 0x000B }; },
+      async open(){
+        port.readable = { getReader(){ return { read(){ return chunks.length ? Promise.resolve({ value:chunks.shift(), done:false }) : new Promise(r => resolvers.push(r)); },
+          releaseLock(){}, cancel(){ resolvers.splice(0).forEach(r => r({ value:undefined, done:true })); } }; } };
+        port.writable = { getWriter(){ return { write(c){ const line = new TextDecoder().decode(c).trim();
+          if (line.startsWith('CMD_INFO')) { infoWrites.push(line);
+            setTimeout(() => push(JSON.stringify({ firmware:o.fw, schema_version:2, config_hash:'h', serial:'S' }) + '\n'), o.replyDelayMs || 0); }
+          return Promise.resolve(); }, releaseLock(){} }; } };
+      } };
+    return port;
+  };
+  const dev = mkPort();
+  const origGetPorts = navigator.serial.getPorts; navigator.serial.getPorts = async () => [dev];
+  const origToast = toast; window.toast = (t, m) => seen.push(t + ':' + m);
+  _serialPort = null; _ffConnected = false; dirty = true;
+  _fwUpdateTarget = o.pending ? { from:'1.3.0', to:'1.3.1' } : null;
+  FW_SERIAL_RECONNECT_GRACE_MS = 50;
+  if (o.midiToo) onDeviceConnected();   // MIDI path already resolving
+  navigator.serial.dispatchEvent(new Event('connect'));
+  await new Promise(r => setTimeout(r, 600));
+  navigator.serial.getPorts = origGetPorts; window.toast = origToast; dirty = false;
+  return { infoWrites: infoWrites.length, toasts: seen, target: _fwUpdateTarget };
+}, o);
+
+let sr = await serialReconnect({ pending:true, fw:'1.3.1' });
+P('serial connect after update (no MIDI) → CMD_INFO + "Firmware updated" toast, outcome cleared',
+  sr.infoWrites >= 1 && sr.toasts.some(t => t.startsWith('s:') && t.includes('1.3.1')) && sr.target === null, JSON.stringify(sr));
+sr = await serialReconnect({ pending:true, fw:'1.3.0' });
+P('serial connect after rolled-back update → rolled back toast', sr.toasts.some(t => t.startsWith('e:') && t.includes('rolled back')), JSON.stringify(sr));
+sr = await serialReconnect({ pending:false, fw:'1.3.0' });
+P('serial connect with no pending update → no serial traffic', sr.infoWrites === 0, JSON.stringify(sr));
+sr = await serialReconnect({ pending:true, fw:'1.3.1', midiToo:true, replyDelayMs:200 });
+P('serial connect while MIDI reconnect is already resolving → one CMD_INFO, one outcome toast',
+  sr.infoWrites === 1 && sr.toasts.filter(t => t.startsWith('s:')).length === 1, JSON.stringify(sr));
 
 const blocked = await p.evaluate(async () => {
   const seen = []; const orig = toast; window.toast = (t, m) => seen.push(t + ':' + m);

@@ -3922,6 +3922,7 @@ function featureFwWarning(feature) {
 const FW_CHUNK = 512;
 let FW_CHUNK_TIMEOUT_MS = 3000;   // probe override for the always-timeout retry-exhaustion case
 let FW_END_TIMEOUT_MS = 10000;    // probe override for the CMD_UE ack timeout
+let FW_SERIAL_RECONNECT_GRACE_MS = 1500;   // MIDI reconnect gets first go; probe override
 let _fwUpdateTarget = null;   // {from,to} po CMD_UE; vyhodnotí se při prvním úspěšném CMD_INFO
 const _FW_CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -4023,7 +4024,13 @@ async function runFirmwareUpdate(m) {
       _fwUpdateTarget = { from, to: m.latest };
       toast('i', 'Device is restarting — checking the result…');
     } else {
-      try { await serialRequest('CMD_UA', null, 2000); } catch (_) {}
+      // Only abort over a still-open port. After an unplug, serialRequest would
+      // re-open via requestPort(), which inside Chrome's 5 s user-activation
+      // window opens a chooser that never settles; an unplugged device has
+      // nothing staged to abort anyway.
+      if (_serialPort && _serialPort.readable) {
+        try { await serialRequest('CMD_UA', null, 2000); } catch (_) {}
+      }
       toast('e', 'Update failed — the device is unchanged.');
     }
   } finally {
@@ -5148,6 +5155,13 @@ function initSerialDisconnectWatch() {
       renderConnState();
     }
   });
+  // After the post-update reset, Windows often never re-registers the MIDI
+  // port (so connectInputs() never fires), but the granted serial port does
+  // come back — resolve the pending update outcome over serial then.
+  navigator.serial.addEventListener('connect', () => {
+    if (!_fwUpdateTarget) return;
+    setTimeout(() => { if (_fwUpdateTarget) onDeviceConnected(); }, FW_SERIAL_RECONNECT_GRACE_MS);
+  });
 }
 // Feel Fader device name as set in boot.py via supervisor.set_usb_identification
 const DEVICE_NAME = 'Feel Fader';
@@ -5655,8 +5669,14 @@ async function doStart() {
   }
 }
 
-// Device detected (via MIDI). Decide: auto-enter (port granted) vs surface Start (gesture needed).
-async function onDeviceConnected() {
+// Device detected (via MIDI, or serial 'connect' after a firmware update).
+// Concurrent triggers share one run.
+let _deviceConnectRun = null;
+function onDeviceConnected() {
+  return _deviceConnectRun ||= _onDeviceConnected().finally(() => { _deviceConnectRun = null; });
+}
+// Decide: auto-enter (port granted) vs surface Start (gesture needed).
+async function _onDeviceConnected() {
   const ws = document.getElementById('welcome-screen');
   const onWelcome = ws && !ws.classList.contains('hidden');
   let granted = false;
