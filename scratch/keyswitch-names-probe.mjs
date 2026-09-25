@@ -79,7 +79,7 @@ const r = await p.evaluate(async () => {
 
   // A library without names clears stale ones (no C0 = "Legato" left behind).
   cfg.banks[0].ks_names = { '12':'Legato' };
-  applyLibraryPreset('Spitfire Symphonic Orchestra — Celli (All techniques)');
+  applyLibraryPreset('Spitfire Symphony Orchestra — Celli (All techniques)');
   out.afterSso = cfg.banks[0].ks_names;
   return out;
 });

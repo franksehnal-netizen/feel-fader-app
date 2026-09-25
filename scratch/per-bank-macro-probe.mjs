@@ -239,7 +239,7 @@ P('Global off: clearing bank 0 empties only that bank',
   JSON.stringify(clearedNonGlobal));
 P('activeMacroKeys(0) is an empty array after clear (no-macro state now reachable from the UI)',
   Array.isArray(clearedNonGlobal.b0) && clearedNonGlobal.b0.length === 0, JSON.stringify(clearedNonGlobal.b0));
-P('capture button shows the "not assigned" label after clear', clearedNonGlobal.capLabel === '—', clearedNonGlobal.capLabel);
+P('capture button shows the "not assigned" label after clear', clearedNonGlobal.capLabel === 'Not assigned', clearedNonGlobal.capLabel);
 P('clear control disappears once its macro is empty (re-rendered)', clearedNonGlobal.clearGone, String(clearedNonGlobal.clearGone));
 P('clearing marks the config dirty like any other edit', clearedNonGlobal.dirty === true, String(clearedNonGlobal.dirty));
 

@@ -94,6 +94,26 @@
   --r:12px;
   --r-lg:18px;
   --r-pill:999px;
+  /* Type scale (UX audit 2026-09-25, K-3). Only these sizes; --fs-hud-* exist
+     solely for the 96 px mobile Live HUD (open item M-1). */
+  --fs-xs:10px;
+  --fs-sm:11px;
+  --fs-md:12px;
+  --fs-base:13px;
+  --fs-lg:14px;
+  --fs-xl:16px;
+  --fs-2xl:20px;
+  --fs-3xl:22px;
+  --fs-hud-xs:7px;
+  --fs-hud-sm:8px;
+  /* Spacing scale (K-3): gaps between controls. Half-steps (2/6/10 px) stay raw
+     where optical alignment needs them. */
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-6:24px;
+
   /* Motion — shared timing tokens. Added after finding the onboarding
      Next-button/glow mismatch (Frank 2026-08-17: the button snapped away
      instantly while the send button's glow next to it faded in over .46s) —
@@ -163,8 +183,10 @@ html.dark .uacc-preset-dropdown{background:#1a1a1e}
 .ui-pill{border-radius:var(--r-pill)}
 .ui-control.ui-glass{border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow)}
 .ui-control.ui-glass:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover)}
-.ui-danger{color:#fff!important;border:1px solid var(--red)!important;background:linear-gradient(145deg,color-mix(in srgb,var(--red) 82%,white),var(--red))!important;box-shadow:0 3px 10px color-mix(in srgb,var(--red) 28%,transparent),inset 0 1px 0 rgba(255,255,255,.24)!important}
-.ui-danger:hover{filter:brightness(.96)}
+/* Destructive actions (Reset): outline + --danger text, so they never read as the
+   red brand CTA (Send, Apply) they sit next to (UX audit 2026-09-25, K-4). */
+.ui-danger{color:var(--danger)!important;border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)!important;background:var(--control-glass-bg)!important;box-shadow:var(--control-glass-shadow)!important}
+.ui-danger:hover{background:var(--danger-bg)!important;border-color:var(--danger)!important}
 /* Reserve the scrollbar gutter always, so the viewport width never changes
    when page height crosses the scrollbar threshold — hiding the controller
    shortens the page, and without this the vertical scrollbar would vanish,
@@ -179,7 +201,7 @@ body{
     radial-gradient(circle at 76% 88%,var(--ambient-green),transparent 28rem),
     var(--bg);
   background-attachment:fixed;
-  color:var(--t1);font-family:'Mulish',sans-serif;font-size:13px;min-height:100vh;
+  color:var(--t1);font-family:'Mulish',sans-serif;font-size:var(--fs-base);min-height:100vh;
   display:flex;flex-direction:column;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
@@ -235,7 +257,7 @@ header{
 .live-hud.is-dragging{cursor:grabbing!important;transform:scale(calc(1.015 * var(--hud-scale)))}
 .live-hud-size-btn{
   position:absolute;right:3px;bottom:3px;width:19px;height:19px;padding:0;
-  display:grid;place-items:center;border:0;border-radius:7px;background:transparent;
+  display:grid;place-items:center;border:0;border-radius:var(--r-sm);background:transparent;
   color:var(--t3);opacity:.45;cursor:pointer;transition:opacity .15s ease,background .15s ease,color .15s ease;
 }
 .live-hud-size-btn:hover,.live-hud-size-btn:focus-visible{opacity:1;background:rgba(127,127,135,.16);color:var(--t1)}
@@ -246,7 +268,7 @@ header{
 /* The green dot in the header already says that a device is connected. The
    HUD owns device context: its first row maps the active physical bank with
    one neutral dot per bank. This stays distinct from the edited-bank card. */
-.live-hud-bank{display:none;height:12px;align-items:center;justify-content:center;gap:4px;overflow:hidden}
+.live-hud-bank{display:none;height:12px;align-items:center;justify-content:center;gap:var(--space-1);overflow:hidden}
 .live-hud-bank-dot{width:3px;height:3px;flex:0 0 auto;border-radius:50%;background:var(--t2);opacity:.28}
 .live-hud-bank-dot.is-active{width:5px;height:5px;background:var(--t1);opacity:.78;box-shadow:none}
 .live-hud[data-state^="CONNECTED"] .live-hud-bank{display:flex}
@@ -276,11 +298,11 @@ header{
 .live-hud-item:not(.live-hud-roller):has(.live-hud-tech.has-issue)::before{
   background:color-mix(in srgb,var(--danger) 20%,transparent);
 }
-.live-hud-label{font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.live-hud-label{font:700 var(--fs-xs) 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
 .live-hud-label-long{display:none}
 .live-hud-label-short{display:inline}
-.live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 20px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
-.live-hud-tech{color:var(--t2);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+.live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 var(--fs-2xl)/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
+.live-hud-tech{color:var(--t2);font:600 var(--fs-xs) 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
 .live-hud-tech.has-issue{color:var(--danger)}
 /* Anchored on the "·" separator instead of centering the whole string as one
    block — CC9→CC10 used to shift "Ch1" sideways too, since justify-items:
@@ -310,18 +332,18 @@ header{
    .is-long/.is-very-long as the live articulation name changed, which read as
    the text visibly resizing on every step (Frank, 2026-08-10 HW test: "to je
    otravný"). Overflow is handled by truncation (ellipsis) instead. */
-.live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:14px;line-height:17px;letter-spacing:-.02em}
+.live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:var(--fs-lg);line-height:17px;letter-spacing:-.02em}
 @media(any-pointer:fine){.live-hud.is-contextual-visible{cursor:grab}}
 .h-left{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
 /* Matches the welcome-onboarding wordmark badge exactly (Frank 2026-08-16,
    reference screenshot) rather than a bespoke header treatment. */
-.h-title{color:var(--t2);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;user-select:none}
-.h-right{display:flex;align-items:center;gap:8px}
+.h-title{color:var(--t2);font-size:var(--fs-sm);font-weight:700;letter-spacing:.12em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;user-select:none}
+.h-right{display:flex;align-items:center;gap:var(--space-2)}
 
 /* MAIN */
 main{width:100%;}
 
-.center-col{width:100%;max-width:700px;margin:0 auto;display:flex;flex-direction:column;flex:1;gap:16px;padding:0 16px 0;box-sizing:border-box;overflow:visible;}
+.center-col{width:100%;max-width:700px;margin:0 auto;display:flex;flex-direction:column;flex:1;gap:var(--space-4);padding:0 16px 0;box-sizing:border-box;overflow:visible;}
 .center-col>*{width:100%;box-sizing:border-box;}
 
 /* STAGE
@@ -385,7 +407,7 @@ main{width:100%;}
 
 
 /* SEND / LOAD */
-.live-note{position:absolute;left:50%;transform:translateX(-50%);margin:0;font-size:12px;color:var(--t3);text-align:center;line-height:1.4;width:max-content;max-width:calc(100% - 32px);}
+.live-note{position:absolute;left:50%;transform:translateX(-50%);margin:0;font-size:var(--fs-md);color:var(--t3);text-align:center;line-height:1.4;width:max-content;max-width:calc(100% - 32px);}
 .live-note[hidden]{display:none;}
 .send-callout{
   display:flex;
@@ -405,7 +427,7 @@ main{width:100%;}
   inset:-16px;
   z-index:-1;
   pointer-events:none;
-  border-radius:999px;
+  border-radius:var(--r-pill);
   background:rgba(245,245,247,.55);
   backdrop-filter:blur(9px);
   -webkit-backdrop-filter:blur(9px);
@@ -415,7 +437,7 @@ main{width:100%;}
 .send-arrow{display:none}
 .send-btn{
   background:var(--red);color:#fff;border:none;border-radius:var(--r-pill);
-  font-family:'Mulish',sans-serif;font-size:13px;font-weight:600;
+  font-family:'Mulish',sans-serif;font-size:var(--fs-base);font-weight:600;
   width:166px;min-height:38px;padding:9px 16px;cursor:pointer;white-space:nowrap;
   transition:background-color var(--dur-glow) var(--ease-hero),color var(--dur-base) ease,border-color var(--dur-base) ease,box-shadow var(--dur-glow) var(--ease-hero),opacity .28s ease,transform .18s ease;
   will-change:background-color,box-shadow;
@@ -439,7 +461,7 @@ main{width:100%;}
   position:absolute;right:calc(100% + 10px);top:50%;width:max-content;max-width:150px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t2);
   border:0;background:transparent;padding:3px 0;font-family:'Mulish',sans-serif;cursor:pointer;
-  font-size:11px;font-weight:600;opacity:0;visibility:hidden;filter:blur(3px);
+  font-size:var(--fs-sm);font-weight:600;opacity:0;visibility:hidden;filter:blur(3px);
   transform:translate(10px,-50%) scale(.975);transform-origin:right center;
   /* Matches .send-btn's own glow transition (--dur-glow/--ease-hero) — both
      fire on the same "config sent" moment right next to each other, and used
@@ -482,14 +504,14 @@ main{width:100%;}
   opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease,transform .24s var(--ease-out),visibility 0s linear .24s;
 }
 .change-popover.is-open{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,0);transition-delay:0s}
-.change-popover strong{display:block;font-size:11px;color:var(--t1);margin-bottom:6px}
-.change-popover ul{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:130px;overflow:auto}
-.change-popover li{font-size:10px;line-height:1.35;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.change-popover strong{display:block;font-size:var(--fs-sm);color:var(--t1);margin-bottom:6px}
+.change-popover ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-1);max-height:130px;overflow:auto}
+.change-popover li{font-size:var(--fs-xs);line-height:1.35;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .change-popover li::before{content:'—';margin-right:6px;color:var(--t3)}
 .change-popover-foot{display:flex;justify-content:flex-end;gap:6px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
-.change-undo-btn{padding:5px 9px;color:var(--t2);font:600 10px 'Mulish',sans-serif}
+.change-undo-btn{padding:5px 9px;color:var(--t2);font:600 var(--fs-xs) 'Mulish',sans-serif}
 @media(max-width:420px){
-  .send-change-note{right:calc(100% + 7px);max-width:120px;font-size:10px}
+  .send-change-note{right:calc(100% + 7px);max-width:120px;font-size:var(--fs-xs)}
   .send-change-note.is-feedback{max-width:145px}
 }
 @media(prefers-reduced-motion:reduce){.send-btn,.send-change-note{transition:none}.send-change-note{filter:none}}
@@ -532,7 +554,7 @@ header,.live-hud{view-transition-name:none}
 .center-col>.panel-wide{flex:0 0 auto;}
 .panel-dot{display:none;}
 
-.panel-name{font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-.01em;}
+.panel-name{font-size:var(--fs-base);font-weight:600;color:var(--t1);letter-spacing:-.01em;}
 
 /* Roller mode — compact segmented pill. Keyswitch uses a quieter glass state. */
 .roller-mode-row{
@@ -552,7 +574,7 @@ header,.live-hud{view-transition-name:none}
 }
 .roller-mode-btn{
   position:relative;z-index:1;min-width:0;padding:7px 10px;border:0;border-radius:var(--r-pill);touch-action:manipulation;
-  background:transparent;color:var(--t2);cursor:pointer;font:600 11px 'Mulish',sans-serif;
+  background:transparent;color:var(--t2);cursor:pointer;font:600 var(--fs-sm) 'Mulish',sans-serif;
   line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:color .15s ease,transform var(--dur-press) ease;
 }
@@ -564,13 +586,13 @@ html.dark .roller-mode-row::before{background:var(--control-glass-bg);backdrop-f
 .roller-mode-content{opacity:1;transform:translateY(0);transition:opacity var(--dur-fast) ease,transform var(--dur-fast) var(--ease-out)}
 .roller-mode-content.is-leaving{opacity:0;transform:translateY(3px)}
 .roller-mode-content.is-entering{animation:rollerContentIn .30s var(--ease-out)}
-.ks-basic-actions{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.ks-basic-actions{display:flex;align-items:flex-end;gap:var(--space-3);flex-wrap:wrap}
 .roller-advanced{margin-top:2px;border-top:1px solid var(--border);padding-top:9px}
-.roller-advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;cursor:pointer;color:var(--t2);font-size:11px;font-weight:600;padding:5px 2px}
+.roller-advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;cursor:pointer;color:var(--t2);font-size:var(--fs-sm);font-weight:600;padding:5px 2px}
 .roller-advanced>summary::-webkit-details-marker{display:none}
 .roller-advanced>summary::after{content:'⌄';color:var(--t3);transition:transform .22s var(--ease-out)}
 .roller-advanced[open]>summary::after{transform:rotate(180deg)}
-.roller-advanced-summary{font-size:10px;font-weight:400;color:var(--t3);margin-left:auto}
+.roller-advanced-summary{font-size:var(--fs-xs);font-weight:400;color:var(--t3);margin-left:auto}
 .roller-advanced-body{padding-top:8px}
 @keyframes rollerContentIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){
@@ -581,10 +603,10 @@ html.dark .roller-mode-row::before{background:var(--control-glass-bg);backdrop-f
 /* STEPPER */
 .stepper{display:flex;align-items:center;gap:0;padding:2px;border:1px solid var(--border-s);border-radius:var(--r-pill);overflow:visible;background:color-mix(in srgb,var(--bg-input) 86%,transparent);box-shadow:inset 0 1px 2px rgba(0,0,0,.08),0 1px 0 rgba(255,255,255,.18)}
 .stepper-sep{display:none}
-.stepper input{width:34px;height:24px;text-align:center;border:1px solid var(--control-glass-border);border-radius:var(--r-pill);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--t1);padding:0;outline:none;-moz-appearance:textfield;font-weight:600;}
+.stepper input{width:34px;height:24px;text-align:center;border:1px solid var(--control-glass-border);border-radius:var(--r-pill);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow);font-family:'IBM Plex Mono',monospace;font-size:var(--fs-md);color:var(--t1);padding:0;outline:none;-moz-appearance:textfield;font-weight:600;}
 .stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none}
 .stepper input:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 20%,transparent),inset 0 1px 0 rgba(255,255,255,.78)}
-.step-btn{width:28px;height:32px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:14px;line-height:1;transition:color .18s ease,background-color .18s ease,transform var(--dur-press) ease;font-weight:400;font-family:'Mulish',sans-serif;}
+.step-btn{width:28px;height:32px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:var(--fs-lg);line-height:1;transition:color .18s ease,background-color .18s ease,transform var(--dur-press) ease;font-weight:400;font-family:'Mulish',sans-serif;}
 .stepper .step-btn{width:24px;height:24px;border-radius:var(--r-pill)}
 .step-btn:hover{background:rgba(127,127,135,.12);color:var(--t1);}
 /* Was --red — read as an error flash on plain +/- taps, which aren't an
@@ -592,13 +614,17 @@ html.dark .roller-mode-row::before{background:var(--control-glass-bg);backdrop-f
    "acknowledged" feedback (.send-btn.sent, enabled toggles). */
 .step-btn:active{background:rgba(52,199,89,.12);color:var(--green);transform:scale(.94);}
 .step-btn.active,.step-btn.active:hover{background:var(--red);color:#fff;box-shadow:0 3px 10px rgba(201,71,53,.22),inset 0 1px 0 rgba(255,255,255,.18)}
-.step-btn.capturing{border-color:var(--red)!important;color:var(--red);animation:cap-pulse 1.2s ease-in-out infinite}
+/* Key-capture button (Navigation keys, Button macro): one pill component with
+   an explicit empty ("Not assigned") and capture ("Press keys…") state (K-2). */
+.ui-keycap{min-height:32px;padding:6px 16px;color:var(--t1);font-size:var(--fs-md);font-weight:600;white-space:nowrap}
+.ui-keycap.is-empty{color:var(--t3)}
+.ui-keycap.capturing{border-color:var(--red);color:var(--red);animation:cap-pulse 1.2s ease-in-out infinite}
 html.dark .stepper{background:color-mix(in srgb,var(--bg-input) 80%,transparent)}
 html.dark .stepper input{border-color:var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow)}
 @keyframes cap-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.35)}50%{box-shadow:0 0 0 4px rgba(255,59,48,0)}}
 /* Keyswitch piano range picker */
-.ks-keyboard-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:10px 4px 5px}
-.ks-keyboard-hint{font-size:10px;color:var(--t3);white-space:nowrap}
+.ks-keyboard-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin:10px 4px 5px}
+.ks-keyboard-hint{font-size:var(--fs-xs);color:var(--t3);white-space:nowrap}
 .ks-keyboard-shell{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;align-items:stretch;gap:5px}
 .ks-keyboard-scroll{overflow-x:auto;overflow-y:hidden;border:1px solid var(--border-s);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 88%,transparent);box-shadow:inset 0 1px 2px var(--border);scrollbar-width:thin;overscroll-behavior-x:contain}
 .ks-keyboard{--white-w:26px;position:relative;width:1950px;height:78px;user-select:none;touch-action:none}
@@ -614,8 +640,8 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
 .ks-key.is-edge{box-shadow:inset 0 -4px 0 var(--red)}
 .ks-key-black.is-edge{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--red) 55%,var(--piano-white)),0 2px 3px var(--border-s)}
 .ks-key:focus-visible{outline:2px solid var(--focus);outline-offset:-3px;z-index:5}
-.ks-key-label{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:10px;font-weight:600;white-space:nowrap;pointer-events:none}
-.ks-key-scroll-btn{width:28px;height:auto;min-height:78px;border:1px solid var(--border-s);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 86%,transparent);color:var(--t2);cursor:pointer;font-size:15px;transition:background-color var(--dur-fast) ease,color var(--dur-fast) ease,transform var(--dur-press) ease}
+.ks-key-label{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:var(--fs-xs);font-weight:600;white-space:nowrap;pointer-events:none}
+.ks-key-scroll-btn{width:28px;height:auto;min-height:78px;border:1px solid var(--border-s);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 86%,transparent);color:var(--t2);cursor:pointer;font-size:var(--fs-lg);transition:background-color var(--dur-fast) ease,color var(--dur-fast) ease,transform var(--dur-press) ease}
 .ks-key-scroll-btn:hover{background:color-mix(in srgb,var(--bg-input) 68%,var(--glass-soft));color:var(--t1)}
 .ks-key-scroll-btn:active{transform:scale(.96)}
 .ks-key-scroll-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -627,32 +653,32 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
    the Library setup picker's .quick-setup-menu/.quick-setup-option, just
    without the search input: KEYSWITCH_PRESETS only has 2 static entries. */
 .ks-preset-picker{position:relative;flex:0 0 auto}
-.ks-preset-trigger{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t2)}
-.ks-preset-chevron{font-size:10px;color:var(--t3);transition:transform .2s var(--ease-out)}
+.ks-preset-trigger{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-family:'Mulish',sans-serif;font-size:var(--fs-md);color:var(--t2)}
+.ks-preset-chevron{font-size:var(--fs-xs);color:var(--t3);transition:transform .2s var(--ease-out)}
 .ks-preset-trigger[aria-expanded="true"] .ks-preset-chevron{transform:rotate(180deg)}
 .quick-setup-menu.ks-preset-menu{left:0;width:max(180px,100%);max-height:none}
-.ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;min-width:66px;text-align:center;color:var(--t1)}
+.ks-stepval{padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:var(--fs-md);min-width:66px;text-align:center;color:var(--t1)}
 
 /* TWO-ROW FIELD (label + controls stacked) */
-.field-block{display:flex;flex-direction:column;gap:4px}
-.field-block .field-label{font-size:11px;color:var(--t2);letter-spacing:.03em}
+.field-block{display:flex;flex-direction:column;gap:var(--space-1)}
+.field-label{font-size:var(--fs-sm);color:var(--t2);letter-spacing:.03em;text-transform:uppercase}
 
 /* ENCODER */
-.enc-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 6px;border-radius:var(--r-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--t3);transition:all .12s}
+.enc-chip{font-family:'IBM Plex Mono',monospace;font-size:var(--fs-xs);padding:2px 6px;border-radius:var(--r-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--t3);transition:all .12s}
 .enc-chip.active{background:var(--t1);color:var(--bg);border-color:var(--t1)}
 
 /* UACC */
-.uacc-grid{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
-.uacc-tag{display:flex;align-items:center;gap:4px;background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);border:1px solid var(--control-glass-border);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:11px;color:var(--t1);box-shadow:var(--control-glass-shadow);transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease}
-.uacc-tag button{background:none;border:none;cursor:pointer;color:var(--t3);font-size:11px;padding:0 0 0 2px;line-height:1;transition:color .12s}
+.uacc-grid{display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:2px}
+.uacc-tag{display:flex;align-items:center;gap:var(--space-1);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);border:1px solid var(--control-glass-border);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:var(--fs-sm);color:var(--t1);box-shadow:var(--control-glass-shadow);transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease}
+.uacc-tag button{background:none;border:none;cursor:pointer;color:var(--t3);font-size:var(--fs-sm);padding:0 0 0 2px;line-height:1;transition:color .12s}
 .uacc-tag button:hover{color:var(--danger)}
-.uacc-tag .tag-order-btn{padding:0 1px;color:var(--t3);font-size:12px}
+.uacc-tag .tag-order-btn{padding:0 1px;color:var(--t3);font-size:var(--fs-md)}
 .uacc-tag .tag-order-btn:hover{color:var(--t1)}
 .uacc-tag .tag-order-btn:disabled{opacity:.22;cursor:default;color:var(--t3)}
 .uacc-tag .tag-remove-btn{margin-left:1px}
 .uacc-tag.ks-live{border-color:rgba(52,199,89,.5);background:rgba(52,199,89,.1)}
-.uacc-add-row{display:flex;align-items:center;gap:8px;margin-top:8px}
-.uacc-add-row input{width:96px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:12px;color:var(--t1);outline:none;-moz-appearance:textfield;box-shadow:inset 0 1px 3px rgba(0,0,0,.13)}
+.uacc-add-row{display:flex;align-items:center;gap:var(--space-2);margin-top:8px}
+.uacc-add-row input{width:96px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:var(--fs-md);color:var(--t1);outline:none;-moz-appearance:textfield;box-shadow:inset 0 1px 3px rgba(0,0,0,.13)}
 .uacc-add-row input::-webkit-inner-spin-button,.uacc-add-row input::-webkit-outer-spin-button{-webkit-appearance:none}
 .uacc-presets-wrap{position:relative}
 .uacc-preset-dropdown{
@@ -664,25 +690,25 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
 .uacc-preset-dropdown button{
   display:block;width:100%;text-align:left;
   background:none;border:none;cursor:pointer;
-  font-family:'Mulish',sans-serif;font-size:12px;
+  font-family:'Mulish',sans-serif;font-size:var(--fs-md);
   color:var(--t2);padding:8px;border-radius:var(--r-sm);
   transition:background .12s;
 }
 .uacc-preset-dropdown .uacc-dropdown-section{
-  font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;text-transform:uppercase;
   color:var(--t2);padding:8px 10px 4px;pointer-events:none;
 }
 .uacc-dropdown-divider{
   height:1px;background:var(--border);margin:5px 6px;
 }
-.uacc-note{font-size:12px;color:var(--t2);margin-top:8px}
-.fw-min-note{font-size:12px;color:var(--t1);background:color-mix(in srgb,var(--amber) 14%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:8px 0}
+.uacc-note{font-size:var(--fs-md);color:var(--t2);margin-top:8px}
+.fw-min-note{font-size:var(--fs-md);color:var(--t1);background:color-mix(in srgb,var(--amber) 14%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:8px 0}
 .fw-min-note a{color:inherit;font-weight:600}
 .hid-inline-notice{display:flex;align-items:center;gap:10px;margin:8px 0;padding:9px 10px;border:1px solid color-mix(in srgb,var(--amber) 34%,var(--border));border-radius:var(--r-sm);background:color-mix(in srgb,var(--amber) 7%,var(--glass-soft));color:var(--t2)}
-.hid-inline-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;font-size:11px;line-height:1.4}
-.hid-inline-copy strong{color:var(--t1);font-size:11px}
+.hid-inline-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;font-size:var(--fs-sm);line-height:1.4}
+.hid-inline-copy strong{color:var(--t1);font-size:var(--fs-sm)}
 .hid-inline-help{color:var(--t1);text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap}
-.hid-inline-action{flex-shrink:0;min-height:28px;padding:4px 10px;color:var(--t1);font:600 11px 'Mulish',sans-serif}
+.hid-inline-action{flex-shrink:0;min-height:28px;padding:4px 10px;color:var(--t1);font:600 var(--fs-sm) 'Mulish',sans-serif}
 @media(max-width:540px){.hid-inline-notice{align-items:flex-start;flex-wrap:wrap}.hid-inline-action{margin-left:auto}}
 
 .icon-picker-trigger{
@@ -700,7 +726,7 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
      (min-width:0 above). */
   max-width:min(190px,100%);
   background:transparent;border:none;border-bottom:1px solid transparent;
-  font-family:'Mulish',sans-serif;font-size:16px;font-weight:600;color:var(--t1);
+  font-family:'Mulish',sans-serif;font-size:var(--fs-xl);font-weight:600;color:var(--t1);
   outline:none;padding:2px 0;transition:border-color .14s;
   text-align:left;letter-spacing:-.01em;
 }
@@ -710,7 +736,7 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
 .btn-remove-bank{
   position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;
   background:transparent;border:none;
-  color:var(--t3);font-size:16px;font-weight:400;
+  color:var(--t3);font-size:var(--fs-xl);font-weight:400;
   width:28px;height:28px;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
@@ -732,12 +758,12 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   .bank-actions{margin-left:auto;gap:2px;opacity:.72;transition:opacity .14s ease}
   .bank-block-name-top:hover .bank-actions,.bank-actions:focus-within{opacity:1}
   .bank-action-btn,.btn-remove-bank{width:24px;height:24px}
-  .btn-remove-bank{font-size:14px}
+  .btn-remove-bank{font-size:var(--fs-lg)}
   .bank-action-btn svg{width:12px;height:12px}
 }
 
 /* PANEL NAME EDITABLE */
-.fader-side-cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:4px;}
+.fader-side-cap{font-size:var(--fs-sm);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:4px;}
 /* Section stays on its own softer, frosty-green highlight — no onboarding
    equivalent to match (onboarding never shows settings panels), scope
    confirmed with Frank 2026-08-18. */
@@ -755,7 +781,7 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 .ctrl-zone{position:absolute;border-radius:10px;outline:1px solid transparent;outline-offset:1px;transition:background .2s,box-shadow .2s,outline-color .2s;}
 /* Roller: matches onboarding's #zone-roller[data-onb-feature="roller"] exactly. */
 #zone-roller.fader-linked{background:transparent;outline-color:transparent;box-shadow:0 0 5px 2px rgba(52,199,89,.95),0 0 14px 7px rgba(52,199,89,.72),0 0 29px 14px rgba(52,199,89,.38);}
-#zone-macro{border-radius:0 999px 999px 0;clip-path:inset(-24px -24px -24px 0);}   /* půlkruh na hraně těla, oblouk ven; clip-path utne glow na ploché straně → čisté zalícování s hranou */
+#zone-macro{border-radius:0 var(--r-pill) var(--r-pill) 0;clip-path:inset(-24px -24px -24px 0);}   /* půlkruh na hraně těla, oblouk ven; clip-path utne glow na ploché straně → čisté zalícování s hranou */
 /* The top render only shows the BUTTON as a tiny point on the device edge.
    Keep that precise visual glow, but give its hover target a usable 28px
    footprint; otherwise a normal mouse pass almost never reaches the 8px
@@ -768,9 +794,9 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 
 
 @media(max-width:540px){
-  .center-col{padding:16px 12px 0;gap:12px;}
-  .section-field-row{display:flex;flex-direction:row;align-items:flex-start;gap:16px;flex-wrap:wrap;}
-  .btn-remove-bank{font-size:14px;}
+  .center-col{padding:16px 12px 0;gap:var(--space-3);}
+  .section-field-row{display:flex;flex-direction:row;align-items:flex-start;gap:var(--space-4);flex-wrap:wrap;}
+  .btn-remove-bank{font-size:var(--fs-lg);}
   .device-home{width:min(55vw,clamp(120px,calc(44.24vh - 126px),196px));}
   .panel{min-width:0;}
   .h-status{width:7px;min-width:7px;flex:0 0 7px}
@@ -789,13 +815,13 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   .bank-quick-setup-label{width:100%;}
   .quick-setup-picker{max-width:none;}
   .section-summary{max-width:145px;}
-  .btn.btn-ghost{padding:6px 12px;font-size:12px;color:var(--t2);}
-  .uacc-tag{font-size:11px;padding:3px 6px;}
+  .btn.btn-ghost{padding:6px 12px;font-size:var(--fs-md);color:var(--t2);}
+  .uacc-tag{font-size:var(--fs-sm);padding:3px 6px;}
 }
 .enc-unified-body{
   display:flex;
   flex-direction:column;
-  gap:16px;
+  gap:var(--space-4);
 }
 .enc-left{
   width:100%;
@@ -809,20 +835,20 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   min-width:0;
 }
 /* UACC TAG WITH NAME */
-.uacc-num{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--t2);min-width:20px}
-.uacc-label{font-size:11px;color:var(--t2);font-family:'Mulish',sans-serif;}
+.uacc-num{font-family:'IBM Plex Mono',monospace;font-size:var(--fs-sm);font-weight:500;color:var(--t2);min-width:20px}
+.uacc-label{font-size:var(--fs-sm);color:var(--t2);font-family:'Mulish',sans-serif;}
 
 /* Composer-first keyswitch sequence chips — scoped away from articulation tags */
 .ks-sequence-head{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 6px}
 .ks-sequence-grid{gap:6px}
 .ks-note-chip{min-height:30px;gap:0;padding:3px 4px 3px 9px;border-radius:var(--r-sm)}
 .ks-note-chip:hover{border-color:var(--border-s)}
-.ks-note-name{font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap}
-.ks-name-input{width:112px;height:22px;padding:0 8px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);font:600 11px 'Mulish',sans-serif;color:var(--t1)}
-.ks-midi-number{min-width:22px;margin-left:6px;padding:2px 5px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 86%,transparent);font:500 9px 'IBM Plex Mono',monospace;color:var(--t3);text-align:center}
+.ks-note-name{font-size:var(--fs-sm);font-weight:600;color:var(--t1);white-space:nowrap}
+.ks-name-input{width:112px;height:22px;padding:0 8px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);font:600 var(--fs-sm) 'Mulish',sans-serif;color:var(--t1)}
+.ks-midi-number{min-width:22px;margin-left:6px;padding:2px 5px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 86%,transparent);font:500 var(--fs-xs) 'IBM Plex Mono',monospace;color:var(--t3);text-align:center}
 .ks-note-actions{display:flex;align-items:center;gap:1px;margin-left:5px;padding-left:4px;border-left:1px solid var(--border);opacity:.58;transition:opacity var(--dur-fast) ease}
 .ks-note-chip:hover .ks-note-actions,.ks-note-chip:focus-within .ks-note-actions{opacity:1}
-.ks-note-chip .ks-note-actions button{display:inline-flex;align-items:center;justify-content:center;width:18px;height:20px;padding:0;border-radius:var(--r-pill);font-size:12px}
+.ks-note-chip .ks-note-actions button{display:inline-flex;align-items:center;justify-content:center;width:18px;height:20px;padding:0;border-radius:var(--r-pill);font-size:var(--fs-md)}
 .ks-note-chip .ks-note-actions .tag-order-btn:hover{background:color-mix(in srgb,var(--bg-input) 76%,transparent);color:var(--t1)}
 .ks-note-chip .ks-note-actions .tag-remove-btn{margin-left:1px}
 .ks-note-chip .ks-note-actions .tag-remove-btn:hover{background:var(--danger-bg);color:var(--danger)}
@@ -830,10 +856,10 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 @media(pointer:coarse){.ks-note-actions{opacity:1}.ks-note-chip .ks-note-actions button{width:32px;height:32px}}
 
 /* DEVICE INFO */
-.info-grid{display:flex;flex-direction:column;gap:8px;}
+.info-grid{display:flex;flex-direction:column;gap:var(--space-2);}
 .field-block-invert{justify-content:flex-start;}
-.field-block-invert input[type=checkbox]{height:32px;margin:0;align-self:flex-start;transform:scale(1.15);transform-origin:left center;}
-.info-row{display:flex;flex-direction:row;align-items:baseline;gap:8px;}
+.field-block-invert .hid-switch{height:32px;align-self:flex-start}
+.info-row{display:flex;flex-direction:row;align-items:baseline;gap:var(--space-2);}
 .info-row.info-row-action{align-items:center;justify-content:flex-start;}
 .info-row.info-row-action .info-lbl{min-width:100px;}
 .fw-update-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
@@ -841,22 +867,22 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 #fw-update-progress{width:120px;height:6px;accent-color:var(--green)}
 #fw-update-progress[hidden],#fw-update-btn[hidden]{display:none}
 .response-select{position:relative;min-width:164px;}
-.response-select-trigger{width:100%;min-height:32px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 6px 12px;border-radius:11px;color:var(--t1);font:600 12px 'Mulish',sans-serif;text-align:left;}
+.response-select-trigger{width:100%;min-height:32px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px 6px 12px;border-radius:var(--r);color:var(--t1);font:600 var(--fs-md) 'Mulish',sans-serif;text-align:left;}
 .response-select-trigger svg{width:14px;height:14px;color:var(--t3);transition:transform .18s var(--ease-out);flex:none;}
 .response-select.is-open .response-select-trigger{border-color:color-mix(in srgb,var(--green) 48%,var(--control-glass-border));box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 13%,transparent),var(--control-glass-shadow);}
 .response-select.is-open .response-select-trigger svg{transform:rotate(180deg);}
-.response-select-menu{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:20;gap:3px;padding:5px;border:1px solid var(--control-glass-border);border-radius:13px;background:color-mix(in srgb,var(--bg) 83%,white);box-shadow:0 10px 24px rgba(32,32,40,.13),inset 0 1px 0 rgba(255,255,255,.58);}
+.response-select-menu{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:20;gap:3px;padding:5px;border:1px solid var(--control-glass-border);border-radius:var(--r);background:color-mix(in srgb,var(--bg) 83%,white);box-shadow:0 10px 24px rgba(32,32,40,.13),inset 0 1px 0 rgba(255,255,255,.58);}
 .response-select.is-open .response-select-menu{display:grid;}
 html.dark .response-select-menu{background:color-mix(in srgb,var(--bg) 90%,white);box-shadow:0 10px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);}
-.response-select-option{display:flex;flex-direction:column;gap:1px;width:100%;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:var(--t1);font:600 12px 'Mulish',sans-serif;text-align:left;cursor:pointer;transition:background .14s ease,color .14s ease,transform var(--dur-press) ease;}
-.response-select-option small{font-size:10px;font-weight:500;line-height:1.25;color:var(--t3);}
+.response-select-option{display:flex;flex-direction:column;gap:1px;width:100%;padding:7px 9px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--t1);font:600 var(--fs-md) 'Mulish',sans-serif;text-align:left;cursor:pointer;transition:background .14s ease,color .14s ease,transform var(--dur-press) ease;}
+.response-select-option small{font-size:var(--fs-xs);font-weight:400;line-height:1.25;color:var(--t3);}
 .response-select-option:hover,.response-select-option:focus-visible{background:color-mix(in srgb,var(--green) 12%,transparent);outline:none;}
 .response-select-option[aria-selected="true"]{background:var(--green);color:#fff;box-shadow:0 2px 7px color-mix(in srgb,var(--green) 30%,transparent);}
 .response-select-option[aria-selected="true"] small{color:rgba(255,255,255,.78);}
 .response-select-option:active{transform:scale(.98);}
-.hid-switch{display:inline-flex;align-items:center;cursor:pointer;position:relative}
+.hid-switch{display:inline-flex;align-items:center;gap:var(--space-2);cursor:pointer;position:relative}
 .hid-switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.hid-switch-track{position:relative;width:34px;height:20px;border-radius:var(--r-pill);border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow);transition:background var(--dur-switch) var(--ease-out),border-color var(--dur-switch) var(--ease-out),box-shadow var(--dur-switch) var(--ease-out)}
+.hid-switch-track{position:relative;flex:none;width:34px;height:20px;border-radius:var(--r-pill);border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);box-shadow:var(--control-glass-shadow);transition:background var(--dur-switch) var(--ease-out),border-color var(--dur-switch) var(--ease-out),box-shadow var(--dur-switch) var(--ease-out)}
 .hid-switch-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 2px 6px rgba(34,34,40,.22),inset 0 1px 0 rgba(255,255,255,.85);transition:transform var(--dur-switch) var(--ease-out)}
 /* background solid var(--green), matching .send-btn.sent's fill exactly
    (was color-mix(...44%,transparent) — washed out against the track's own
@@ -873,41 +899,42 @@ html.dark .response-select-menu{background:color-mix(in srgb,var(--bg) 90%,white
 .hid-switch input:focus-visible + .hid-switch-track{outline:2px solid var(--focus);outline-offset:3px}
 .hid-switch input:disabled + .hid-switch-track{opacity:.42;cursor:not-allowed}
 html.dark .hid-switch-thumb{background:rgba(245,245,247,.90)}
-.settings-subhead{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin:0 0 8px;user-select:none;}
+.macro-global-switch{display:flex;margin:10px 0 0}
+.settings-subhead{font-size:var(--fs-sm);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin:0 0 8px;user-select:none;}
 .settings-divider{height:1px;background:var(--border);margin:16px 0;}
-.info-lbl{font-size:11px;font-family:'Mulish',sans-serif;color:var(--t2);min-width:100px;flex-shrink:0;user-select:none;}
-.info-val{font-family:'Mulish',sans-serif;font-size:13px;color:var(--t1);font-weight:400;user-select:none;}
+.info-lbl{font-size:var(--fs-sm);font-family:'Mulish',sans-serif;color:var(--t2);min-width:100px;flex-shrink:0;user-select:none;}
+.info-val{font-family:'Mulish',sans-serif;font-size:var(--fs-base);color:var(--t1);font-weight:400;user-select:none;}
 html.dark .info-lbl{color:var(--t2)}
 html.dark .info-val{color:var(--t1)}
 html.dark #device-settings-chevron{color:var(--t3)}
 
 /* BOTTOM */
-.btn{display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border-radius:var(--r-pill);font-family:'Mulish',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:1px solid;transition:color .13s ease,background-color .13s ease,border-color .13s ease,transform var(--dur-press) ease,box-shadow .13s ease;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:var(--space-1);padding:8px 12px;border-radius:var(--r-pill);font-family:'Mulish',sans-serif;font-size:var(--fs-md);font-weight:600;cursor:pointer;border:1px solid;transition:color .13s ease,background-color .13s ease,border-color .13s ease,transform var(--dur-press) ease,box-shadow .13s ease;white-space:nowrap}
 .btn:active{transform:scale(.97)}
 .btn:disabled{opacity:.35;cursor:default;transform:none;box-shadow:none}
 .btn-ghost{background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);border-color:var(--control-glass-border);box-shadow:var(--control-glass-shadow);color:var(--t2)}
 .btn-ghost:hover{background:var(--control-glass-bg);box-shadow:var(--control-glass-shadow-hover);color:var(--t1)}
-.backup-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 66%,transparent)}
+.backup-tools{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 66%,transparent)}
 .backup-summary{display:flex;flex-direction:column;gap:2px;min-width:0}
-.backup-summary strong{font-size:12px;font-weight:600;color:var(--t1)}
-.backup-summary span{font-size:11px;color:var(--t3);line-height:1.35}
+.backup-summary strong{font-size:var(--fs-md);font-weight:600;color:var(--t1)}
+.backup-summary span{font-size:var(--fs-sm);color:var(--t3);line-height:1.35}
 .backup-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.backup-actions .btn{padding:6px 10px;border-radius:var(--r-pill);font-size:11px}
+.backup-actions .btn{padding:6px 10px;border-radius:var(--r-pill);font-size:var(--fs-sm)}
 .midi-diagnostics{border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 58%,transparent);overflow:hidden}
-.midi-diagnostics>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;list-style:none;cursor:pointer;color:var(--t1)}
+.midi-diagnostics>summary{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:10px 12px;list-style:none;cursor:pointer;color:var(--t1)}
 .midi-diagnostics>summary::-webkit-details-marker{display:none}
-.midi-diagnostics>summary::after{content:'⌄';color:var(--t3);font-size:11px;transition:transform .2s ease}
+.midi-diagnostics>summary::after{content:'⌄';color:var(--t3);font-size:var(--fs-sm);transition:transform .2s ease}
 .midi-diagnostics[open]>summary::after{transform:rotate(180deg)}
 .midi-diagnostics-title{display:flex;min-width:0;flex-direction:column;gap:2px}
-.midi-diagnostics-title strong{font-size:12px;font-weight:600}
-.midi-diagnostics-title span{font-size:10px;color:var(--t3)}
+.midi-diagnostics-title strong{font-size:var(--fs-md);font-weight:600}
+.midi-diagnostics-title span{font-size:var(--fs-xs);color:var(--t3)}
 .midi-diagnostics-body{padding:0 12px 12px;border-top:1px solid var(--border)}
 .midi-diagnostics-grid{display:grid;grid-template-columns:110px minmax(0,1fr);gap:0;padding:5px 0}
-.midi-diagnostics-label,.midi-diagnostics-value{padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;line-height:1.35}
+.midi-diagnostics-label,.midi-diagnostics-value{padding:5px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm);line-height:1.35}
 .midi-diagnostics-label{color:var(--t3)}
 .midi-diagnostics-value{min-width:0;color:var(--t1);font-family:'IBM Plex Mono',monospace;overflow-wrap:anywhere}
 .midi-diagnostics-actions{display:flex;justify-content:flex-end;padding-top:8px}
-.midi-diagnostics-copy{min-height:28px;padding:4px 10px;color:var(--t1);font:600 11px 'Mulish',sans-serif}
+.midi-diagnostics-copy{min-height:28px;padding:4px 10px;color:var(--t1);font:600 var(--fs-sm) 'Mulish',sans-serif}
 @media(max-width:600px){
   .backup-tools{align-items:stretch;flex-direction:column}
   .backup-actions{flex-wrap:wrap}
@@ -918,7 +945,7 @@ html.dark #device-settings-chevron{color:var(--t3)}
 /* Výška je rezervovaná pořád, i když je hláška prázdná: jinak by zobrazení
    chyby posunulo sekce pod sebou. Po zrušení akordeonu je otevřených sekcí
    víc naráz, takže by to bylo vidět častěji (spec §C-navíc). */
-.section-error{font-size:12px;color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
+.section-error{font-size:var(--fs-md);color:var(--danger);margin-top:4px;min-height:16px;line-height:16px}
 /* #vbar už není vizuální prvek. Jedna chyba měla čtyři signály naráz
    (banner, "N issues to fix", "Show error" na tlačítku, inline věta);
    viditelná zůstává jen inline věta u pole a tečky v hlavičce sekce /
@@ -936,19 +963,19 @@ html.dark #device-settings-chevron{color:var(--t3)}
 }
 .footer-top{
   display:flex;justify-content:space-between;align-items:flex-start;
-  gap:24px;flex-wrap:wrap;margin-bottom:14px;
+  gap:var(--space-6);flex-wrap:wrap;margin-bottom:14px;
 }
-.footer-brand{display:flex;flex-direction:column;gap:4px}
+.footer-brand{display:flex;flex-direction:column;gap:var(--space-1)}
 .footer-links{
-  display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+  display:flex;flex-direction:column;gap:var(--space-2);align-items:flex-end;
 }
 .footer-links a{
-  font-size:12px;color:var(--t3);text-decoration:none;transition:color .13s;
+  font-size:var(--fs-md);color:var(--t3);text-decoration:none;transition:color .13s;
 }
 .footer-links a:hover{color:var(--t2)}
 .footer-bottom{
   display:flex;flex-wrap:wrap;gap:8px 20px;
-  font-size:11px;color:var(--t3);
+  font-size:var(--fs-sm);color:var(--t3);
   border-top:1px solid var(--border);padding-top:10px;
 }
 html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !important}
@@ -967,7 +994,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .toast{
   display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;min-height:38px;padding:5px 7px;
   border:1px solid var(--glass-border);border-radius:var(--r-pill);background:linear-gradient(145deg,var(--glass-dialog),var(--glass-soft));
-  color:var(--t1);font:600 11px/1.35 'Mulish',sans-serif;pointer-events:auto;
+  color:var(--t1);font:600 var(--fs-sm)/1.35 'Mulish',sans-serif;pointer-events:auto;
   box-shadow:0 10px 30px rgba(34,34,40,.13),inset 0 1px 0 rgba(255,255,255,.34);
   backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%);
   animation:toast-in .32s var(--ease-out) both;transform-origin:right bottom;
@@ -975,28 +1002,28 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 }
 @keyframes toast-in{from{opacity:0;transform:translate3d(10px,4px,0) scale(.97);filter:blur(4px)}to{opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)}}
 .toast.is-leaving{opacity:0;transform:translate3d(8px,3px,0) scale(.98);filter:blur(3px);pointer-events:none}
-.toast-icon{display:grid;width:24px;height:24px;flex:0 0 24px;place-items:center;border:1px solid var(--glass-border);border-radius:50%;background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);color:var(--t2);font:700 10px 'Mulish',sans-serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
+.toast-icon{display:grid;width:24px;height:24px;flex:0 0 24px;place-items:center;border:1px solid var(--glass-border);border-radius:50%;background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);color:var(--t2);font:700 var(--fs-xs) 'Mulish',sans-serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
 .toast.s .toast-icon,.toast.sent .toast-icon{border-color:var(--green-border);background:var(--green-bg);color:var(--green-text)}
 .toast.e .toast-icon{border-color:color-mix(in srgb,var(--danger) 30%,var(--glass-border));background:var(--danger-bg);color:var(--danger)}
 .toast-message{min-width:0;flex:1;color:var(--t2);overflow-wrap:anywhere}
 .toast.e .toast-message{color:color-mix(in srgb,var(--danger) 72%,var(--t1))}
-.tx{display:grid;width:26px;height:26px;flex:0 0 26px;margin-left:1px;padding:0;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--t2);cursor:pointer;font:600 11px 'Mulish',sans-serif;transition:background-color var(--dur-fast) ease,color var(--dur-fast) ease,opacity var(--dur-fast) ease,transform var(--dur-press) ease}
+.tx{display:grid;width:26px;height:26px;flex:0 0 26px;margin-left:1px;padding:0;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--t2);cursor:pointer;font:600 var(--fs-sm) 'Mulish',sans-serif;transition:background-color var(--dur-fast) ease,color var(--dur-fast) ease,opacity var(--dur-fast) ease,transform var(--dur-press) ease}
 .tx:hover,.tx:focus-visible{background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);color:var(--t1);opacity:1}.tx:active{transform:scale(.92)}
-.hover-tip{position:fixed;z-index:300;max-width:220px;padding:6px 10px;border-radius:8px;font:12px/1.4 'Mulish',sans-serif;color:var(--t1);background:var(--chrome-glass-bg);backdrop-filter:var(--chrome-glass-filter);-webkit-backdrop-filter:var(--chrome-glass-filter);border:1px solid var(--chrome-float-border);box-shadow:var(--chrome-glass-shadow);opacity:0;pointer-events:none;transition:opacity .15s ease;}
+.hover-tip{position:fixed;z-index:300;max-width:220px;padding:6px 10px;border-radius:var(--r-sm);font:var(--fs-md)/1.4 'Mulish',sans-serif;color:var(--t1);background:var(--chrome-glass-bg);backdrop-filter:var(--chrome-glass-filter);-webkit-backdrop-filter:var(--chrome-glass-filter);border:1px solid var(--chrome-float-border);box-shadow:var(--chrome-glass-shadow);opacity:0;pointer-events:none;transition:opacity .15s ease;}
 .hover-tip.show{opacity:1;}
 .hover-tip[hidden]{display:none;}
-.toast-action{min-height:26px;border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);color:var(--t1);border-radius:var(--r-pill);padding:4px 9px;font:600 10px 'Mulish',sans-serif;cursor:pointer;box-shadow:var(--control-glass-shadow)}
+.toast-action{min-height:26px;border:1px solid var(--control-glass-border);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);color:var(--t1);border-radius:var(--r-pill);padding:4px 9px;font:600 var(--fs-xs) 'Mulish',sans-serif;cursor:pointer;box-shadow:var(--control-glass-shadow)}
 @media(max-width:600px){#toasts{right:16px;bottom:calc(14px + env(safe-area-inset-bottom));left:16px;width:auto;align-items:center}.toast{max-width:min(100%,340px);transform-origin:center bottom}}
 @media(prefers-reduced-motion:reduce){.toast{animation:none;transition:none}.toast.is-leaving{display:none}}
 .sync-banner{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:250;   /* pod single-row header, nad stage (z-40) i toasty */
   display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-sm);
   border:1px solid rgba(232,160,58,.5);background:linear-gradient(rgba(230,162,60,.08),rgba(230,162,60,.08)),var(--glass-dialog);
   width:max-content;max-width:min(92vw,560px);flex-wrap:wrap;justify-content:center;
-  font-size:12px;font-weight:600;box-shadow:0 14px 38px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.24);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
+  font-size:var(--fs-md);font-weight:600;box-shadow:0 14px 38px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.24);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
 .sync-banner[hidden]{display:none}   /* class display:flex jinak přebije UA pravidlo pro [hidden] */
 .nvm-degraded-notice[hidden]{display:none}   /* stejný gotcha — .hid-inline-notice je taky display:flex */
 .sync-btn{border:1px solid var(--border-s);background:var(--bg-input);
-  padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  padding:5px 12px;font-size:var(--fs-md);font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .sync-btn-overwrite{border-color:color-mix(in srgb,var(--red) 42%,var(--border-s));color:var(--red)}
 /* Touch: enlarge tap targets to >=44px without bloating desktop */
 @media(pointer:coarse){
@@ -1082,7 +1109,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .h-status-dot.err{background:var(--red)}
 .h-status-dot.warn{background:var(--amber)}
 .h-status-text{
-  font-size:11px;color:var(--t3);
+  font-size:var(--fs-sm);color:var(--t3);
   letter-spacing:.02em;
   margin-left:4px;
   max-width:20ch;overflow:hidden;white-space:nowrap;
@@ -1196,7 +1223,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:16px;
+  gap:var(--space-4);
   text-align:center;
   width:260px;
   padding:0;
@@ -1239,7 +1266,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
   transition:opacity var(--dur-base) ease;
 }
 .welcome-wordmark-text{
-  font:700 24px/1 'Mulish',sans-serif;letter-spacing:-.035em;white-space:nowrap;
+  font:700 var(--fs-3xl)/1 'Mulish',sans-serif;letter-spacing:-.035em;white-space:nowrap;
   color:var(--t1);
 }
 #welcome-text-block.welcome-onboarding .welcome-wordmark{
@@ -1257,7 +1284,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
   width:auto;height:18px;margin:0;overflow:visible;transform:translate(-50%,-100%);
 }
 #welcome-text-block.welcome-onboarding .welcome-wordmark-text{
-  color:var(--t2);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t2);font-size:var(--fs-sm);font-weight:700;letter-spacing:.12em;text-transform:uppercase;
 }
 /* The browser-unsupported notice used to be positioned by plain document flow
    (margin-top, centered by .welcome-inner's flexbox) — independent of the
@@ -1294,7 +1321,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .welcome-start{
   display:inline-block;margin:0;
   background:var(--red);color:#fff;border:none;border-radius:var(--r-pill);
-  font-family:'Mulish',sans-serif;font-size:13px;font-weight:600;letter-spacing:.01em;
+  font-family:'Mulish',sans-serif;font-size:var(--fs-base);font-weight:600;letter-spacing:.01em;
   min-width:166px;padding:11px 36px;cursor:pointer;box-shadow:0 4px 16px rgba(228,87,69,.30);
   /* Space is reserved from the start (no display:none) and the button fades in via .show,
      so surfacing it after the timeout never shifts the text below (Frank 2026-07-09). */
@@ -1305,13 +1332,13 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .welcome-start:hover{background:var(--red2);box-shadow:0 6px 20px rgba(228,87,69,.34);}
 .welcome-start:active{transform:scale(.97);}
 .welcome-start:disabled{opacity:.6;cursor:default;}
-.welcome-start-msg{width:100%;height:14px;min-height:14px;margin:6px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;line-height:14px;color:var(--danger);}
-.welcome-browser-notice{display:none;width:100%;box-sizing:border-box;margin:10px 0 0;padding:9px 14px;border-radius:12px;font-size:12px;line-height:1.4;color:var(--danger);background:var(--danger-bg);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
+.welcome-start-msg{width:100%;height:14px;min-height:14px;margin:6px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--fs-sm);line-height:14px;color:var(--danger);}
+.welcome-browser-notice{display:none;width:100%;box-sizing:border-box;margin:10px 0 0;padding:9px 14px;border-radius:var(--r);font-size:var(--fs-md);line-height:1.4;color:var(--danger);background:var(--danger-bg);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
 .welcome-browser-notice.show{display:block;}
 .welcome-skip{
   position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:3;
   width:max-content;transform:translateX(-50%);
-  font-size:12px;color:var(--t2);background:none;border:none;
+  font-size:var(--fs-md);color:var(--t2);background:none;border:none;
   cursor:pointer;font-family:'Mulish',sans-serif;padding:8px 16px;
   -webkit-tap-highlight-color:transparent;
 }
@@ -1321,22 +1348,22 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 @media(min-width:901px){
   .welcome-skip.welcome-skip-floating{
     top:auto;bottom:calc(2px + env(safe-area-inset-bottom,0px));
-    color:var(--t1);font-size:13px;font-weight:600;opacity:1;
+    color:var(--t1);font-size:var(--fs-base);font-weight:600;opacity:1;
   }
 }
 .welcome-skip.welcome-skip-floating{display:block!important}
-.onb-beat-title{font-size:22px;font-weight:700;color:var(--t1);letter-spacing:-.02em;line-height:1.2;transition:opacity var(--dur-base) ease;}
-.onb-beat-sub{font-size:13px;color:var(--t2);line-height:1.5;margin:7px auto 0;max-width:420px;min-height:40px;transition:opacity var(--dur-base) ease;}
+.onb-beat-title{font-size:var(--fs-3xl);font-weight:700;color:var(--t1);letter-spacing:-.02em;line-height:1.2;transition:opacity var(--dur-base) ease;}
+.onb-beat-sub{font-size:var(--fs-base);color:var(--t2);line-height:1.5;margin:7px auto 0;max-width:420px;min-height:40px;transition:opacity var(--dur-base) ease;}
 .onb-beat-details{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;min-height:29px;margin-top:10px;transition:opacity var(--dur-base) ease;}
-.onb-detail-pill{display:inline-flex;align-items:center;min-height:27px;padding:0 10px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:color-mix(in srgb,var(--glass-card) 82%,transparent);color:var(--t2);font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.04)}
+.onb-detail-pill{display:inline-flex;align-items:center;min-height:27px;padding:0 10px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:color-mix(in srgb,var(--glass-card) 82%,transparent);color:var(--t2);font-size:var(--fs-sm);font-weight:600;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.04)}
 .onb-detail-pill strong{margin-right:4px;color:var(--t1);font-weight:700}
 .onb-nav{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:7px;margin:0 0 8px;}
-.onb-nav-btn{display:inline-flex;align-items:center;justify-content:center;height:32px;border:1px solid var(--border-s);background:var(--bg-card);color:var(--t2);font:600 11px/1 'Mulish',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.06);transition:color var(--dur-fast) ease,border-color var(--dur-fast) ease,background var(--dur-fast) ease,opacity var(--dur-fast) ease,transform var(--dur-press) ease}
+.onb-nav-btn{display:inline-flex;align-items:center;justify-content:center;height:32px;border:1px solid var(--border-s);background:var(--bg-card);color:var(--t2);font:600 var(--fs-sm)/1 'Mulish',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.06);transition:color var(--dur-fast) ease,border-color var(--dur-fast) ease,background var(--dur-fast) ease,opacity var(--dur-fast) ease,transform var(--dur-press) ease}
 .onb-nav-btn:hover:not(:disabled){color:var(--t1);border-color:var(--t3);background:var(--bg)}
 .onb-nav-btn:active:not(:disabled){transform:scale(.96)}
 .onb-nav-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .onb-nav-btn:disabled{opacity:.28;cursor:default}
-.onb-prev{position:relative;top:-2px;width:32px;padding:0;border-radius:50%;font-size:18px}
+.onb-prev{position:relative;top:-2px;width:32px;padding:0;border-radius:50%;font-size:var(--fs-xl)}
 .onb-next{min-width:72px;padding:0 12px;border-radius:var(--r-pill);gap:5px;color:var(--t1)}
 .onb-next.is-final{
   /* Match the send button's own green "configure" glow fade-in (feel-fader.html
@@ -1353,7 +1380,7 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
   pointer-events:none;
   transition:opacity var(--dur-glow) var(--ease-hero),visibility 0s linear var(--dur-glow),color var(--dur-fast) ease,border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-press) ease;
 }
-.onb-dots{display:flex;gap:4px;justify-content:center;margin:0;}
+.onb-dots{display:flex;gap:var(--space-1);justify-content:center;margin:0;}
 .onb-dot{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;background:transparent;border-radius:var(--r-pill);cursor:pointer}
 .onb-dot::before{content:'';width:6px;height:6px;border-radius:var(--r-pill);background:var(--border-s);transition:width var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
 .onb-dot.on::before{width:14px;background:var(--red);}
@@ -1436,11 +1463,11 @@ body:has(#welcome-screen.welcome-scroll-fallback) .device-wrap.welcome-mode[data
 }
 @media(max-width:600px){
   #welcome-text-block.welcome-onboarding #onb-beats{height:212px}
-  .onb-beat-title{font-size:19px}
-  .onb-beat-sub{font-size:12px;min-height:56px}
-  .onb-beat-details{min-height:29px;margin-top:7px;gap:4px}
-  .onb-detail-pill{min-height:25px;padding:0 8px;font-size:10px}
-  .onb-nav{gap:4px;margin-bottom:4px}
+  .onb-beat-title{font-size:var(--fs-2xl)}
+  .onb-beat-sub{font-size:var(--fs-md);min-height:56px}
+  .onb-beat-details{min-height:29px;margin-top:7px;gap:var(--space-1)}
+  .onb-detail-pill{min-height:25px;padding:0 8px;font-size:var(--fs-xs)}
+  .onb-nav{gap:var(--space-1);margin-bottom:4px}
   .onb-dot{width:20px}
   .onb-dot.on::before{width:11px}
   .onb-next{min-width:66px;padding:0 9px}
@@ -1715,7 +1742,7 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 /* Connect confirmation: a restrained outline + soft halo + one glassy light pass. */
 .device-wrap::after{
   content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
-  border-radius:18px;opacity:0;
+  border-radius:var(--r-lg);opacity:0;
   background:linear-gradient(108deg,transparent 36%,rgba(var(--highlight-rgb),.10) 47%,rgba(255,255,255,.16) 50%,transparent 62%);
   background-size:260% 100%;background-position:145% 0;
   mix-blend-mode:screen;
@@ -1789,14 +1816,14 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 @media(max-width:980px){
   .live-hud{left:16px;width:96px;height:96px;padding:7px;border-radius:var(--r-lg)}
   .live-hud[data-side]{left:16px;right:auto}
-  .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:4px}
+  .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:var(--space-1)}
   .live-hud-item:not(.live-hud-roller){row-gap:2px}
   .live-hud-roller{grid-template-columns:auto minmax(0,1fr);column-gap:3px;row-gap:1px;padding-top:3px}
-  .live-hud-roller .live-hud-value{font-size:10px;line-height:11px}
+  .live-hud-roller .live-hud-value{font-size:var(--fs-xs);line-height:11px}
   /* Mobile keeps the 96 px square and its compact type (UX audit C-2 enlarged desktop only). */
-  .live-hud-label{font-size:8px}
-  .live-hud-value{font-size:10px;line-height:normal}
-  .live-hud-tech{font-size:7px}
+  .live-hud-label{font-size:var(--fs-hud-sm)}
+  .live-hud-value{font-size:var(--fs-xs);line-height:normal}
+  .live-hud-tech{font-size:var(--fs-hud-xs)}
 }
 .icon-picker-modal{
   background:linear-gradient(145deg,var(--glass-dialog),var(--glass-card));border:1px solid var(--glass-border);
@@ -1804,40 +1831,40 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   backdrop-filter:blur(26px) saturate(165%);-webkit-backdrop-filter:blur(26px) saturate(165%);
   padding:20px;width:360px;max-height:82vh;overflow-y:auto;
 }
-.icon-picker-title{font-size:14px;font-weight:600;color:var(--t1);margin-bottom:16px}
+.icon-picker-title{font-size:var(--fs-lg);font-weight:600;color:var(--t1);margin-bottom:16px}
 .icon-section-label{
-  font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  font-size:var(--fs-xs);font-weight:600;letter-spacing:.1em;text-transform:uppercase;
   color:var(--t2);margin:14px 0 8px;
 }
 .icon-section-label:first-child{margin-top:0}
-.icon-section-row{display:flex;flex-wrap:wrap;gap:8px}
+.icon-section-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
 .icon-btn{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
+  display:flex;flex-direction:column;align-items:center;gap:var(--space-1);
   padding:8px;border-radius:var(--r);border:1px solid var(--border);
   background:var(--bg-input);cursor:pointer;transition:all .13s;
   min-width:58px;
 }
 .icon-btn:hover{border-color:var(--border-s);background:var(--bg)}
 .icon-btn.selected{border-color:var(--red);background:rgba(232,80,58,.08)}
-.icon-btn-emoji{font-size:22px;line-height:1}
-.icon-btn-label{font-size:11px;color:var(--t3);text-align:center;white-space:nowrap}
+.icon-btn-emoji{font-size:var(--fs-3xl);line-height:1}
+.icon-btn-label{font-size:var(--fs-sm);color:var(--t3);text-align:center;white-space:nowrap}
 .badge-btn .icon-btn-emoji{display:none}
 /* Library badge */
 .lib-badge{
   display:inline-flex;align-items:center;justify-content:center;
   background:var(--t1);color:var(--bg-card);
-  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
+  font-family:'IBM Plex Mono',monospace;font-size:var(--fs-sm);font-weight:500;
   border-radius:var(--r-sm);padding:4px 8px;letter-spacing:.04em;
   min-width:32px;line-height:1.2;
 }
-.icon-picker-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.icon-picker-foot{display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
 .confirm-overlay[hidden]{display:none}
 .confirm-overlay{z-index:170}
 .custom-preset-overlay{z-index:160}
 .confirm-modal{max-width:390px;padding:0;overflow:hidden}
-.confirm-body{padding:18px 20px 4px;color:var(--t2);font-size:13px;line-height:1.5}
-.confirm-body strong{display:block;color:var(--t1);font-size:16px;margin-bottom:6px}
-.confirm-actions{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px 18px}
+.confirm-body{padding:18px 20px 4px;color:var(--t2);font-size:var(--fs-base);line-height:1.5}
+.confirm-body strong{display:block;color:var(--t1);font-size:var(--fs-xl);margin-bottom:6px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:var(--space-2);padding:16px 20px 18px}
 .confirm-danger{background:var(--danger);border-color:var(--danger);color:#fff}
 .confirm-danger:hover{filter:brightness(.92)}
 .confirm-primary{background:var(--red);border-color:var(--red);color:#fff}
@@ -1880,9 +1907,9 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 .section-head.section-toggle{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);font-family:'Mulish',sans-serif;color:inherit}
 .section-head.section-toggle{cursor:pointer}
 .section-toggle-title{display:flex;flex-direction:column;gap:3px;min-width:0}
-.section-toggle-meta{margin-left:auto;display:flex;align-items:center;gap:12px;min-width:0}
+.section-toggle-meta{margin-left:auto;display:flex;align-items:center;gap:var(--space-3);min-width:0}
 .section-head-editable .section-toggle-title{flex:1}
-.section-toggle-action{display:flex;align-items:center;gap:12px;min-width:0;margin-left:auto;padding:5px 0 5px 12px;border:0;background:transparent;color:inherit;cursor:pointer;font-family:'Mulish',sans-serif}
+.section-toggle-action{display:flex;align-items:center;gap:var(--space-3);min-width:0;margin-left:auto;padding:5px 0 5px 12px;border:0;background:transparent;color:inherit;cursor:pointer;font-family:'Mulish',sans-serif}
 .section-toggle-action:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
 /* Šířka podle obsahu, ne pevných 190 px: prázdné místo napravo od názvu
    patří hlavičce sekce (= rozbalí ji), ne inputu (Frank, HW test 2026-08-08).
@@ -1890,12 +1917,12 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
    Web Serial. max-width drží nejhorší případ na dosavadní šířce.
    align-self:flex-start zabraňuje flex-parent stretch (section-toggle-title
    je flex column s align-items:stretch, které by input natáhlo na 190px). */
-.fader-title-input{field-sizing:content;width:auto;min-width:5ch;max-width:min(190px,100%);font-size:13px;padding:0;flex:0 1 auto;align-self:flex-start;cursor:text}
-.section-summary{display:inline-flex;align-items:baseline;gap:5px;min-width:0;max-width:260px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.25}
-.section-summary-label{font:600 11px 'Mulish',sans-serif;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
-.section-summary-meta{font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:0;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
-.section-summary-sep{color:var(--t3);font:600 10px 'Mulish',sans-serif}
-.section-chevron{font-size:10px;color:var(--t3);transition:transform .25s var(--ease-out)}
+.fader-title-input{field-sizing:content;width:auto;min-width:5ch;max-width:min(190px,100%);font-size:var(--fs-base);padding:0;flex:0 1 auto;align-self:flex-start;cursor:text}
+.section-summary{display:inline-flex;align-items:baseline;gap:5px;min-width:0;max-width:260px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-sm);line-height:1.25}
+.section-summary-label{font:600 var(--fs-sm) 'Mulish',sans-serif;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.section-summary-meta{font:500 var(--fs-sm) 'IBM Plex Mono',monospace;letter-spacing:0;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.section-summary-sep{color:var(--t3);font:600 var(--fs-xs) 'Mulish',sans-serif}
+.section-chevron{font-size:var(--fs-xs);color:var(--t3);transition:transform .25s var(--ease-out)}
 .bank-section.is-open .section-chevron{transform:rotate(180deg)}
 .bank-section.is-collapsed .section-head{padding-bottom:0;margin-bottom:0;border-bottom-color:transparent}
 .section-collapse-body[hidden]{display:none}
@@ -1935,7 +1962,7 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
     box-shadow:0 8px 16px -14px rgba(20,20,26,.45);
   }
 }
-.cc-meaning{font-size:10px;color:var(--t2);min-height:12px;white-space:nowrap}
+.cc-meaning{font-size:var(--fs-xs);color:var(--t2);min-height:12px;white-space:nowrap}
 .bank-section-divider{
   height:1px;
   background:var(--border);
@@ -1945,20 +1972,20 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   padding:11px 14px;
 }
 .section-head{
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:var(--space-2);
   padding-bottom:8px;
   border-bottom:1px solid var(--border);
   margin-bottom:9px;
 }
 .section-fields{}
 .section-field-row{
-  display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;
+  display:flex;gap:var(--space-4);align-items:flex-start;flex-wrap:wrap;
 }
 
 
 
 .bank-icon-display{
-  font-size:20px;line-height:1;flex-shrink:0;
+  font-size:var(--fs-2xl);line-height:1;flex-shrink:0;
 }
 .bank-icon-empty{
   opacity:.3;flex-shrink:0;display:flex;align-items:center;
@@ -2000,11 +2027,11 @@ button:focus-visible{outline-offset:3px;}
   box-shadow:none;
   cursor:pointer;
   font-family:'Mulish',sans-serif;
-  font-size:12px;font-weight:600;
+  font-size:var(--fs-md);font-weight:600;
   color:var(--t3);
   transition:all .15s;
   white-space:nowrap;
-  display:flex;align-items:center;gap:4px;
+  display:flex;align-items:center;gap:var(--space-1);
 }
 /* Matches .dark-toggle's diameter in each pointer context — Frank
    2026-08-17: "chipy u bank... aby měly stejnou výšku jako bude průměr
@@ -2016,9 +2043,9 @@ button:focus-visible{outline-offset:3px;}
    .dark-toggle's width) and drag touch height back down to 30px. */
 @media(pointer:fine){.bank-block-tab{min-height:30px}}
 .bank-block-tab span{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.bank-tab-ic{font-size:13px;line-height:1;}
+.bank-tab-ic{font-size:var(--fs-base);line-height:1;}
 .bank-tab-fallback{
-  font:500 10px 'IBM Plex Mono',monospace;
+  font:500 var(--fs-xs) 'IBM Plex Mono',monospace;
   font-variant-numeric:tabular-nums;
   min-width:14px;
   text-align:center;
@@ -2068,21 +2095,21 @@ button:focus-visible{outline-offset:3px;}
   border:none;
   background:transparent;
   cursor:pointer;
-  font-size:16px;
+  font-size:var(--fs-xl);
   color:var(--t3);
   transition:all .14s;
   display:flex;align-items:center;
 }
 .bank-block-tab-add:hover{color:var(--t1);background:var(--bg-input);}
 .bank-block-name{
-  display:flex;flex-direction:column;gap:4px;
+  display:flex;flex-direction:column;gap:var(--space-1);
   padding:11px 14px 4px;
 }
 .bank-block-name-top{
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:var(--space-2);
 }
-.bank-quick-setup{display:flex;align-items:center;gap:8px;padding:6px 0 7px 31px;min-width:0}
-.bank-quick-setup-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
+.bank-quick-setup{display:flex;align-items:center;gap:var(--space-2);padding:6px 0 7px 31px;min-width:0}
+.bank-quick-setup-label{font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
 .quick-setup-picker{position:relative;flex:1;min-width:150px;max-width:300px}
 /* iOS Safari/Chrome auto-zooms the whole page on focusing an <input> with
    font-size under 16px (Frank 2026-08-17: "otevře se dropdown menu a celé
@@ -2093,7 +2120,7 @@ button:focus-visible{outline-offset:3px;}
    also need overflow-hidden on .quick-setup-picker (which hosts the
    dropdown menu via position:absolute — clipping THAT would hide the menu). */
 .library-quick-input-scale{display:block;width:100%;height:29px;overflow:hidden;border-radius:var(--r-pill)}
-.library-quick-input{width:133.333%;height:38.667px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 88%,transparent);color:var(--t1);padding:8px 13.333px;font:16px 'Mulish',sans-serif;outline:none;transform:scale(.75);transform-origin:top left}
+.library-quick-input{width:133.333%;height:38.667px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 88%,transparent);color:var(--t1);padding:8px 13.333px;font:var(--fs-xl) 'Mulish',sans-serif;outline:none;transform:scale(.75);transform-origin:top left}
 .library-quick-input:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 18%,transparent)}
 .bank-quick-setup.is-first-run-highlight .library-quick-input{animation:library-setup-cue 1.65s var(--ease-out)}
 @keyframes library-setup-cue{
@@ -2110,49 +2137,48 @@ button:focus-visible{outline-offset:3px;}
 .quick-setup-menu{left:0;width:min(360px,calc(100vw - 40px));max-height:310px;overflow-y:auto}
 .quick-setup-menu[hidden]{display:none}
 .quick-setup-group+.quick-setup-group{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
-.quick-setup-group-label{padding:4px 8px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
+.quick-setup-group-label{padding:4px 8px 4px;font-size:var(--fs-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
 .quick-setup-option{
-  width:100%;display:flex;align-items:center;gap:8px;padding:8px;border:0;border-radius:var(--r-sm);
-  background:transparent;color:var(--t1);font:600 11px 'Mulish',sans-serif;text-align:left;cursor:pointer
+  width:100%;display:flex;align-items:center;gap:var(--space-2);padding:8px;border:0;border-radius:var(--r-sm);
+  background:transparent;color:var(--t1);font:600 var(--fs-sm) 'Mulish',sans-serif;text-align:left;cursor:pointer
 }
 .quick-setup-option:hover,.quick-setup-option:focus-visible{background:var(--bg-input)}
-.quick-setup-option-icon{width:20px;text-align:center;font-size:14px;flex-shrink:0}
+.quick-setup-option-icon{width:20px;text-align:center;font-size:var(--fs-lg);flex-shrink:0}
 .quick-setup-option-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.quick-setup-option-kind{font-size:10px;font-weight:600;color:var(--t2);white-space:nowrap}
-.quick-setup-empty{padding:12px 8px;color:var(--t3);font-size:11px;text-align:center}
-.quick-preset-btn{min-height:28px;padding:4px 12px;font-size:11px;white-space:nowrap;color:var(--t1)}
+.quick-setup-option-kind{font-size:var(--fs-xs);font-weight:600;color:var(--t2);white-space:nowrap}
+.quick-setup-empty{padding:12px 8px;color:var(--t3);font-size:var(--fs-sm);text-align:center}
+.quick-preset-btn{min-height:28px;padding:4px 12px;font-size:var(--fs-sm);white-space:nowrap;color:var(--t1)}
 .custom-preset-overlay[hidden]{display:none}
 .custom-preset-modal{max-width:520px;overflow:hidden}
 .custom-preset-head{padding:18px 20px 12px;border-bottom:1px solid var(--border)}
-.custom-preset-head strong{display:block;font-size:15px;color:var(--t1);margin-bottom:4px}
-.custom-preset-head span{font-size:12px;line-height:1.45;color:var(--t2)}
+.custom-preset-head strong{display:block;font-size:var(--fs-lg);color:var(--t1);margin-bottom:4px}
+.custom-preset-head span{font-size:var(--fs-md);line-height:1.45;color:var(--t2)}
 .custom-preset-body{padding:16px 20px;display:grid;gap:15px}
-.custom-preset-name{width:100%;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);color:var(--t1);padding:8px 11px;font:13px 'Mulish',sans-serif;outline:none}
+.custom-preset-name{width:100%;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);color:var(--t1);padding:8px 11px;font:var(--fs-base) 'Mulish',sans-serif;outline:none}
 .custom-preset-name:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 18%,transparent)}
 .custom-preset-scopes{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
-.custom-preset-scope{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--t2);line-height:1.35;cursor:pointer}
-.custom-preset-scope input{margin-top:2px;accent-color:var(--red)}
+.custom-preset-scope{display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-md);color:var(--t2);line-height:1.35;cursor:pointer}
 .custom-preset-list{display:grid;gap:6px;max-height:190px;overflow:auto}
-.custom-preset-empty{font-size:12px;color:var(--t3);padding:10px 0}
-.custom-preset-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 72%,transparent)}
-.custom-preset-row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--t1)}
-.custom-preset-row button{border:0;background:transparent;color:var(--t2);font:11px 'Mulish',sans-serif;cursor:pointer;padding:3px 6px;border-radius:var(--r-sm)}
+.custom-preset-empty{font-size:var(--fs-md);color:var(--t3);padding:10px 0}
+.custom-preset-row{display:flex;align-items:center;gap:var(--space-2);padding:7px 9px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 72%,transparent)}
+.custom-preset-row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-md);color:var(--t1)}
+.custom-preset-row button{border:0;background:transparent;color:var(--t2);font:var(--fs-sm) 'Mulish',sans-serif;cursor:pointer;padding:3px 6px;border-radius:var(--r-sm)}
 .custom-preset-row button:hover{background:var(--bg-input);color:var(--t1)}
 .custom-preset-row .custom-preset-delete:hover{color:var(--danger)}
 .custom-preset-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px 18px;border-top:1px solid var(--border)}
-.custom-preset-foot-left,.custom-preset-foot-right{display:flex;align-items:center;gap:8px}
+.custom-preset-foot-left,.custom-preset-foot-right{display:flex;align-items:center;gap:var(--space-2)}
 .library-preview-overlay{z-index:165}
 .library-preview-overlay[hidden]{display:none}
 .library-preview-modal{max-width:500px;overflow:hidden}
 .library-preview-head{padding:18px 20px 12px;border-bottom:1px solid var(--border)}
-.library-preview-head strong{display:block;font-size:16px;color:var(--t1);margin-bottom:4px}
-.library-preview-head span{display:block;font-size:12px;line-height:1.45;color:var(--t2)}
-.library-preview-body{padding:14px 20px;display:grid;gap:8px}
-.library-preview-row{display:grid;grid-template-columns:108px minmax(0,1fr);gap:12px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 68%,transparent)}
-.library-preview-row-label{font:600 10px 'Mulish',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
-.library-preview-row-value{min-width:0;font-size:12px;line-height:1.4;color:var(--t1)}
-.library-preview-note{padding:8px 10px;border-left:2px solid var(--amber);font-size:11px;line-height:1.45;color:var(--t2)}
-.library-preview-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px 18px;border-top:1px solid var(--border);flex-wrap:wrap}
+.library-preview-head strong{display:block;font-size:var(--fs-xl);color:var(--t1);margin-bottom:4px}
+.library-preview-head span{display:block;font-size:var(--fs-md);line-height:1.45;color:var(--t2)}
+.library-preview-body{padding:14px 20px;display:grid;gap:var(--space-2)}
+.library-preview-row{display:grid;grid-template-columns:108px minmax(0,1fr);gap:var(--space-3);padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg-input) 68%,transparent)}
+.library-preview-row-label{font:600 var(--fs-xs) 'Mulish',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
+.library-preview-row-value{min-width:0;font-size:var(--fs-md);line-height:1.4;color:var(--t1)}
+.library-preview-note{padding:8px 10px;border-left:2px solid var(--amber);font-size:var(--fs-sm);line-height:1.45;color:var(--t2)}
+.library-preview-actions{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);padding:14px 20px 18px;border-top:1px solid var(--border);flex-wrap:wrap}
 .library-preview-articulations[hidden]{display:none}
 @media(max-width:540px){
   .custom-preset-scopes{grid-template-columns:1fr}
@@ -2168,7 +2194,7 @@ button:focus-visible{outline-offset:3px;}
   width:100%;padding:12px 16px;
   background:none;border:none;
   cursor:pointer;font-family:'Mulish',sans-serif;
-  font-size:13px;font-weight:600;color:var(--t1);letter-spacing:-.01em;
+  font-size:var(--fs-base);font-weight:600;color:var(--t1);letter-spacing:-.01em;
   -webkit-tap-highlight-color:transparent;
   text-align:left;
 }
@@ -2335,7 +2361,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         <span class="panel-name" style="margin:0">Device &amp; Settings</span>
         <span class="fw-update-dot" id="fw-update-dot" hidden title="Firmware update available"></span>
       </div>
-      <span id="device-settings-chevron" style="font-size:11px;color:var(--t3)">▼</span>
+      <span id="device-settings-chevron" style="font-size:var(--fs-sm);color:var(--t3)">▼</span>
     </button>
     <div id="device-settings-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border)">
 
@@ -2372,7 +2398,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
             </div>
           </div>
         </div>
-        <div id="fader-response-note" style="margin:-1px 0 0 100px;font-size:11px;line-height:1.35;color:var(--t3)">Connect a compatible device to change fader response.</div>
+        <div id="fader-response-note" style="margin:-1px 0 0 100px;font-size:var(--fs-sm);line-height:1.35;color:var(--t3)">Connect a compatible device to change fader response.</div>
       </div>
 
       <div class="settings-divider"></div>
@@ -2423,9 +2449,9 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         <div class="panel-dot"></div>
         <span class="panel-name" style="margin:0">Help &amp; Guide</span>
       </div>
-      <span id="help-chevron" style="font-size:11px;color:var(--t3)">▼</span>
+      <span id="help-chevron" style="font-size:var(--fs-sm);color:var(--t3)">▼</span>
     </button>
-    <div id="help-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border);font-size:12px;line-height:1.6;color:var(--t2)">
+    <div id="help-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border);font-size:var(--fs-md);line-height:1.6;color:var(--t2)">
       <button class="btn btn-ghost quick-preset-btn onb-replay-btn ui-control ui-pill ui-glass" onclick="onbReplay()" data-i18n="onb.replay">▶ Show intro again</button>
       <div class="settings-subhead">Getting started</div>
       <p style="margin:0 0 12px">Connect your Feel Fader via USB and click <b>Connect &amp; load</b>. The configurator reads the device config; after editing, click <b>Send to device</b> to apply your changes. Shortcuts: <b>Ctrl/⌘ + S</b> sends, <b>Ctrl/⌘ + Z</b> undoes the last change.</p>
@@ -2434,7 +2460,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       <div class="settings-subhead" id="help-banks">Banks</div>
       <p style="margin:0 0 12px">Bank names and icons are saved in this browser and — with firmware 1.1.0+ — also on the device, so they follow it between computers. The frosty pill is the bank you're editing; the small controller icon marks the bank currently active on the hardware. Library setups show a review before changing the bank; built-in setups are starting points and should be checked against the exact library patch.</p>
       <div class="settings-subhead" id="help-roller">Roller modes</div>
-      <p style="margin:0 0 12px"><b>Articulation (CC)</b> — the roller steps through articulations (UACC). <b>Keyswitch</b> — the roller sends note keyswitches selected on a piano keyboard (see below). <b>Navigation (keys)</b> — the roller sends a keyboard key per detent (e.g. arrows) to navigate your DAW; requires Keyboard (HID). <b>Relative CC</b> — the roller sends a relative step (value 1 = up, 127 = down) on the configured CC/channel, for external MIDI processing (e.g. a per-track keyswitch mapper).</p>
+      <p style="margin:0 0 12px"><b>Articulation</b> — the roller steps through articulations (UACC). <b>Keyswitch</b> — the roller sends note keyswitches selected on a piano keyboard (see below). <b>Navigation</b> — the roller sends a keyboard key per detent (e.g. arrows) to navigate your DAW; requires Keyboard (HID). <b>Relative CC</b> — the roller sends a relative step (value 1 = up, 127 = down) on the configured CC/channel, for external MIDI processing (e.g. a per-track keyswitch mapper).</p>
       <div class="settings-subhead" id="help-keyswitch">Keyswitch mode</div>
       <p style="margin:0 0 12px">In Keyswitch mode the roller sends MIDI note keyswitches on the configured channel. Click one piano key or drag across a range; rotating the roller steps through the selected notes. Reorder long sequences by dragging chips or with Alt + arrow keys.</p>
       <div class="settings-subhead" id="help-macro">Button macro (long-press)</div>
@@ -2558,10 +2584,10 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       <div>
         <span class="field-label">INCLUDE</span>
         <div class="custom-preset-scopes">
-          <label class="custom-preset-scope"><input type="checkbox" id="custom-preset-mapping" checked /> Fader mappings &amp; MIDI channels</label>
-          <label class="custom-preset-scope"><input type="checkbox" id="custom-preset-roller" checked /> Roller mode &amp; navigation</label>
-          <label class="custom-preset-scope"><input type="checkbox" id="custom-preset-articulations" checked /> Articulations &amp; keyswitches</label>
-          <label class="custom-preset-scope"><input type="checkbox" id="custom-preset-icon" checked /> Bank icon</label>
+          <label class="custom-preset-scope hid-switch"><input type="checkbox" id="custom-preset-mapping" checked /><span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span><span>Fader mappings &amp; MIDI channels</span></label>
+          <label class="custom-preset-scope hid-switch"><input type="checkbox" id="custom-preset-roller" checked /><span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span><span>Roller mode &amp; navigation</span></label>
+          <label class="custom-preset-scope hid-switch"><input type="checkbox" id="custom-preset-articulations" checked /><span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span><span>Articulations &amp; keyswitches</span></label>
+          <label class="custom-preset-scope hid-switch"><input type="checkbox" id="custom-preset-icon" checked /><span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span><span>Bank icon</span></label>
         </div>
       </div>
       <div>
@@ -3414,10 +3440,10 @@ function ccEncoderBody(ctrl, bi, errs = validate()) {
             <button class="btn btn-ghost" onclick="toggleUaccPresets()" id="uacc-preset-btn">Articulation templates ▾</button>
             <div class="uacc-preset-dropdown" id="uacc-preset-dropdown" style="display:none">
               <div class="uacc-dropdown-section">Library articulation lists</div>
-              <button onclick="applyArticulationList('Spitfire BBCSO')">🎻 Spitfire BBCSO</button>
+              <button onclick="applyArticulationList('Spitfire BBC Symphony Orchestra')">🎻 Spitfire BBC Symphony Orchestra</button>
               <button onclick="applyArticulationList('Spitfire Chamber Strings')">🎻 Spitfire Chamber Strings</button>
-              <button onclick="applyArticulationList('Spitfire Brass')">🎺 Spitfire Brass</button>
-              <button onclick="applyArticulationList('Spitfire Woodwinds')">🎷 Spitfire Woodwinds</button>
+              <button onclick="applyArticulationList('Spitfire UACC — Brass')">🎺 Spitfire UACC — Brass</button>
+              <button onclick="applyArticulationList('Spitfire UACC — Woodwinds')">🎷 Spitfire UACC — Woodwinds</button>
               <div class="uacc-dropdown-section">General patterns</div>
               <button onclick="applyUaccTemplate('spitfire')">UACC common techniques</button>
               <button onclick="applyUaccTemplate('legato')">Legato family</button>
@@ -3427,7 +3453,7 @@ function ccEncoderBody(ctrl, bi, errs = validate()) {
             </div>
           </div>
         </div>
-        <p class="uacc-note">Encoder steps through these articulations. Values follow the UACC standard (Spitfire, East West, Orchestral Tools).</p>
+        <p class="uacc-note">The roller steps through these articulations. Values follow Spitfire's UACC standard.</p>
       </div>
 
     </div>`;
@@ -3584,11 +3610,11 @@ function encoderPanel(ctrl, bi, errs = validate()) {
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
       <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${ROLLER_MODES.indexOf(rmode)}">
         ${ROLLER_MODES.map((m,mi) => {
-          const labels = {cc:'Articulation (CC)', keyswitch:'Keyswitch', track_nav:'Navigation (keys)', cc_relative:'Relative CC'};
+          const hints = {cc:'Steps through UACC articulations on one CC', keyswitch:'Sends keyswitch notes', track_nav:'Sends keyboard keys (HID) to navigate your DAW', cc_relative:'Sends relative up/down steps on one CC'};
           const active = (cfg.banks[bi].roller_mode || 'cc') === m;
           return `<button type="button" class="roller-mode-btn${active?' active':''}"
             data-roller-mode="${m}" aria-pressed="${active}" tabindex="${active?'0':'-1'}"
-            onclick="setRollerMode(${bi},'${m}')" onkeydown="rollerModeKey(event,${bi},${mi})">${labels[m]}</button>`;
+            title="${hints[m]}" onclick="setRollerMode(${bi},'${m}')" onkeydown="rollerModeKey(event,${bi},${mi})">${rollerModeTitle(m)}</button>`;
         }).join('')}
       </div>
       <div class="roller-mode-content" id="roller-mode-content-${bi}">${rollerModeBodyHtml(ctrl, bi, rmode, errs)}</div>
@@ -3616,17 +3642,20 @@ function trackNavBody(bi){
     <div class="section-field-row">
       <div class="field-block">
         <span class="field-label">ROLL UP</span>
-        <button class="step-btn" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+        <button type="button" class="ui-keycap ui-control ui-pill ui-glass"
           id="navcap-${bi}-cw" onclick="startKeyCapture(${bi},'cw')">${cwLbl}</button>
       </div>
       <div class="field-block">
         <span class="field-label">ROLL DOWN</span>
-        <button class="step-btn" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm)"
+        <button type="button" class="ui-keycap ui-control ui-pill ui-glass"
           id="navcap-${bi}-ccw" onclick="startKeyCapture(${bi},'ccw')">${ccwLbl}</button>
       </div>
       <div class="field-block field-block-invert">
         <span class="field-label">INVERT</span>
-        <input type="checkbox" ${b.nav_invert?'checked':''} onchange="cfg.banks[${bi}].nav_invert=this.checked;dirty=true;render()" aria-label="Invert navigation direction">
+        <label class="hid-switch">
+          <input type="checkbox" ${b.nav_invert?'checked':''} onchange="cfg.banks[${bi}].nav_invert=this.checked;dirty=true;render()" aria-label="Invert navigation direction">
+          <span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span>
+        </label>
       </div>
     </div>
   </div>`;
@@ -3686,9 +3715,9 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
       <div class="uacc-note" style="margin:0 0 8px">${escHtml(scopeNote)}</div>
       <div class="field-block">
         <span class="field-label">LONG-PRESS KEY</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button id="macro-capture" class="step-btn" data-bank="${bi}" style="width:auto;padding:6px 16px;border:1px solid var(--border-s);border-radius:var(--r-sm);align-self:flex-start"
-            onclick="startMacroCapture(${bi})">${escHtml(combo)}</button>
+        <div style="display:flex;align-items:center;gap:var(--space-2)">
+          <button type="button" id="macro-capture" class="ui-keycap ui-control ui-pill ui-glass${combo === '—' ? ' is-empty' : ''}" data-bank="${bi}"
+            onclick="startMacroCapture(${bi})">${escHtml(combo === '—' ? 'Not assigned' : combo)}</button>
           ${combo !== '—'
             ? `<button type="button" id="macro-clear" class="btn-remove-bank ui-control ui-pill" onclick="clearActiveMacro(${bi})" title="Clear macro" aria-label="Clear macro">✕</button>`
             : ''}
@@ -3697,8 +3726,9 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
       ${schemaStale
         ? `<div id="macro-schema-notice" class="section-error" style="min-height:auto">Connected device runs an older firmware (schema ${escHtml(String(DEVICE_INFO.schema_version))}) that only supports one macro for all banks — per-bank macros will be ignored until you update it.</div>`
         : ''}
-      <label class="uacc-note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;cursor:pointer">
+      <label class="uacc-note hid-switch macro-global-switch">
         <input type="checkbox" id="macro-global-toggle" ${isGlobal?'checked':''} onchange="setMacroGlobal(this.checked)"/>
+        <span class="hid-switch-track" aria-hidden="true"><span class="hid-switch-thumb"></span></span>
         <span>Global — same macro for all banks</span>
       </label>
     </div></div>`;
@@ -4087,9 +4117,10 @@ function checkFirmwareUpdateOutcome() {
 function updateMacroUI(){
   const el = document.getElementById('macro-capture');
   if (!el) return;
-  el.textContent = keyComboLabel(activeMacroKeys(Number.isFinite(Number(el.getAttribute('data-bank'))) ? Number(el.getAttribute('data-bank')) : activeBank));
+  const combo = keyComboLabel(activeMacroKeys(Number.isFinite(Number(el.getAttribute('data-bank'))) ? Number(el.getAttribute('data-bank')) : activeBank));
+  el.textContent = combo === '—' ? 'Not assigned' : combo;
+  el.classList.toggle('is-empty', combo === '—');
   el.disabled = !DEVICE_INFO.hid_enabled;
-  el.style.opacity = DEVICE_INFO.hid_enabled ? '1' : '0.45';
   el.title = DEVICE_INFO.hid_enabled ? 'Click and press a key (incl. Ctrl/Shift/Alt/Cmd)' : 'Requires HID enabled';
 }
 
@@ -4212,7 +4243,7 @@ function _captureEl(){
 function _captureBegin(target){
   _keyCapture = target;
   const el = _captureEl();
-  if (el) { el.textContent = 'press a key…'; el.classList.add('capturing'); }
+  if (el) { el.textContent = 'Press keys…'; el.classList.remove('is-empty'); el.classList.add('capturing'); }
 }
 function cancelKeyCapture(){   // Esc / klik mimo / blur (audit I4)
   if (!_keyCapture) return;
@@ -4231,7 +4262,7 @@ window.addEventListener('keydown', e => {
   const main = HID_CODES[e.code];
   if (main === undefined) {   // nenamapovaná klávesa → hint, capture běží dál
     const el = _captureEl();
-    if (el) { el.textContent = 'unsupported key — try another'; setTimeout(() => { if (_keyCapture && el.isConnected) el.textContent = 'press a key…'; }, 900); }
+    if (el) { el.textContent = 'Unsupported key – try another'; setTimeout(() => { if (_keyCapture && el.isConnected) el.textContent = 'Press keys…'; }, 900); }
     return;
   }
   const mods = [];
@@ -7939,7 +7970,7 @@ function clearIcon() {
 // (values: see UACC_NAMES). EW Opus uses keyswitches and OT SINE its own CC
 // values, so those libraries get keyswitch presets per patch or none at all.
 var LIBRARY_PRESETS = {
-  'Spitfire BBCSO': {
+  'Spitfire BBC Symphony Orchestra': {
     // Strings core: legato, longs (con sord, flautando, harmonics, sul tasto/pont),
     // tremolo, shorts (spiccato, pizz, Bartók, col legno), trills.
     icon: '🎻',
@@ -7951,12 +7982,12 @@ var LIBRARY_PRESETS = {
     bank_name: 'Chamber Strings',
     uacc_values: [20,1,7,8,11,42,44,56,58,70,71]
   },
-  'Spitfire Brass': {
+  'Spitfire UACC — Brass': {
     icon: '🎺',
     bank_name: 'Spitfire Brass',
     uacc_values: [20,1,9,42,44,50,52,100,101]
   },
-  'Spitfire Woodwinds': {
+  'Spitfire UACC — Woodwinds': {
     icon: '🎷',
     bank_name: 'Spitfire Woodwinds',
     uacc_values: [20,1,11,42,44,70,71,75]
@@ -8016,7 +8047,7 @@ var LIBRARY_PRESETS = {
     ks_channel: 0,
     ks_velocity: 100
   },
-  'Spitfire Symphonic Orchestra — Celli (All techniques)': {
+  'Spitfire Symphony Orchestra — Celli (All techniques)': {
     // SSO Celli All techniques: contiguous keyswitches C-1 through A#-1.
     // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
     icon: '🎻',
@@ -8026,7 +8057,7 @@ var LIBRARY_PRESETS = {
     ks_channel: 0,
     ks_velocity: 100
   },
-  'Spitfire Symphonic Orchestra — Basses (All techniques)': {
+  'Spitfire Symphony Orchestra — Basses (All techniques)': {
     // SSO Basses All techniques: contiguous keyswitches C-1 through A#-1.
     // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
     icon: '🎻',
@@ -8036,7 +8067,7 @@ var LIBRARY_PRESETS = {
     ks_channel: 0,
     ks_velocity: 100
   },
-  'Spitfire Symphonic Orchestra — Ensembles (All techniques)': {
+  'Spitfire Symphony Orchestra — Ensembles (All techniques)': {
     // SSO Ensembles All techniques: contiguous keyswitches C-1 through A#-1.
     // Feel Fader's default C-2 naming convention maps that range to MIDI 12–22.
     icon: '🎻',
@@ -8046,7 +8077,7 @@ var LIBRARY_PRESETS = {
     ks_channel: 0,
     ks_velocity: 100
   },
-  'Spitfire Symphonic Orchestra — Violas (All techniques)': {
+  'Spitfire Symphony Orchestra — Violas (All techniques)': {
     // SSO Violas All techniques: contiguous keyswitches C-1 through B-1.
     // Feel Fader's default C-2 naming convention maps that range to MIDI 12–23.
     icon: '🎻',
@@ -8056,7 +8087,7 @@ var LIBRARY_PRESETS = {
     ks_channel: 0,
     ks_velocity: 100
   },
-  'Spitfire Symphonic Orchestra — Violins 1 (All techniques)': {
+  'Spitfire Symphony Orchestra — Violins 1 (All techniques)': {
     // SSO Violins 1 All techniques: contiguous keyswitches C-2 through G0.
     // Feel Fader's default C-2 naming convention maps that range to MIDI 0–31.
     icon: '🎻',

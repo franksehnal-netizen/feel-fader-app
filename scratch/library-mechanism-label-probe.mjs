@@ -20,7 +20,7 @@ const r = await p.evaluate(() => {
 const kinds = Object.values(r.rows);
 P('menu lists every built-in library', Object.keys(r.rows).length === r.count, `${Object.keys(r.rows).length}/${r.count}`);
 P('no row says the uninformative "Starting point"', !kinds.includes('Starting point'), JSON.stringify(kinds));
-P('UACC library shows its mechanism and CC', r.rows['Spitfire BBCSO'] === 'UACC · CC32', r.rows['Spitfire BBCSO']);
+P('UACC library shows its mechanism and CC', r.rows['Spitfire BBC Symphony Orchestra'] === 'UACC · CC32', r.rows['Spitfire BBC Symphony Orchestra']);
 P('keyswitch library shows its note range', r.rows['Sonuscore LUX — Violins 1'] === 'Keyswitch C0–G0', r.rows['Sonuscore LUX — Violins 1']);
 await p.close();
 await b.close();

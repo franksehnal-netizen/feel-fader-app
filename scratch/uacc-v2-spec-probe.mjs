@@ -52,7 +52,7 @@ const r = await p.evaluate(() => {
   return {
     names, presets, templates,
     dropdown: [...document.querySelectorAll('#uacc-preset-dropdown button')].map(el => el.getAttribute('onclick')),
-    uaccPreview: preview('Spitfire BBCSO'),
+    uaccPreview: preview('Spitfire BBC Symphony Orchestra'),
     ksPreview: preview('Sonuscore LUX — Violas'),
   };
 });

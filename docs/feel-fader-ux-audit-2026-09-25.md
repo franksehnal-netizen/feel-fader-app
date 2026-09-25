@@ -8,7 +8,7 @@
 >
 > **Přiznaná omezení:** appka běžela z `file://`, proto header ukazuje „MIDI blocked" (artefakt, ne nález). Full‑page screenshoty mají artefakty sticky headeru a švu pozadí (není nález). Stav s reálným HW (živé hodnoty, Send přes serial) hodnocen z kódu.
 
-> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Sprint 1b hotový – presety ověřeny a opraveny (F‑2) a opraven nově nalezený **F‑4: chybná UACC tabulka**. Sprint 2 hotový – C‑1, C‑3, C‑4, C‑7 a po Frankově volbě C‑2 (varianta C, HUD 144 px) a C‑5 (souhrny obnoveny). Nový nález M‑1: mobilní HUD 96 px v připojeném stavu překrývá L/R popisky s hodnotami (existovalo už před sprintem). Detail v `docs/TODO.md`.
+> **Stav (2026-09-25):** sprint 1 hotový – F‑1, F‑3, C‑6 a z F‑2 štítky mechanismu (tím i K‑6). Sprint 1b hotový – presety ověřeny a opraveny (F‑2) a opraven nově nalezený **F‑4: chybná UACC tabulka**. Sprint 2 hotový – C‑1, C‑3, C‑4, C‑7 a po Frankově volbě C‑2 (varianta C, HUD 144 px) a C‑5 (souhrny obnoveny). Sprint 3 hotový – K‑1 až K‑5 včetně `--fs-*` / `--space-*` tokenů a WEBAPP §0. Nový nález M‑1: mobilní HUD 96 px v připojeném stavu překrývá L/R popisky s hodnotami (existovalo už před sprintem). Detail v `docs/TODO.md`.
 
 ---
 

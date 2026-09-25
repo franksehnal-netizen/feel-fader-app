@@ -22,8 +22,8 @@ const r = await p.evaluate(() => {
   };
 
   reset('Bank 1');
-  out.previewDefault = previewText('Spitfire BBCSO');
-  applyLibraryPreset('Spitfire BBCSO');
+  out.previewDefault = previewText('Spitfire BBC Symphony Orchestra');
+  applyLibraryPreset('Spitfire BBC Symphony Orchestra');
   out.afterAll = cfg.banks[0].name;
   undoLastConfigChange();
   out.afterUndo = cfg.banks[0].name;
@@ -33,8 +33,8 @@ const r = await p.evaluate(() => {
   out.afterArticulations = cfg.banks[0].name;
 
   reset('My Strings');
-  out.previewCustomName = previewText('Spitfire BBCSO');
-  applyLibraryPreset('Spitfire BBCSO');
+  out.previewCustomName = previewText('Spitfire BBC Symphony Orchestra');
+  applyLibraryPreset('Spitfire BBC Symphony Orchestra');
   out.keptCustom = cfg.banks[0].name;
 
   const longName = 'Film Strings Legato Template XL';

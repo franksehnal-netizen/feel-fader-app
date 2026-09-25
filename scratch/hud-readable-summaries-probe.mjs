@@ -16,7 +16,7 @@ const r = await p.evaluate(async () => {
   const out = {};
   activeBank = 0; _openSections.clear();
   cfg.banks[0].name = 'Bank 1';
-  applyLibraryPreset('Spitfire BBCSO');
+  applyLibraryPreset('Spitfire BBC Symphony Orchestra');
   _ffConnected = true; _midiState = 'granted'; liveBank = 0;
   liveValues = { f1: 127, f2: 104 }; liveSeen = { f1: true, f2: true }; encLiveVal = 31;
   renderConnState(); renderLiveStrip();

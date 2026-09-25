@@ -25,7 +25,8 @@ Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funk
 | `--t1` | Primární text | `#1d1d1f` | `#f5f5f7` |
 | `--t2` | Sekundární text | `#6e6e73` | `#aeaeb2` |
 | `--t3` | Terciární / hint | `#aeaeb2` | `#8e8e93` |
-| `--red` / `--red2` | Chyba / danger + hover | `#e8503a` / `#d03f2a` | stejné |
+| `--red` / `--red2` | **Brand / primary** – hlavní CTA (Send, Apply), výběr (klaviatura, aktivní stepper), capture stav + hover | `#e45745` / `#d44736` | stejné |
+| `--danger` / `--danger-bg` | Chyba, validace, **destruktivní akce** (Reset = outline + `--danger` text přes `.ui-danger`) | `#b42318` / `.08` | `#ff7566` / `.10` |
 | `--focus` | Viditelný keyboard focus ring | `#4f7cff` | `#7d9cff` |
 | `--control-glass-bg` / `--control-glass-border` | Sdílená frosty výplň a hairline pro kompaktní controls | světlý glass gradient / `.56` | tmavý glass gradient / `.10` |
 | `--control-glass-shadow` / `--control-glass-shadow-hover` | Sdílená elevace kompaktních controls | jemná dvouvrstvá | tmavší dvouvrstvá |
@@ -40,11 +41,11 @@ Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funk
 
 ### Sdílené control primitivy
 
-Kompaktní interaktivní prvky skládají tři znovupoužitelné třídy: `.ui-control` sjednocuje hover/active/disabled chování, `.ui-pill` tvar a `.ui-glass` theme-aware frosty povrch. `.ui-danger` je barevná varianta (`.ui-primary` byla nepoužívaná a byla odstraněna strukturním auditem 2026-07-20, D-5). Tento kontrakt používají quick actions, onboarding, change history, bank actions, icon picker a kontextová nápověda. Stepper values, keyswitch bounds, roller segment, HID toggle, aktivní bank fill a sequence chipy používají stejné `--control-glass-*` tokeny i tam, kde kvůli vlastní struktuře nepoužívají utility třídy. Globální `:focus-visible` používá výhradně `--focus`; starý mouse-focus reset backgroundu byl odstraněn.
+Kompaktní interaktivní prvky skládají tři znovupoužitelné třídy: `.ui-control` sjednocuje hover/active/disabled chování, `.ui-pill` tvar a `.ui-glass` theme-aware frosty povrch. `.ui-danger` je destruktivní varianta: glass výplň, `--danger` text a obrys, nikdy červená výplň jako CTA (UX audit 2026-09-25, K-4; `.ui-primary` byla odstraněna strukturním auditem 2026-07-20, D-5). **Boolean nastavení** jsou vždy glass switch `.hid-switch` (label > skrytý `input[type=checkbox]` + `.hid-switch-track`); nativní checkbox se nepoužívá (K-1). **Zachytávání kláves** (Navigation, Button macro) je `.ui-keycap ui-control ui-pill ui-glass` se stavy `.is-empty` („Not assigned") a `.capturing` („Press keys…") (K-2). Tento kontrakt používají quick actions, onboarding, change history, bank actions, icon picker a kontextová nápověda. Stepper values, keyswitch bounds, roller segment, HID toggle, aktivní bank fill a sequence chipy používají stejné `--control-glass-*` tokeny i tam, kde kvůli vlastní struktuře nepoužívají utility třídy. Globální `:focus-visible` používá výhradně `--focus`; starý mouse-focus reset backgroundu byl odstraněn.
 
 ### Radii
 
-`--r-sm: 6px` (badge, malé prvky) · `--r: 12px` (karty, inputy) · `--r-lg: 18px` (velké kontejnery) · `--r-pill: 999px` (tečky, scrollbar, pills). Žádná jiná hodnota.
+`--r-sm: 6px` (badge, malé prvky) · `--r: 12px` (karty, inputy) · `--r-lg: 18px` (velké kontejnery) · `--r-pill: 999px` (tečky, scrollbar, pills). Žádná jiná hodnota v UI; výjimkou je jen geometrie hardwaru (`.ctrl-zone`, `#zone-roller` glow, `.welcome-flash`, spodní rohy černých kláves), která kopíruje fyzický tvar zařízení. Hlídá `scratch/design-consistency-probe.mjs`.
 
 ### Motion
 
@@ -80,12 +81,13 @@ přesný" charakter appky.
 
 - **Mulish** — veškeré UI (base `13px`).
 - **IBM Plex Mono** — technické/číselné: verze, badges (`dev`/`prod`), JSON inspector, monospace hodnoty.
-- Velikosti jsou **raw px**, clusterují na `10 / 11 / 12 / 13 / 14 / 16 / 22`. Nejsou tokenizované (viz gapy níže).
+- Velikosti jen přes tokeny (K-3, 2026-09-25): `--fs-xs 10` · `--fs-sm 11` · `--fs-md 12` · `--fs-base 13` · `--fs-lg 14` · `--fs-xl 16` · `--fs-2xl 20` · `--fs-3xl 22`. `--fs-hud-xs 7` / `--fs-hud-sm 8` existují jen pro 96px mobilní Live HUD (otevřené M-1). Raw `px` ve `font-size` / `font` hlídá `design-consistency-probe`.
+- Váhy: Mulish **400 / 600 / 700**; IBM Plex Mono navíc 500 (jediná numerická výjimka).
+- Štítky polí (`.field-label`) jsou všude stejné: 11 px, `--t2`, `text-transform:uppercase`.
 
 ### Známé gapy (netokenizované — pozor při rozšiřování)
 
-- **Spacing** — gapy/paddingy jsou raw px (`8 / 12 / 16 / 28`), žádný `--space-*` token.
-- **Font-size** — raw px, žádný `--fs-*` token.
+- **Spacing** — `gap` na škále používá `--space-1 4` · `--space-2 8` · `--space-3 12` · `--space-4 16` · `--space-6 24`; půlkroky (2/6/10 px) a paddingy zůstávají raw kvůli optickému zarovnání. Nový kód bere tokeny.
 - **Jednorázové hex mimo tokeny** — `h-badge.dev/.prod` (zlaté/zelené `#b07d00`, `#2e7d32`…), dark overrides (`#111115`, `#1a1a1e` pro JSON/artic display), `html.dark .lib-badge-sm{background:#555}` (viditelnější chip než `--bg-input` dark by dal). Legit výjimky, ale při přidávání podobného prvku sáhni po existující variabli, ne po nové konstantě.
 
 ---
@@ -307,11 +309,11 @@ Na desktopu je stav připojení trvale čitelný text vedle bodu — jakmile se 
 
 ---
 
-### 3.8 Encoder Sekce (Articulation Encoder)
+### 3.8 Roller sekce
 
-**Co dělá:** Otočný enkodér na fyzickém zařízení prochází seznam artikulací (UACC hodnoty). Sekce konfiguruje CC číslo, MIDI kanál a seznam dostupných artikulací.
+**Co dělá:** Roller (otočný enkodér) na zařízení má čtyři režimy: **Articulation** (krokuje UACC hodnoty na jednom CC), **Keyswitch** (posílá keyswitch noty), **Navigation** (posílá klávesy přes HID) a **Relative CC** (posílá relativní kroky 1/127). Názvy segmentů jsou totožné s nadpisem sekce (`rollerModeTitle()`); vysvětlení je v `title` segmentu (K-5).
 
-**Volba režimu:** Articulation, Keyswitch a Navigation tvoří jeden pill-shaped segmented control. Posuvný segment označuje aktivní režim a ve všech třech pozicích používá stejný klidný frosty-gray glass stav. Track se při změně režimu nepřekresluje, takže indikátor dokončí souvislou 460ms compositor animaci s jemně tlumeným dojezdem; mění se pouze synchronně cross-fadovaný obsah pod ním. Aktivní prvek používá `aria-pressed`, roving `tabindex` a podporuje šipky, Home a End. `prefers-reduced-motion` animace vypne.
+**Volba režimu:** Čtyři režimy tvoří jeden pill-shaped segmented control. Posuvný segment označuje aktivní režim a ve všech pozicích používá stejný klidný frosty-gray glass stav. Track se při změně režimu nepřekresluje, takže indikátor dokončí souvislou 460ms compositor animaci s jemně tlumeným dojezdem; mění se pouze synchronně cross-fadovaný obsah pod ním. Aktivní prvek používá `aria-pressed`, roving `tabindex` a podporuje šipky, Home a End. `prefers-reduced-motion` animace vypne.
 
 **Keyswitch keyboard:** Rozsah se vybírá na kompaktní horizontálně posuvné klaviatuře MIDI 0–127. Kliknutí zvolí jednu notu, tažení přes klávesy vytvoří souvislý rozsah a zvýraznění používá jemnou barvu faderů se silnějšími krajními klávesami. Tlačítka po stranách posouvají klaviaturu po blocích; preset i přesná změna hranice automaticky zobrazí aktuální rozsah. Klaviatura podporuje focus, Arrow Left/Right, Home, End a aktivaci klávesy přes Enter/Space. Pole FROM/TO zůstávají jako frosty pill controls pro přesné doladění a přístupnost. Všechny změny probíhají bez překreslení panelu.
 
@@ -320,14 +322,14 @@ Základní keyswitch workflow ukazuje pouze MIDI channel, range preset, klaviatu
 **Stepper controls:** Stejný frosty pill systém používají všechny číselné steppery v aplikaci (MIDI channel, CC, velocity a keyswitch FROM/TO): kompaktní neutrální −/+ segmenty bez mezer, užší skleněná kapsle hodnoty, skryté dělicí čáry a společné hover/focus chování. Také aktivní volba keyswitch convention používá frosty gray místo červené.
 
 **UACC (Universal Articulation Control Code):**
-Standard pro pojmenování CC hodnot používaný u Spitfire Audio, East West, Orchestral Tools atd. CC 32 je standardní UACC kanál.
+Spitfire standard pro přepínání artikulací přes CC 32 (v pluginu musí být „Locked to UACC"). Jiní výrobci ho neimplementují, proto appka nenabízí UACC presety pro EW/OT/Kontakt. Názvy v `UACC_NAMES` odpovídají UACC v2 (Spitfire manual, Appendix E).
 
 Každá artikulace je CC hodnota (0–127) s volitelným pojmenováním (interní slovník `UACC_NAMES`).
 
 **Správa seznamu artikulací:**
-- Přidat jednotlivé hodnoty nebo aplikovat **Articulation templates**. Knihovní seznam aplikuje pouze artikulace a nepřepisuje mapování celého banku.
+- Přidat jednotlivé hodnoty nebo aplikovat **Articulation templates**. Knihovní seznam otevře stejný library preview dialog jako Library setup (nic se nezmění do Apply); „Clear all" se ptá.
 - Hodnoty mají drag & drop, **Alt + šipky** i přístupná tlačítka **Move earlier/later**; zobrazené pořadí je přímo pořadím krokování rolleru.
-- Enkodér na zařízení přechází na další/předchozí hodnotu v seznamu.
+- Roller na zařízení přechází na další/předchozí hodnotu v seznamu.
 
 **Klíčové funkce:** `encoderSectionContent()`, `addUacc()`, `moveUacc()`, `removeUacc()`, `applyArticulationList()`, `renderUacc()`, `uaccName()`
 

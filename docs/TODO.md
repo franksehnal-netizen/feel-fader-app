@@ -15,6 +15,23 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-09-25 – UX audit očima skladatele, sprint 3 (konzistence)
+
+Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md), hlídá
+`scratch/design-consistency-probe.mjs`:
+
+- **K-1:** všechna on/off nastavení (Invert, Global macro, scope vlastního setupu)
+  jsou glass switch `.hid-switch`, žádný nativní checkbox.
+- **K-2:** zachytávání kláves = `.ui-keycap` (pill/glass) se stavy „Not assigned“
+  a „Press keys…“, bez inline stylů.
+- **K-3:** `--fs-*` (10/11/12/13/14/16/20/22) a `--space-*` tokeny, radii jen
+  `--r-*` (výjimka geometrie hardwaru), Mulish jen 400/600/700.
+- **K-4:** Reset = outline + `--danger` text; `--red` je v kontraktu brand/CTA.
+- **K-5:** segmenty rolleru = nadpisy sekce, „Roller“ místo „Encoder“, UACC jen
+  Spitfire, jednotné `.field-label`, knihovny „Spitfire Symphony Orchestra“,
+  „Spitfire BBC Symphony Orchestra“, „Spitfire UACC — Brass/Woodwinds“.
+  WEBAPP §0 a §3.8 (4 režimy) aktualizovány.
+
 ### 2026-09-25 – UX audit očima skladatele, sprint 2 (workflow, logická část)
 
 Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):
