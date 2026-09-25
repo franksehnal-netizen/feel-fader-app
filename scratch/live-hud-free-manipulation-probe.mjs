@@ -27,13 +27,13 @@ await p.evaluate(() => { localStorage.removeItem('ff_live_hud_pos'); });
 await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); });
 await new Promise(r => setTimeout(r, 500)); // settle the fade-in
 
-// 1. Default placement: 112x112, top-left, just under the header
+// 1. Default placement: 144x144, top-left, just under the header
 const def = await p.evaluate(() => {
   const s = document.getElementById('live-strip').getBoundingClientRect();
   const hb = document.querySelector('header').getBoundingClientRect().bottom;
   return { w: Math.round(s.width), h: Math.round(s.height), left: Math.round(s.left), top: Math.round(s.top), headerBottom: Math.round(hb) };
 });
-P('default HUD is 112x112', near(def.w,112) && near(def.h,112), JSON.stringify(def));
+P('default HUD is 144x144', near(def.w,144) && near(def.h,144), JSON.stringify(def));
 P('default sits top-left just under the header (~12px below)', near(def.left,28,2) && near(def.top, def.headerBottom+12, 2), JSON.stringify(def));
 
 // 2. Size toggle -> 2x, then back
@@ -47,8 +47,8 @@ const sizes = await p.evaluate(async () => {
   const small = document.getElementById('live-strip').getBoundingClientRect();
   return { bigW: Math.round(big.width), scaleBig, smallW: Math.round(small.width) };
 });
-P('corner button enlarges the whole HUD to 2x (~224px, --hud-scale 2)', near(sizes.bigW,224,2) && sizes.scaleBig==='2', JSON.stringify(sizes));
-P('toggling again returns to 1x (~112px)', near(sizes.smallW,112,2), JSON.stringify(sizes));
+P('corner button enlarges the whole HUD to 2x (~288px, --hud-scale 2)', near(sizes.bigW,288,2) && sizes.scaleBig==='2', JSON.stringify(sizes));
+P('toggling again returns to 1x (~144px)', near(sizes.smallW,144,2), JSON.stringify(sizes));
 
 // 3. Clamp: cannot be dragged up under the top bar; sides/bottom stay inside
 const clamp = await p.evaluate(() => {
@@ -62,7 +62,7 @@ const clamp = await p.evaluate(() => {
 });
 P('top limit is header bottom + side margin (cannot slide under the top bar)', clamp.topY === clamp.headerBottom + 12, JSON.stringify(clamp));
 P('side margin matches (12px from the left edge)', clamp.leftX === 12, JSON.stringify(clamp));
-P('bottom-right stays fully inside the viewport', clamp.brX === clamp.vw-112-12 && clamp.brY === clamp.vh-112-12, JSON.stringify(clamp));
+P('bottom-right stays fully inside the viewport', clamp.brX === clamp.vw-144-12 && clamp.brY === clamp.vh-144-12, JSON.stringify(clamp));
 
 // 4. Keyboard nudge sets a free custom position and persists it
 const nudge = await p.evaluate(async () => {

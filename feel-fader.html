@@ -209,7 +209,7 @@ header{
    separate position:fixed element, unaffected (Frank 2026-07-27). */
 .top-sticky>header{pointer-events:auto}
 .live-hud{
-  position:fixed;top:64px;z-index:45;width:112px;height:112px;box-sizing:border-box;padding:9px;
+  position:fixed;top:64px;z-index:45;width:144px;height:144px;box-sizing:border-box;padding:10px;
   --hud-scale:1;transform-origin:top left;
   border:1px solid var(--chrome-float-border);border-radius:var(--r-lg);
   background:var(--chrome-glass-bg);
@@ -242,7 +242,7 @@ header{
 .live-hud-size-btn svg{width:12px;height:12px;display:block}
 /* Enlarge/drag are mouse-gated, not width-gated: a half-screen desktop window keeps the button; touch-only devices hide it (Frank 2026-07-27). */
 @media not all and (any-pointer:fine){.live-hud-size-btn{display:none}}
-.live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 31px;gap:7px 5px;height:100%}
+.live-hud-inner{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 42px;gap:7px 5px;height:100%}
 /* The green dot in the header already says that a device is connected. The
    HUD owns device context: its first row maps the active physical bank with
    one neutral dot per bank. This stays distinct from the edited-bank card. */
@@ -276,11 +276,11 @@ header{
 .live-hud-item:not(.live-hud-roller):has(.live-hud-tech.has-issue)::before{
   background:color-mix(in srgb,var(--danger) 20%,transparent);
 }
-.live-hud-label{font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.live-hud-label{font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
 .live-hud-label-long{display:none}
 .live-hud-label-short{display:inline}
-.live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
-.live-hud-tech{color:var(--t3);font:600 7px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+.live-hud-value{min-width:3ch;text-align:center;color:var(--t1);font:600 20px/1 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip}
+.live-hud-tech{color:var(--t2);font:600 10px 'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;white-space:nowrap}
 .live-hud-tech.has-issue{color:var(--danger)}
 /* Anchored on the "·" separator instead of centering the whole string as one
    block — CC9→CC10 used to shift "Ch1" sideways too, since justify-items:
@@ -310,7 +310,7 @@ header{
    .is-long/.is-very-long as the live articulation name changed, which read as
    the text visibly resizing on every step (Frank, 2026-08-10 HW test: "to je
    otravný"). Overflow is handled by truncation (ellipsis) instead. */
-.live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:9px;line-height:11px;letter-spacing:-.02em}
+.live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:14px;line-height:17px;letter-spacing:-.02em}
 @media(any-pointer:fine){.live-hud.is-contextual-visible{cursor:grab}}
 .h-left{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
 /* Matches the welcome-onboarding wordmark badge exactly (Frank 2026-08-16,
@@ -1792,7 +1792,11 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:4px}
   .live-hud-item:not(.live-hud-roller){row-gap:2px}
   .live-hud-roller{grid-template-columns:auto minmax(0,1fr);column-gap:3px;row-gap:1px;padding-top:3px}
-  .live-hud-roller .live-hud-value{font-size:10px}
+  .live-hud-roller .live-hud-value{font-size:10px;line-height:11px}
+  /* Mobile keeps the 96 px square and its compact type (UX audit C-2 enlarged desktop only). */
+  .live-hud-label{font-size:8px}
+  .live-hud-value{font-size:10px;line-height:normal}
+  .live-hud-tech{font-size:7px}
 }
 .icon-picker-modal{
   background:linear-gradient(145deg,var(--glass-dialog),var(--glass-card));border:1px solid var(--glass-border);
@@ -2737,10 +2741,27 @@ function sectionHeaderHtml(bi, key, cap, title, summary, tip, extra) {
       <span class="section-toggle-meta">${extra||''}${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
     </button>`;
 }
+// Collapsed-header summaries (UX audit 2026-09-25 C-5): each section says what
+// it is mapped to without opening it – musical part first, then Ch/CC.
+function faderSectionSummary(ctrl) { return {meta:`Ch ${ctrl.channel+1} · CC${ctrl.cc}`}; }
+function rollerSectionSummary(bank) {
+  const mode = bank.roller_mode || 'cc';
+  const enc = `Ch ${bank.encoder.channel+1} · CC${bank.encoder.cc}`;
+  if (mode === 'keyswitch') {
+    const notes = bank.ks_notes || [];
+    const range = notes.length ? ` · ${noteName(Math.min(...notes))}–${noteName(Math.max(...notes))}` : '';
+    return {label: notes.length ? `${notes.length} keyswitches` : 'No keyswitches', meta:`Ch ${(bank.ks_channel ?? 0)+1}${range}`};
+  }
+  if (mode === 'track_nav') return {label:'Keys', meta:`${keyComboLabel(bank.nav_keys_cw || [0x52])} / ${keyComboLabel(bank.nav_keys_ccw || [0x51])}`};
+  if (mode === 'cc_relative') return {label:'Relative', meta:enc};
+  const count = (bank.uacc_values || []).length;
+  return {label: count ? `${count} articulations` : 'No articulations', meta:enc};
+}
 function refreshSectionSemantics(bi, key) {
   const bank = cfg.banks[bi]; if (!bank) return;
   if (key === 'roller') {
     setTxt(`section-title-${bi}-roller`, rollerModeTitle(bank.roller_mode || 'cc'));
+    setSectionSummary(`section-summary-${bi}-roller`, rollerSectionSummary(bank));
   } else {
     const ctrl = bank[key];
     const name = faderDisplayName(ctrl,key);
@@ -2748,7 +2769,7 @@ function refreshSectionSemantics(bi, key) {
     if (title && title !== document.activeElement) title.value = name;
     const toggle = document.getElementById(`section-toggle-${bi}-${key}`);
     if (toggle) toggle.setAttribute('aria-label', `${isSectionOpen(key)?'Collapse':'Expand'} ${name} settings`);
-    setSectionSummary(`section-summary-${bi}-${key}`, {meta:`Ch ${ctrl.channel+1} · CC${ctrl.cc}`});
+    setSectionSummary(`section-summary-${bi}-${key}`, faderSectionSummary(ctrl));
     setTxt(`cc-meaning-${bi}-${key}`, musicalCcName(ctrl.cc,`CC ${ctrl.cc}`));
   }
   renderLiveStrip();
@@ -3324,7 +3345,7 @@ function faderSectionContent(key, ctrl, bi, errs = validate()) {
   const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
   const open = isSectionOpen(key);
   return `
-    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,null,'Sends a MIDI CC on a channel you choose. The on-screen fader mirrors the hardware and can\'t be dragged.')}
+    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,faderSectionSummary(ctrl),'Sends a MIDI CC on a channel you choose. The on-screen fader mirrors the hardware and can\'t be dragged.')}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
     <div class="section-fields">
       <div class="section-field-row">
@@ -3559,7 +3580,7 @@ function encoderPanel(ctrl, bi, errs = validate()) {
 
   return `
   <div class="panel panel-wide">
-    ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),null,'Sends MIDI CC (Articulation), note keyswitches, HID navigation keys, or relative CC, depending on the mode selected below.')}
+    ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),rollerSectionSummary(cfg.banks[bi]),'Sends MIDI CC (Articulation), note keyswitches, HID navigation keys, or relative CC, depending on the mode selected below.')}
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
       <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${ROLLER_MODES.indexOf(rmode)}">
         ${ROLLER_MODES.map((m,mi) => {
@@ -4535,6 +4556,7 @@ function onKs(bi, field, val) {
   const max = field === 'ks_channel' ? 15 : 127;
   const min = field === 'ks_channel' ? 0 : 1;
   cfg.banks[bi][field] = Math.max(min, Math.min(max, val));
+  if (field === 'ks_channel') refreshSectionSemantics(bi, 'roller');
   dirty = true; runValidation();
 }
 function addKsNote(bi) {
@@ -6019,7 +6041,7 @@ function connState(){
 // persist per-browser (so each person keeps their own layout). Desktop only —
 // mobile keeps its fixed placement.
 const LIVE_HUD_POS_KEY = 'ff_live_hud_pos';
-const LIVE_HUD_BASE = 112;   // desktop base square side (px); --hud-scale multiplies it
+const LIVE_HUD_BASE = 144;   // desktop base square side (px); --hud-scale multiplies it
 const LIVE_HUD_MARGIN = 12;  // min gap kept from every viewport edge
 let _liveHudState = { x: null, y: null, large: false }; // x/y null = default (data-side) position
 let _liveHudDrag = null;

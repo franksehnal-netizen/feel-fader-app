@@ -8,7 +8,10 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-Žádné otevřené položky.
+- **M-1 mobilní Live HUD (96 px) v připojeném stavu:** řádek teček banků ubere
+  výšku a popisky `L`/`R` se překrývají s hodnotou i s `Ch·CC` (viditelné na 390 px,
+  existovalo už před sprintem 2 – UX audit 2026-09-25). Rozhodnout: větší mobilní
+  čtverec, nebo skrýt tech řádek na mobilu.
 
 ## Hotovo
 
@@ -32,6 +35,17 @@ Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):
 
 Nové probes: `library-names-bank`, `keyswitch-names`, `articulation-templates-unified`;
 `cc-relative-panel-content` rozšířen o C-7.
+
+- **C-2 čitelný Live HUD (Frank: varianta C):** desktop 144 × 144 px (`LIVE_HUD_BASE`),
+  hodnota 20 px, roller 14 px, popisek a `Ch·CC` 10 px v `--t2`; 2× zvětšení = 288 px.
+  Mobil beze změny (96 px, původní typ).
+- **C-5 souhrny v hlavičkách (Frank: „chci tam ty popisy“):** fadery `Ch 1 · CC11`,
+  roller podle módu (`15 articulations · Ch 1 · CC32`, `8 keyswitches · Ch 1 · C0–G0`,
+  `Relative · …`, `Keys · …`); aktualizují se bez plného renderu. Ruší rozhodnutí
+  z `74e3ce9` (mapování jen v HUD); `WEBAPP.md` §3.2 upraven.
+
+Probe `hud-readable-summaries`; HUD probes přepsány na 144/288 a `mobile-ux` na
+souhrny místo jejich absence.
 
 ### 2026-09-25 – UX audit očima skladatele, sprint 1 (důvěra)
 

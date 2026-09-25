@@ -112,6 +112,7 @@ const PROBES = [
   'library-names-bank-probe.mjs',
   'keyswitch-names-probe.mjs',
   'articulation-templates-unified-probe.mjs',
+  'hud-readable-summaries-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

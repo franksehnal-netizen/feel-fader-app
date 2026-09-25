@@ -289,9 +289,10 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Long open configuration section keeps its heading below the app header',
     stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
     `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
-  addCheck(checks, 'Desktop monitor stays a consistent 112x112 square',
-    hudAtController.square && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
-      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 112) <= 1 && Math.abs(scrolled.hudHeight - 112) <= 1,
+  // 144 px since UX audit 2026-09-25 C-2 (Frank chose variant C; was 112).
+  addCheck(checks, 'Desktop monitor stays a consistent 144x144 square',
+    hudAtController.square && Math.abs(hudAtController.width - 144) <= 1 && Math.abs(hudAtController.height - 144) <= 1
+      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 144) <= 1 && Math.abs(scrolled.hudHeight - 144) <= 1,
     `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
   addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
     scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
@@ -604,8 +605,11 @@ async function runProfile(browser, url, profile) {
       bankTabContainer: bankTabContainer ? { left: bankTabContainer.left, right: bankTabContainer.right } : null,
       darkToggle: (() => { const r = document.querySelector('.dark-toggle')?.getBoundingClientRect(); return r ? { left: r.left } : null; })(),
       midiHelpAbsent: !document.getElementById('midi-help-banner'),
-      rollerSummaryAbsent: !document.getElementById('section-summary-0-roller'),
-      faderSummariesAbsent: !document.getElementById('section-summary-0-fader1') && !document.getElementById('section-summary-0-fader2'),
+      // UX audit 2026-09-25 C-5 (Frank: "chci tam ty popisy"): headers summarise
+      // the mapping again; the roller summary must not repeat the mode title.
+      rollerSummary: document.getElementById('section-summary-0-roller')?.textContent || '',
+      rollerTitle: document.getElementById('section-title-0-roller')?.textContent || '',
+      faderSummaries: ['fader1','fader2'].map(k => document.getElementById(`section-summary-0-${k}`)?.textContent || ''),
       contextHelpCount: document.querySelectorAll('.context-help').length,
       headerStatus: document.getElementById('h-status-text')?.textContent || '',
       headerStatusAria: document.getElementById('h-status')?.getAttribute('aria-label') || '',
@@ -662,12 +666,12 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'MIDI status has no duplicate content banner',
     appState.midiHelpAbsent && /^MIDI (unavailable|blocked)$/.test(appState.headerStatus),
     `${appState.headerStatus} / banner ${appState.midiHelpAbsent ? 'absent' : 'present'}`);
-  addCheck(checks, 'Roller header does not duplicate the selected mode on the right',
-    appState.rollerSummaryAbsent,
-    appState.rollerSummaryAbsent ? 'right-side summary absent' : 'duplicate summary present');
-  addCheck(checks, 'Fader headers leave channel and CC metadata to the hardware monitor',
-    appState.faderSummariesAbsent,
-    appState.faderSummariesAbsent ? 'right-side summaries absent' : 'duplicate summaries present');
+  addCheck(checks, 'Roller header summarises the mapping without repeating the mode',
+    /CC\d+/.test(appState.rollerSummary) && !!appState.rollerTitle && !appState.rollerSummary.includes(appState.rollerTitle),
+    `${appState.rollerTitle} | ${appState.rollerSummary}`);
+  addCheck(checks, 'Fader headers show their channel and CC',
+    appState.faderSummaries.every(s => /^Ch \d+ · CC\d+$/.test(s)),
+    appState.faderSummaries.join(' | '));
   addCheck(checks, 'Inline question-mark links do not duplicate the Help & Guide panel',
     appState.contextHelpCount === 0,
     `${appState.contextHelpCount} inline help buttons`);

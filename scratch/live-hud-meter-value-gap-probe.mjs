@@ -2,7 +2,7 @@
 // glass surface, shows the fader level as a background wash, and truncates
 // the longest name gracefully instead of overflowing the card.
 // UPDATED 2026-07-23: Task 4 of Frank's UX polish plan replaced the
-// horizontal is-compact capsule with a permanent 112x112 square (see
+// horizontal is-compact capsule with a permanent 144x144 square (see
 // scratch/live-hud-square-probe.mjs) — meter bars are no longer hidden,
 // and long articulation names truncate via CSS ellipsis instead of
 // always fitting untruncated.
@@ -46,7 +46,7 @@ const r = await p.evaluate(async () => {
   const cardRect = hud.getBoundingClientRect();
   const savedPos = JSON.parse(localStorage.getItem('ff_live_hud_pos') || 'null');
   return {
-    square: !hud.classList.contains('is-compact') && Math.abs(hr.width-112) <= 1 && Math.abs(hr.height-112) <= 1,
+    square: !hud.classList.contains('is-compact') && Math.abs(hr.width-144) <= 1 && Math.abs(hr.height-144) <= 1,
     washVisible: washFrac > 0,
     valueOverflowsCard: value.getBoundingClientRect().right > cardRect.right + 1,
     sharedGlass: hs.background === ls.background && hs.backdropFilter === ls.backdropFilter && hs.boxShadow === ls.boxShadow,
@@ -54,7 +54,7 @@ const r = await p.evaluate(async () => {
   };
 });
 
-P('desktop status is the permanent 112x112 square (not a compact capsule)', r.square, r.square);
+P('desktop status is the permanent 144x144 square (not a compact capsule)', r.square, r.square);
 P('fader level wash fill is visible behind the value', r.washVisible, r.washVisible);
 P('longest articulation truncates gracefully without overflowing the card', !r.valueOverflowsCard, r.valueOverflowsCard);
 P('status capsule and header share the same glass surface', r.sharedGlass, r.sharedGlass);
