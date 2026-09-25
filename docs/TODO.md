@@ -12,6 +12,31 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-09-25 – UX audit očima skladatele, sprint 1 (důvěra)
+
+Z [UX auditu 2026-09-25](feel-fader-ux-audit-2026-09-25.md):
+
+- **F-1 fantomová změna:** přepnutí rolleru na Keyswitch a zpět už nezakládá
+  neuloženou změnu. Automaticky doplněný rozsah C-2..B-2 se při odchodu
+  z módu vrátí, pokud ho uživatel neupravil. `reflectDirty()` navíc shodí
+  `dirty`, když se config vrátí přesně do odeslaného snapshotu (stejné pravidlo
+  jako Undo), takže i „CC 11→12→11" je čisté.
+- **F-3 hodnota vs. CC:** přidávací pole artikulací má `Value 0–127` (pole
+  rozšířeno na 96 px), accessible name „Articulation value", neznámá hodnota
+  se jmenuje `Value N` místo `CC N`.
+- **F-2 (část) mechanismus v library pickeru:** místo všude stejného
+  „Starting point" ukazuje každá vestavěná knihovna `UACC · CC32` nebo
+  `Keyswitch C0–G0`. Revize presetů EW/OT/Kontakt Factory čeká na rozhodnutí.
+- **C-6 zkratky:** Ctrl/⌘+S spustí Send (jen s neuloženými změnami, mimo
+  welcome, nikdy browserové „Uložit stránku"), Ctrl/⌘+Z mimo textová pole
+  vrátí poslední změnu. Aktivní key capture má přednost, takže Ctrl+S jde
+  dál nahrát jako makro. Uvedeno v Help & Guide.
+
+Nové probes: `roller-mode-browse-no-dirty`, `articulation-value-wording`,
+`send-undo-shortcuts`, `library-mechanism-label`. `fw-update-flow-probe`
+simuluje neuložené úpravy skutečnou změnou jména banku (holý `dirty = true`
+bez změny configu už `reflectDirty()` oprávněně shodí).
+
 ### 2026-08-22 — Zrychlený realtime fader mirror
 
 Pohyb hardware faderů v appce působil zpožděně, ačkoliv MIDI handler už

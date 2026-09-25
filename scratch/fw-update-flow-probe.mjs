@@ -241,7 +241,9 @@ const serialReconnect = (o) => p.evaluate(async (o) => {
   const dev = mkPort();
   const origGetPorts = navigator.serial.getPorts; navigator.serial.getPorts = async () => [dev];
   const origToast = toast; window.toast = (t, m, a, o) => seen.push(t + ':' + m + (o && o.sticky ? ' [sticky]' : ''));
-  _serialPort = null; _ffConnected = false; dirty = true;
+  // A real unsaved edit (C11 path) — reflectDirty() clears a bare dirty flag
+  // whose config equals the synced snapshot (UX audit 2026-09-25, F-1).
+  _serialPort = null; _ffConnected = false; cfg.banks[0].name = 'Unsaved ' + Math.random(); dirty = true;
   _fwUpdateTarget = o.pending ? { from:'1.3.0', to:'1.3.1' } : null;
   FW_SERIAL_RECONNECT_GRACE_MS = 50;
   if (o.midiToo) onDeviceConnected();   // MIDI path already resolving
