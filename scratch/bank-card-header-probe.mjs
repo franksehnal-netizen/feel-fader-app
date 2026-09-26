@@ -60,6 +60,42 @@ const closed = await p.evaluate(() => ({
 }));
 P('Escape closes the popover and returns focus to Browse…', !closed.popover && closed.expanded === 'false' && closed.focus === 'library-browse-1' && !closed.cardLayer, JSON.stringify(closed));
 
+// Keyboard path from an option: Browse… → Enter → ArrowDown (focus on the
+// first option) → Escape closes only the list, popover stays open, focus
+// returns to the search input → a second Escape (now in the input) closes
+// the popover and returns focus to Browse… (controller ruling: keep the
+// two-step behaviour, do not collapse it into one Escape).
+await p.focus('#library-browse-1');
+await p.keyboard.press('Enter');
+await new Promise(r => setTimeout(r, 80));
+await p.keyboard.press('ArrowDown');
+await new Promise(r => setTimeout(r, 50));
+const onOption = await p.evaluate(() => document.activeElement?.classList.contains('quick-setup-option'));
+await p.keyboard.press('Escape');
+await new Promise(r => setTimeout(r, 50));
+const afterFirstEscape = await p.evaluate(() => ({
+  menu: !document.getElementById('quick-setup-menu-1').hidden,
+  popover: !document.getElementById('library-popover-1').hidden,
+  focus: document.activeElement?.id,
+}));
+P('Escape from a library option focuses the first option first', onOption === true);
+// closeQuickSetupMenu(bi,true) hides the list then calls input.focus(); moving
+// focus FROM the option TO the input re-triggers the input's own onfocus
+// (openQuickSetupMenu), so the list re-opens in the same tick – an existing
+// quirk of closeQuickSetupMenu, not something quickSetupOptionKey controls
+// (left unchanged per the controller ruling). Net effect: focus lands back on
+// the search input and the popover stays open, same as before this Escape.
+P('first Escape returns focus from the option to the search input, popover stays open', afterFirstEscape.popover && afterFirstEscape.menu && afterFirstEscape.focus === 'quick-setup-input-1', JSON.stringify(afterFirstEscape));
+await p.keyboard.press('Escape');
+await new Promise(r => setTimeout(r, 50));
+const afterSecondEscape = await p.evaluate(() => ({
+  popover: !document.getElementById('library-popover-1').hidden,
+  expanded: document.getElementById('library-browse-1').getAttribute('aria-expanded'),
+  focus: document.activeElement?.id,
+  cardLayer: document.querySelector('.bank-card').classList.contains('quick-menu-open'),
+}));
+P('second Escape closes the popover and returns focus to Browse…', !afterSecondEscape.popover && afterSecondEscape.expanded === 'false' && afterSecondEscape.focus === 'library-browse-1' && !afterSecondEscape.cardLayer, JSON.stringify(afterSecondEscape));
+
 // Choosing a setup: preview dialog opens, popover closes, Cancel returns focus to Browse….
 await p.click('#library-browse-1');
 await new Promise(r => setTimeout(r, 80));
