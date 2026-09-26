@@ -833,8 +833,8 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Mobile hardware monitor remains visible while the controller scrolls away',
     mobileStrip.visible && mobileStrip.opacity === '1' && mobileStrip.controllerBottom < 0,
     `controller ${mobileStrip.controllerBottom.toFixed(1)} px / visible ${mobileStrip.visible} / opacity ${mobileStrip.opacity}`);
-  addCheck(checks, 'Scrolled mobile monitor becomes the permanent 96x96 square with L, R and ART',
-    mobileStrip.square && Math.abs(mobileStrip.width - 96) <= 1 && Math.abs(mobileStrip.height - 96) <= 1
+  addCheck(checks, 'Scrolled mobile monitor becomes the permanent 112x112 square with L, R and ART (M-1)',
+    mobileStrip.square && Math.abs(mobileStrip.width - 112) <= 1 && Math.abs(mobileStrip.height - 112) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
       && mobileStrip.washHeights.every(h => h > 0)
       && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Soft (Brushed)'
@@ -880,9 +880,9 @@ async function runProfile(browser, url, profile) {
       washHeights,
     };
   });
-  addCheck(checks, 'Hardware monitor remains the same 96x96 square beside the controller',
+  addCheck(checks, 'Hardware monitor remains the same 112x112 square beside the controller',
     stripBackAtController.visible && stripBackAtController.square && stripBackAtController.opacity === '1'
-      && Math.abs(stripBackAtController.width - 96) <= 1 && Math.abs(stripBackAtController.height - 96) <= 1
+      && Math.abs(stripBackAtController.width - 112) <= 1 && Math.abs(stripBackAtController.height - 112) <= 1
       && stripBackAtController.washHeights.every(h => h > 0),
     `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / square ${stripBackAtController.square} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');

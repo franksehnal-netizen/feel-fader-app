@@ -113,10 +113,10 @@ P('left is animated so reset/enlarge glide as one motion (no jump)', glass.leftA
 // 8. Mobile: no free-manip controls (size button hidden)
 const p2 = await b.newPage();
 p2.on('pageerror', e => errs.push(String(e)));
-await p2.setViewport({ width: 390, height: 844 });
+await p2.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });   // touch-only: manipulation is gated on any-pointer:fine (78a816b)
 await p2.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 await p2.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} });
-const mobile = await p2.evaluate(() => ({ sizeBtnDisplay: getComputedStyle(document.getElementById('live-hud-size-btn')).display, desktop: liveHudDesktop() }));
+const mobile = await p2.evaluate(() => ({ sizeBtnDisplay: getComputedStyle(document.getElementById('live-hud-size-btn')).display, desktop: liveHudManipulable() }));
 P('mobile: size button is hidden and free-manip is off', mobile.sizeBtnDisplay==='none' && mobile.desktop===false, JSON.stringify(mobile));
 await p2.close();
 

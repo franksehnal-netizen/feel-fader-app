@@ -37,6 +37,8 @@ const SPEC = {
 };
 
 const r = await p.evaluate(() => {
+  const defaults = cfg.banks.map(b => b.uacc_values.join());
+  addBank(); const added = cfg.banks[cfg.banks.length - 1].uacc_values.join(); cfg.banks.pop(); activeBank = 0; render();
   const names = { ...UACC_NAMES };
   const presets = Object.fromEntries(Object.entries(LIBRARY_PRESETS).map(([k,v]) => [k, { mode: v.roller_mode || 'cc', uacc: v.uacc_values || null }]));
   const dropdown = [...document.querySelectorAll('#uacc-preset-dropdown button')].map(el => el.getAttribute('onclick'));
@@ -50,7 +52,7 @@ const r = await p.evaluate(() => {
   };
   _openSections.clear(); _openSections.add('roller'); render();
   return {
-    names, presets, templates,
+    names, presets, templates, defaults, added,
     dropdown: [...document.querySelectorAll('#uacc-preset-dropdown button')].map(el => el.getAttribute('onclick')),
     uaccPreview: preview('Spitfire BBC Symphony Orchestra'),
     ksPreview: preview('Sonuscore LUX — Violas'),
@@ -68,7 +70,7 @@ const offSpec = Object.entries(r.presets).filter(([, v]) => v.uacc).flatMap(([n,
 P('built-in UACC presets use only spec values', offSpec.length === 0, offSpec.join(', '));
 const uaccLibs = Object.entries(r.presets).filter(([, v]) => v.uacc);
 P('every built-in UACC preset is a Spitfire library', uaccLibs.every(([n]) => /^Spitfire/.test(n)), uaccLibs.map(([n]) => n).join(', '));
-const pizzFirst = uaccLibs.filter(([n]) => /Strings|BBCSO/.test(n)).every(([, v]) => v.uacc.includes(20) && v.uacc.includes(56) && !v.uacc.includes(43));
+const pizzFirst = uaccLibs.filter(([n]) => /Strings|BBC/.test(n)).every(([, v]) => v.uacc.includes(20) && v.uacc.includes(56) && !v.uacc.includes(43));
 P('string presets reach legato at 20 and pizzicato at 56', pizzFirst, JSON.stringify(uaccLibs));
 
 const dead = r.dropdown.map(s => /applyArticulationList\('(.+)'\)/.exec(s || '')?.[1]).filter(n => n && !r.presets[n]);
@@ -77,6 +79,11 @@ const tplOff = Object.entries(r.templates).flatMap(([n, vals]) => vals.filter(x 
 P('articulation templates use only spec values', tplOff.length === 0, tplOff.join(', '));
 P('legato template holds only legato values', r.templates.legato?.every(v => /^Legato/.test(r.names[v] || '')), JSON.stringify(r.templates.legato));
 P('shorts template holds only short values', r.templates.shorts?.every(v => /^Short/.test(r.names[v] || '')), JSON.stringify(r.templates.shorts));
+// New banks start from the curated Spitfire set, not the old-era list that reads as
+// Long / Long Alternative / Long Octave … Tenuto under UACC v2 (audit follow-up 2026-09-26).
+const common = r.templates.spitfire.join();
+P('default banks start with UACC common techniques', r.defaults.every(d => d === common), JSON.stringify(r.defaults));
+P('an added bank starts with UACC common techniques', r.added === common, r.added);
 
 P('UACC preset preview tells the composer to lock the plugin to UACC', /Locked to UACC/.test(r.uaccPreview), r.uaccPreview);
 P('keyswitch preset preview does not mention UACC locking', !/Locked to UACC/.test(r.ksPreview), r.ksPreview);

@@ -114,6 +114,7 @@ const PROBES = [
   'articulation-templates-unified-probe.mjs',
   'hud-readable-summaries-probe.mjs',
   'design-consistency-probe.mjs',
+  'k7-details-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
@@ -196,6 +197,12 @@ async function runProbeWorker() {
       crashed.push(probe);
       console.log(`CRASH ${probe} (exit ${code}) — no PASS/FAIL lines found`);
       console.log(out.split('\n').slice(0, 6).join('\n'));
+    } else if (code !== 0 && fail === 0) {
+      // Died after printing some PASS lines: the remaining checks never ran
+      // (live-hud-free-manipulation hid a stale function name this way).
+      crashed.push(probe);
+      console.log(`CRASH ${probe} (exit ${code}) — stopped after ${pass} pass`);
+      console.log(out.trim().split('\n').slice(-6).join('\n'));
     } else {
       console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} — ${pass} pass, ${fail} fail`);
       if (fail > 0) console.log(out.trim());

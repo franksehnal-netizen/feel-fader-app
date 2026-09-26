@@ -64,6 +64,33 @@ P('fader summary follows a CC step without a full render', r.f1Stepped === 'Ch 1
 P('keyswitch mode summarises notes and range', /^12 keyswitches · Ch 1 · C-2–B-2$/.test(r.rollerKs), r.rollerKs);
 P('typed keyswitch channel updates the summary', /Ch 4/.test(r.rollerKsCh), r.rollerKsCh);
 P('relative CC mode summary', r.rollerRel === 'Relative · Ch 1 · CC32', r.rollerRel);
+// M-1 (Frank chose the bigger square): the connected mobile HUD with bank dots
+// is 112 px and its L/R label, value and Ch·CC line never overlap.
+const pm = await b.newPage(); pm.on('pageerror',e=>errs.push(String(e)));
+await pm.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+await pm.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
+const m = await pm.evaluate(async () => {
+  skipWelcome(); activeBank = 0;
+  applyLibraryPreset('Sonuscore LUX — Violins 1');
+  _ffConnected = true; _midiState = 'granted'; liveBank = 0;
+  liveValues = { f1: 87, f2: 104 }; liveSeen = { f1: true, f2: true }; ksLiveNote = 29;
+  renderConnState(); render(); renderLiveStrip();
+  await new Promise(res => setTimeout(res, 800));
+  const hud = document.getElementById('live-strip'), rect = hud.getBoundingClientRect();
+  const px = sel => parseFloat(getComputedStyle(hud.querySelector(sel)).fontSize);
+  return {
+    size: [Math.round(rect.width), Math.round(rect.height)],
+    fonts: { label: px('.live-hud-item:not(.live-hud-roller) .live-hud-label'), value: px('#live-f1-value'), tech: px('#live-f1-tech') },
+    overlaps: [...hud.querySelectorAll('.live-hud-item:not(.live-hud-roller)')].map(item => {
+      const r = s => item.querySelector(s).getBoundingClientRect();
+      return [r('.live-hud-label').bottom - r('.live-hud-value').top, r('.live-hud-value').bottom - r('.live-hud-tech').top].map(v => +v.toFixed(1));
+    }),
+  };
+});
+P('mobile HUD is a 112 px square', m.size.join() === '112,112', m.size.join('×'));
+P('mobile HUD label, value and Ch·CC do not overlap', m.overlaps.flat().every(v => v <= 0), JSON.stringify(m.overlaps));
+P('mobile HUD type is on the scale (label 10, value 12, tech 8 px)', m.fonts.label >= 10 && m.fonts.value >= 12 && m.fonts.tech >= 8, JSON.stringify(m.fonts));
 P('no page errors', errs.length === 0, errs.join(' | '));
+await pm.close();
 await p.close();
 await b.close();
