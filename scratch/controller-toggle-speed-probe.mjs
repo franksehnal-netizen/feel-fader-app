@@ -4,7 +4,7 @@ const puppeteer = require('C:/Users/Fanda Borec/Documents/feel-fader-app/node_mo
 
 const URL = 'http://localhost:8100/feel-fader.html';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args: ['--no-sandbox'] });
 const p = await b.newPage();
@@ -47,7 +47,7 @@ const hideDurations = await p.evaluate(() => {
   wrap.classList.remove('is-collapsed');
   return out;
 });
-P('Box (hide) collapses in 1.1s, no delay — SAME curve as show (symmetric)', hideDurations.wrapDuration === '1.1s' && hideDurations.wrapDelay === '0s', JSON.stringify(hideDurations));
+P('Box (hide) collapses in 1.1s, no delay – SAME curve as show (symmetric)', hideDurations.wrapDuration === '1.1s' && hideDurations.wrapDelay === '0s', JSON.stringify(hideDurations));
 P('Content (hide) opacity front-loaded 0.32s, transform 1.1s, no delay', hideDurations.innerDuration === '0.32s, 1.1s' && hideDurations.innerDelay === '0s, 0s', JSON.stringify(hideDurations));
 
 // The real behavioral guarantee: no BAD squish. "severity" = opacity × how

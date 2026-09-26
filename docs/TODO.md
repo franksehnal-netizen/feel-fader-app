@@ -27,6 +27,11 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
   „Choose range…“ (`k7-details-probe`).
 - **K-7 welcome:** „Connect & load“ je červený primární pill (dřív ho `.idle`
   sklo stahovalo na sekundární), v appce se vrací sklo (`k7-details-probe`).
+- **Krátké pomlčky:** všechny texty pro uživatele (UI, toasty, tooltipy, UACC
+  názvy, knihovní presety, titulek) používají `–` místo `—`; komentáře beze změny.
+  Hlídá `design-consistency-probe`.
+- **Onboarding:** podtitulky zarovnané do bloku (poslední řádek vlevo, dělení
+  slov), z prvního kroku vypuštěno „motorless“.
 - **Mulish** vložený jednou (`font-weight:300 700`, variabilní font), −160 KB.
 
 ### 2026-09-25 – UX audit očima skladatele, sprint 3 (konzistence)

@@ -16,7 +16,7 @@ const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 // Two cases: the emoji actually seen on hardware, and Czech diacritics,
 // which is what the owner will hit day to day (bank/fader names).
@@ -46,7 +46,7 @@ const results = await p.evaluate(async (cases) => {
       const prevIsContinuationOrLead = true;
       if (isContinuation) { splitAt = i; break; }
     }
-    if (splitAt === -1) { out.push({ label, error: 'no multi-byte sequence found to split — fixture bug' }); continue; }
+    if (splitAt === -1) { out.push({ label, error: 'no multi-byte sequence found to split – fixture bug' }); continue; }
 
     const chunk1 = bytes.slice(0, splitAt);
     const chunk2 = bytes.slice(splitAt);

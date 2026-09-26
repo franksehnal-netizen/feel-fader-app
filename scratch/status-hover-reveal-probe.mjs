@@ -4,7 +4,7 @@ const puppeteer = require('C:/Users/Fanda Borec/Documents/feel-fader-app/node_mo
 
 const URL = 'http://localhost:8100/feel-fader.html';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 // Exact px-string equality on a value coming out of a live CSS transition is
 // fragile: under load (e.g. deep in the full batch run) the 450ms wait can

@@ -24,7 +24,7 @@ const p = await b.newPage(); const errs=[]; const alerts=[];
 p.on('pageerror',e=>errs.push(String(e)));
 p.on('dialog', async d=>{ alerts.push(d.message()); await d.dismiss(); }); // alert() from XSS would land here
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 await p.evaluate(()=>{ skipWelcome(); });
 await new Promise(r=>setTimeout(r,300));
 const res = await p.evaluate(async ()=>{

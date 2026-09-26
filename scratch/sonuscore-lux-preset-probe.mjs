@@ -3,13 +3,13 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const browser = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(label,ok,detail='')=>console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?' — '+detail:''}`);
+const P=(label,ok,detail='')=>console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?' – '+detail:''}`);
 const page = await browser.newPage();
 await page.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
 await page.evaluate(() => skipWelcome());
 
 const result = await page.evaluate(() => {
-  const name = 'Sonuscore LUX — Orchestral Strings';
+  const name = 'Sonuscore LUX – Orchestral Strings';
   const preset = LIBRARY_PRESETS[name];
   cfg.banks[0].roller_mode = 'cc';
   cfg.banks[0].ks_notes = [];
@@ -38,7 +38,7 @@ P('preview describes a four-note keyswitch sequence on channel 1', result.previe
 P('built-in setup leaves fader mapping untouched and omits it from preview', result.faders[0].cc === 74 && result.faders[0].channel === 6 && result.faders[1].cc === 75 && result.faders[1].channel === 7 && !result.preview.includes('Faders'), JSON.stringify(result));
 
 const violins = await page.evaluate(() => {
-  const name = 'Sonuscore LUX — Violins 1';
+  const name = 'Sonuscore LUX – Violins 1';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -47,7 +47,7 @@ P('Violins 1 preset contains the verified C0–G0 keyswitch range', JSON.stringi
 P('Violins 1 setup applies all eight keyswitches', JSON.stringify(violins.notes) === JSON.stringify([24,25,26,27,28,29,30,31]) && violins.mode === 'keyswitch', JSON.stringify(violins));
 
 const violas = await page.evaluate(() => {
-  const name = 'Sonuscore LUX — Violas';
+  const name = 'Sonuscore LUX – Violas';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -56,7 +56,7 @@ P('Violas preset keeps the verified C0–G0 keyswitch range', JSON.stringify(vio
 P('Violas setup applies all eight keyswitches', JSON.stringify(violas.notes) === JSON.stringify([24,25,26,27,28,29,30,31]) && violas.mode === 'keyswitch', JSON.stringify(violas));
 
 const celli = await page.evaluate(() => {
-  const name = 'Sonuscore LUX — Celli';
+  const name = 'Sonuscore LUX – Celli';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -65,7 +65,7 @@ P('Celli preset keeps the verified C0–G0 keyswitch range', JSON.stringify(cell
 P('Celli setup applies all eight keyswitches', JSON.stringify(celli.notes) === JSON.stringify([24,25,26,27,28,29,30,31]) && celli.mode === 'keyswitch', JSON.stringify(celli));
 
 const basses = await page.evaluate(() => {
-  const name = 'Sonuscore LUX — Basses';
+  const name = 'Sonuscore LUX – Basses';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -74,7 +74,7 @@ P('Basses preset keeps the verified C0–G0 keyswitch range', JSON.stringify(bas
 P('Basses setup applies all eight keyswitches', JSON.stringify(basses.notes) === JSON.stringify([24,25,26,27,28,29,30,31]) && basses.mode === 'keyswitch', JSON.stringify(basses));
 
 const ssoCelli = await page.evaluate(() => {
-  const name = 'Spitfire Symphony Orchestra — Celli (All techniques)';
+  const name = 'Spitfire Symphony Orchestra – Celli (All techniques)';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -83,7 +83,7 @@ P('SSO Celli preset contains the verified C-1–A#-1 range', ssoCelli.preset?.ks
 P('SSO Celli setup applies its complete keyswitch range', ssoCelli.notes.length === 11 && ssoCelli.notes[0] === 12 && ssoCelli.notes.at(-1) === 22 && ssoCelli.mode === 'keyswitch', JSON.stringify(ssoCelli));
 
 const ssoBasses = await page.evaluate(() => {
-  const name = 'Spitfire Symphony Orchestra — Basses (All techniques)';
+  const name = 'Spitfire Symphony Orchestra – Basses (All techniques)';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -92,7 +92,7 @@ P('SSO Basses preset contains the verified C-1–A#-1 range', ssoBasses.preset?.
 P('SSO Basses setup applies its complete keyswitch range', ssoBasses.notes.length === 11 && ssoBasses.notes[0] === 12 && ssoBasses.notes.at(-1) === 22 && ssoBasses.mode === 'keyswitch', JSON.stringify(ssoBasses));
 
 const ssoEnsembles = await page.evaluate(() => {
-  const name = 'Spitfire Symphony Orchestra — Ensembles (All techniques)';
+  const name = 'Spitfire Symphony Orchestra – Ensembles (All techniques)';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -101,7 +101,7 @@ P('SSO Ensembles preset matches the verified C-1–A#-1 range', ssoEnsembles.pre
 P('SSO Ensembles setup applies its complete keyswitch range', ssoEnsembles.notes.length === 11 && ssoEnsembles.notes[0] === 12 && ssoEnsembles.notes.at(-1) === 22 && ssoEnsembles.mode === 'keyswitch', JSON.stringify(ssoEnsembles));
 
 const ssoViolas = await page.evaluate(() => {
-  const name = 'Spitfire Symphony Orchestra — Violas (All techniques)';
+  const name = 'Spitfire Symphony Orchestra – Violas (All techniques)';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };
@@ -110,7 +110,7 @@ P('SSO Violas preset contains the verified C-1–B-1 range', ssoViolas.preset?.k
 P('SSO Violas setup applies its complete keyswitch range', ssoViolas.notes.length === 12 && ssoViolas.notes[0] === 12 && ssoViolas.notes.at(-1) === 23 && ssoViolas.mode === 'keyswitch', JSON.stringify(ssoViolas));
 
 const ssoViolins1 = await page.evaluate(() => {
-  const name = 'Spitfire Symphony Orchestra — Violins 1 (All techniques)';
+  const name = 'Spitfire Symphony Orchestra – Violins 1 (All techniques)';
   const preset = LIBRARY_PRESETS[name];
   applyLibraryPreset(name, 'all');
   return { preset, notes:cfg.banks[0].ks_notes, mode:cfg.banks[0].roller_mode };

@@ -38,7 +38,7 @@ await p.evaluateOnNewDocument(()=>{
 });
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
 await new Promise(r=>setTimeout(r,500));
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const res = await p.evaluate(() => {
   const ws = document.getElementById('welcome-screen');

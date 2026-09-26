@@ -13,7 +13,7 @@ const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const r = await p.evaluate(async () => {
   showWelcome();   // matches real bootstrap: shown before MIDI/serial detection resolves
@@ -59,7 +59,7 @@ await new Promise(res => setTimeout(res, 400));
 const btnOpacity = await p.evaluate(() => getComputedStyle(document.getElementById('send-btn')).opacity);
 
 P('skip link was visible in the pre-detection paint (expected/unavoidable, sets up the regression check below)', r.skipVisibleBefore === true, JSON.stringify(r));
-P('welcome screen is hidden the instant onDeviceConnected() resolves — no animated wait', r.wsHiddenImmediately === true, JSON.stringify(r));
+P('welcome screen is hidden the instant onDeviceConnected() resolves – no animated wait', r.wsHiddenImmediately === true, JSON.stringify(r));
 P('welcome screen never enters .connecting (no celebratory reveal for a silent reconnect)', r.everWentConnecting === false, JSON.stringify(r));
 P('no 1100ms/720ms celebration timers were scheduled', r.celebrationTimersScheduled.length === 0, JSON.stringify(r.celebrationTimersScheduled));
 P('send button reflects final app state ("Send to device") immediately, not still "Connect & load"', r.btnText === 'Send to device', r.btnText);

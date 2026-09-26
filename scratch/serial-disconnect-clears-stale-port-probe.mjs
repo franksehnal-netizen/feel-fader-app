@@ -11,7 +11,7 @@ const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const result = await p.evaluate(() => {
   if (!navigator.serial) return { skipped: true };
@@ -26,7 +26,7 @@ const result = await p.evaluate(() => {
 });
 
 if (result.skipped) {
-  console.log('SKIP  navigator.serial unavailable in this browser — cannot test');
+  console.log('SKIP  navigator.serial unavailable in this browser – cannot test');
 } else {
   P('stale _serialPort falsely reports CONNECTED_BLIND before disconnect fires', result.stateBefore === 'CONNECTED_BLIND', result.stateBefore);
   P('disconnect event clears _serialPort', result.serialPortAfter === null, String(result.serialPortAfter));

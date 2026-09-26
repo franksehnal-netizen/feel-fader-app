@@ -9,7 +9,7 @@ const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 await p.evaluate(()=>{ skipWelcome(); });
 const res = await p.evaluate(()=>{
   const evil = '{"__proto__":{"polluted":true},"banks":[{"__proto__":{"polluted2":true},"fader1":{"cc":1,"channel":0,"__proto__":{"polluted3":true}},"fader2":{"cc":2,"channel":0},"encoder":{"cc":32,"channel":0},"uacc_values":[1]}]}';

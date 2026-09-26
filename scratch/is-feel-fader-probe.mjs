@@ -10,7 +10,7 @@ const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const r = await p.evaluate(() => ({
   exact: isFeelFader('Feel Fader'),
@@ -22,7 +22,7 @@ const r = await p.evaluate(() => ({
 P('exact "Feel Fader" name still matches', r.exact === true, JSON.stringify(r));
 P('uppercase "FEEL FADER" (older set_interface_name fallback) still matches', r.upper === true, JSON.stringify(r));
 P('"Feel Fader FF" (product + model id) still matches', r.mixedWithModel === true, JSON.stringify(r));
-P('generic "CircuitPython Audio" no longer matches (SEC-003 — unshipped product, no legacy-firmware installed base to support)', r.genericCircuitPython === false, JSON.stringify(r));
+P('generic "CircuitPython Audio" no longer matches (SEC-003 – unshipped product, no legacy-firmware installed base to support)', r.genericCircuitPython === false, JSON.stringify(r));
 P('unrelated MIDI device name does not match', r.unrelated === false, JSON.stringify(r));
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

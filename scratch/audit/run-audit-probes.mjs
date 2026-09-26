@@ -73,7 +73,7 @@ for (const probe of AUDIT_PROBES) {
     console.log(`CRASH ${probe} (exit ${code})`);
     console.log(out.split('\n').slice(0, 8).join('\n'));
   } else {
-    console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} — ${pass} pass, ${fail} fail`);
+    console.log(`${fail === 0 ? 'ok  ' : 'FAIL'} ${probe} – ${pass} pass, ${fail} fail`);
   }
 }
 

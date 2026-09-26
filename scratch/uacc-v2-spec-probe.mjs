@@ -7,7 +7,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' – '+x:''}`);
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
 await p.evaluate(() => skipWelcome());
@@ -55,7 +55,7 @@ const r = await p.evaluate(() => {
     names, presets, templates, defaults, added,
     dropdown: [...document.querySelectorAll('#uacc-preset-dropdown button')].map(el => el.getAttribute('onclick')),
     uaccPreview: preview('Spitfire BBC Symphony Orchestra'),
-    ksPreview: preview('Sonuscore LUX — Violas'),
+    ksPreview: preview('Sonuscore LUX – Violas'),
   };
 });
 

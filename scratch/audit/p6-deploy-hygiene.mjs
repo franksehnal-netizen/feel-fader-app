@@ -13,7 +13,7 @@ const HOST = 'franksehnal-netizen.github.io';
 const BASE = `https://${HOST}/feel-fader-demo`;
 const MAIN_URL = `${BASE}/`; // GitHub Pages serves index.html at the directory root
 
-const P = (l, ok, x = '') => console.log(`${ok ? 'PASS' : 'FAIL'}  ${l}${x ? '  — ' + x : ''}`);
+const P = (l, ok, x = '') => console.log(`${ok ? 'PASS' : 'FAIL'}  ${l}${x ? '  – ' + x : ''}`);
 
 const main = await fetch(MAIN_URL);
 const h = main.headers;
@@ -24,11 +24,11 @@ console.log('HEADERS: ' + JSON.stringify(Object.fromEntries(h.entries()), null, 
 P('HTTPS + 200 na hlavní stránce', main.ok && MAIN_URL.startsWith('https://'), String(main.status));
 P('X-Content-Type-Options: nosniff', h.get('x-content-type-options') === 'nosniff', h.get('x-content-type-options') || 'chybí');
 P('má nějaké Referrer-Policy', !!h.get('referrer-policy'), h.get('referrer-policy') || 'chybí');
-P('má Content-Security-Policy HTTP header', !!h.get('content-security-policy'), h.get('content-security-policy') || 'chybí (GH Pages neumožňuje custom response headers — očekávané, viz report)');
+P('má Content-Security-Policy HTTP header', !!h.get('content-security-policy'), h.get('content-security-policy') || 'chybí (GH Pages neumožňuje custom response headers – očekávané, viz report)');
 
 const body = await main.text();
 const secretsHit = /(api[_-]?key|secret|token|-----BEGIN)/i.test(body);
-P('žádné zjevné secrets v served HTML', !secretsHit, secretsHit ? 'grep hit — prověřit ručně' : 'žádný hit');
+P('žádné zjevné secrets v served HTML', !secretsHit, secretsHit ? 'grep hit – prověřit ručně' : 'žádný hit');
 const hasCspMeta = /<meta[^>]+http-equiv=["']content-security-policy["']/i.test(body);
 P('má <meta http-equiv="Content-Security-Policy"> tag v HTML', hasCspMeta, hasCspMeta ? 'přítomný' : 'chybí meta CSP tag (jediný mechanismus dostupný na GH Pages)');
 

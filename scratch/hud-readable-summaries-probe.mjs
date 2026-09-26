@@ -6,7 +6,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' – '+x:''}`);
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.setViewport({ width: 1440, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
@@ -71,7 +71,7 @@ await pm.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true }
 await pm.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
 const m = await pm.evaluate(async () => {
   skipWelcome(); activeBank = 0;
-  applyLibraryPreset('Sonuscore LUX — Violins 1');
+  applyLibraryPreset('Sonuscore LUX – Violins 1');
   _ffConnected = true; _midiState = 'granted'; liveBank = 0;
   liveValues = { f1: 87, f2: 104 }; liveSeen = { f1: true, f2: true }; ksLiveNote = 29;
   renderConnState(); render(); renderLiveStrip();

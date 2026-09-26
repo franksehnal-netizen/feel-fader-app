@@ -13,7 +13,7 @@ const puppeteer = require('C:/Users/Fanda Borec/Documents/feel-fader-app/node_mo
 
 const URL = 'http://localhost:8100/feel-fader.html';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 async function scenario(width, height, controllerHidden, label) {
   const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args: ['--no-sandbox'] });

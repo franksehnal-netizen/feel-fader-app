@@ -84,6 +84,8 @@ přesný" charakter appky.
 - Velikosti jen přes tokeny (K-3, 2026-09-25): `--fs-xs 10` · `--fs-sm 11` · `--fs-md 12` · `--fs-base 13` · `--fs-lg 14` · `--fs-xl 16` · `--fs-2xl 20` · `--fs-3xl 22`. `--fs-hud-sm 8` existuje jen pro řádek `Ch·CC` v 112px mobilním Live HUD. Raw `px` ve `font-size` / `font` hlídá `design-consistency-probe`.
 - Váhy: Mulish **400 / 600 / 700**; IBM Plex Mono navíc 500 (jediná numerická výjimka).
 - Štítky polí (`.field-label`) jsou všude stejné: 11 px, `--t2`, `text-transform:uppercase`.
+- Pomlčka v textech pro uživatele je vždy krátká `–` (Alt+0150), nikdy dlouhá `—`, i jako zástupný znak prázdné hodnoty (2026-09-26). Hlídá `design-consistency-probe` (stránka, title, tooltipy/ARIA, `TRANSLATIONS`, `UACC_NAMES`, názvy presetů).
+- Podtitulky onboardingu (`.onb-beat-sub`) jsou zarovnané do bloku, poslední řádek vlevo, s dělením slov (2026-09-26).
 
 ### Známé gapy (netokenizované — pozor při rozšiřování)
 

@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 await p.evaluate(() => { skipWelcome(); });
@@ -66,7 +66,7 @@ const stillFails = await p.evaluate(async () => {
   return { calls, toastText: toastEl?.textContent || null };
 });
 P('a persistent failure still retries once then gives up (calls=2)', stillFails.calls === 2, `calls=${stillFails.calls}`);
-P('a persistent failure still shows the "Couldn\'t sync" toast', stillFails.toastText === "Couldn't sync with device — showing local config", stillFails.toastText);
+P('a persistent failure still shows the "Couldn\'t sync" toast', stillFails.toastText === "Couldn't sync with device – showing local config", stillFails.toastText);
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

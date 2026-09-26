@@ -16,7 +16,7 @@ p.on('request', req => { try { const h = new URL(req.url()).host; if (!/^localho
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
 await p.evaluate(()=>{ skipWelcome(); });
 await new Promise(r=>setTimeout(r,500));
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 const hosts=[...external];
 console.log('EXTERNAL HOSTS: '+JSON.stringify(hosts));
 P('žádné neočekávané externí hosty (jen fonts.* pokud vůbec)', hosts.every(h=>/fonts\.(googleapis|gstatic)\.com$/.test(h)), JSON.stringify(hosts));

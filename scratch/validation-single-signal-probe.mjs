@@ -14,7 +14,7 @@ const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrom
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.setViewport({ width: 1280, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 await p.evaluate(() => { skipWelcome(); toggleSection('fader1'); });
 await new Promise(r => setTimeout(r, 300));

@@ -4,7 +4,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const browser = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(label,ok,detail='')=>console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?' — '+detail:''}`);
+const P=(label,ok,detail='')=>console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?' – '+detail:''}`);
 const page = await browser.newPage();
 await page.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
 await page.evaluate(() => skipWelcome());

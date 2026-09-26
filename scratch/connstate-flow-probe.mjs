@@ -5,7 +5,7 @@ const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrom
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html',{waitUntil:'networkidle0'});
 await p.evaluate(()=>{ try{skipWelcome&&skipWelcome()}catch(e){}; try{render&&render()}catch(e){}; });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 // simulate "loaded config but device unplugged" — header must NOT say connected
 const r = await p.evaluate(()=>{
   loaded = true; _ffConnected=false; _serialPort=null; _midiState='granted';

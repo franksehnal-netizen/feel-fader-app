@@ -15,7 +15,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 const near=(a,t,tol=1.5)=>Math.abs(a-t)<=tol;
 const errs=[];
 

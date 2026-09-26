@@ -8,7 +8,7 @@ import fs from 'fs';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' – '+x:''}`);
 
 // ── Static contract (source) ──
 const src = fs.readFileSync(new URL('../feel-fader.html', import.meta.url), 'utf8');
@@ -105,9 +105,22 @@ P('UACC note credits Spitfire only', r.claimsNonSpitfire === false);
 P('roller field labels share one size and case', r.labelStyles.length === 1 && /uppercase/.test(r.labelStyles[0]), r.labelStyles.join(' | '));
 P('help uses the same mode names', r.helpModes.length === 0, r.helpModes.join(','));
 // Real product names (Spitfire Symphony Orchestra, BBC Symphony Orchestra) or an
-// explicit "Spitfire UACC — <section>" for generic lists, never a vague "Spitfire Brass".
+// explicit "Spitfire UACC – <section>" for generic lists, never a vague "Spitfire Brass".
 const vague = r.libraryNames.filter(n => /Symphonic Orchestra|BBCSO|^Spitfire (Brass|Woodwinds)$/.test(n));
-P('library names are real products or explicit generic UACC lists', vague.length === 0 && r.libraryNames.includes('Spitfire UACC — Brass') && r.libraryNames.includes('Spitfire UACC — Woodwinds'), vague.join(','));
+P('library names are real products or explicit generic UACC lists', vague.length === 0 && r.libraryNames.includes('Spitfire UACC – Brass') && r.libraryNames.includes('Spitfire UACC – Woodwinds'), vague.join(','));
+// Frank's typography rule (2026-09-26): user-facing text uses the en dash (Alt+0150),
+// never the em dash – rendered page, title, tooltips/ARIA, and every string table.
+const EM = '—';
+const emText = await p.evaluate(EM => {
+  const hits = [];
+  if (document.title.includes(EM)) hits.push('title');
+  if (document.body.innerText.includes(EM)) hits.push('body text');
+  document.querySelectorAll('[title],[aria-label],[placeholder],[data-tip]').forEach(el => ['title','aria-label','placeholder','data-tip'].forEach(a => { if (el.getAttribute(a)?.includes(EM)) hits.push(a); }));
+  const tables = { TRANSLATIONS, UACC_NAMES, LIBRARY_PRESETS: Object.fromEntries(Object.keys(LIBRARY_PRESETS).map(k => [k, k])) };
+  for (const [n, t] of Object.entries(tables)) if (JSON.stringify(t).includes(EM)) hits.push(n);
+  return hits;
+}, EM);
+P('user-facing text uses the en dash, never the em dash', emText.length === 0, emText.join(','));
 P('no page errors', errs.length === 0, errs.join(' | '));
 await p.close();
 await b.close();

@@ -19,7 +19,7 @@ const r = await p.evaluate(() => {
   const hasOpen=typeof openHelpAt==='function';
   return {ids,control,dev,hints,hasOpen};
 });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 r.ids.forEach(([id,ok])=>P(`#${id} exists`,ok));
 P('#help-control REMOVED', r.control===false);
 P('#help-dev REMOVED (service-only content, not for end users)', r.dev===false);

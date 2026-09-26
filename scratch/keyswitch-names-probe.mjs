@@ -7,7 +7,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?' – '+x:''}`);
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
 await p.evaluate(() => skipWelcome());
@@ -16,7 +16,7 @@ const r = await p.evaluate(async () => {
   const out = {};
   activeBank = 0;
   _openSections.clear(); _openSections.add('roller'); _openRollerAdvanced.add(0);
-  applyLibraryPreset('Sonuscore LUX — Violins 1');
+  applyLibraryPreset('Sonuscore LUX – Violins 1');
   out.names = { ...(cfg.banks[0].ks_names || {}) };
   const chip = note => document.querySelector(`#ks-tags-0 [data-ksnote="${note}"]`);
   out.chipPrimary = chip(24)?.querySelector('.ks-note-name')?.textContent;
@@ -79,7 +79,7 @@ const r = await p.evaluate(async () => {
 
   // A library without names clears stale ones (no C0 = "Legato" left behind).
   cfg.banks[0].ks_names = { '12':'Legato' };
-  applyLibraryPreset('Spitfire Symphony Orchestra — Celli (All techniques)');
+  applyLibraryPreset('Spitfire Symphony Orchestra – Celli (All techniques)');
   out.afterSso = cfg.banks[0].ks_names;
   return out;
 });

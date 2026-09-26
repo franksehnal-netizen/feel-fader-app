@@ -13,7 +13,7 @@ fs.mkdirSync(outputDir, { recursive: true });
 
 const browser = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const errors = [];
-const P = (label, ok, detail='') => console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?'  — '+detail:''}`);
+const P = (label, ok, detail='') => console.log(`${ok?'PASS':'FAIL'}  ${label}${detail?'  – '+detail:''}`);
 
 async function openTour(width, height) {
   const page = await browser.newPage();

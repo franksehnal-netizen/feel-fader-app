@@ -769,7 +769,7 @@ async function runProfile(browser, url, profile) {
   addCheck(checks, 'Welcome and app use one shared primary action',
     transitionStart.actionCount === 1 && transitionEnd.sameActionNode,
     `${transitionStart.actionCount} button / same ${transitionEnd.sameActionNode}`);
-  addCheck(checks, 'The device image never moves — it was never reparented in the first place',
+  addCheck(checks, 'The device image never moves – it was never reparented in the first place',
     transitionEnd.sameNode && transitionEnd.parentId === 'device-home' && transitionEnd.welcomeHidden
       && transitionEnd.topGap <= 0.5 && transitionWidthGap <= 0.5,
     `same ${transitionEnd.sameNode} / top ${transitionEnd.topGap.toFixed(2)} px / width ${transitionWidthGap.toFixed(2)} px`);
@@ -837,7 +837,7 @@ async function runProfile(browser, url, profile) {
     mobileStrip.square && Math.abs(mobileStrip.width - 112) <= 1 && Math.abs(mobileStrip.height - 112) <= 1
       && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
       && mobileStrip.washHeights.every(h => h > 0)
-      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short — Soft (Brushed)'
+      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short – Soft (Brushed)'
       && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
   addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',
@@ -912,7 +912,7 @@ try {
   for (const result of results) {
     console.log(`\n${result.profile.name} (${result.profile.viewport.width}x${result.profile.viewport.height})`);
     for (const check of result.checks) {
-      console.log(`  ${check.pass ? 'PASS' : 'FAIL'}  ${check.name} — ${check.details}`);
+      console.log(`  ${check.pass ? 'PASS' : 'FAIL'}  ${check.name} – ${check.details}`);
       if (!check.pass) exitCode = 1;
     }
   }

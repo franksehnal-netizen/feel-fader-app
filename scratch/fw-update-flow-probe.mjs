@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
 const b = await puppeteer.launch({ executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe', headless:true, pipe:true, args:['--no-sandbox'] });
 const p = await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(String(e)));
-const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  — '+x:''}`);
+const P=(l,ok,x='')=>console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:''}`);
 
 const MAIN = 'x'.repeat(1300);            // 3 chunks (512+512+276)
 let fileBody = MAIN;
@@ -129,7 +129,7 @@ r = await run({ swallowUE:true, endTimeoutMs:50 });
 P('CMD_UE ack lost (timeout, non-ERR) → no CMD_UA, outcome left pending for reconnect to resolve',
   !r.cmds.includes('CMD_UA') && r.target && r.target.from === '1.3.0' && r.target.to === '1.3.1',
   JSON.stringify({ cmds: r.cmds, target: r.target }));
-P('CMD_UE ack lost → "restarting — checking the result" info toast', r.toasts.some(t => t.startsWith('i:') && t.includes('restarting')), r.toasts.join(' | '));
+P('CMD_UE ack lost → "restarting – checking the result" info toast', r.toasts.some(t => t.startsWith('i:') && t.includes('restarting')), r.toasts.join(' | '));
 
 r = await run({ errOn:'CMD_UE' });
 P('CMD_UE ERR response keeps today\'s behavior: CMD_UA sent, "unchanged" toast, no pending outcome',

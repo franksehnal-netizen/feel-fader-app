@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer-core');
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const URL = 'http://localhost:8100/feel-fader.html';
 
-const out = (label, ok, extra='') => console.log(`${ok?'PASS':'FAIL'}  ${label}${extra?'  — '+extra:''}`);
+const out = (label, ok, extra='') => console.log(`${ok?'PASS':'FAIL'}  ${label}${extra?'  – '+extra:''}`);
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args:['--no-sandbox'] });
 const p = await b.newPage();
