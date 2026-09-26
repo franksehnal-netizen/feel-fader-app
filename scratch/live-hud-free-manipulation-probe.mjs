@@ -103,11 +103,12 @@ const glass = await p.evaluate(async () => {
   const hs = getComputedStyle(document.querySelector('header'));
   const ls = getComputedStyle(strip);
   return { idle: strip.classList.contains('is-idle'), hudOpacity: ls.opacity, headerOpacity: hs.opacity,
-    sameBg: hs.background===ls.background, sameBackdrop: hs.backdropFilter===ls.backdropFilter,
+    bgCard: (() => { const s = document.createElement('span'); s.style.color = 'var(--bg-card)'; document.body.appendChild(s); const c = getComputedStyle(s).color; s.remove(); return c; })(),
+    hudBg: ls.backgroundColor, hudBackdrop: ls.backdropFilter,
     leftAnimated: ls.transitionProperty.includes('left') };
 });
 P('HUD glass matches header: full opacity even when idle (no dimming)', Math.abs(parseFloat(glass.hudOpacity)-1)<0.01 && glass.headerOpacity==='1', JSON.stringify(glass));
-P('HUD and header share the same glass surface', glass.sameBg && glass.sameBackdrop, JSON.stringify(glass));
+P('HUD is a flat card surface (no glass, --bg-card fill)', glass.hudBg === glass.bgCard && glass.hudBackdrop === 'none', JSON.stringify(glass));
 P('left is animated so reset/enlarge glide as one motion (no jump)', glass.leftAnimated, glass.leftAnimated);
 
 // 8. Mobile: no free-manip controls (size button hidden)

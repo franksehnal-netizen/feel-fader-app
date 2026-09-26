@@ -213,10 +213,9 @@ header{
 .live-hud{
   position:fixed;top:64px;z-index:45;width:144px;height:144px;box-sizing:border-box;padding:10px;
   --hud-scale:1;transform-origin:top left;
-  border:1px solid var(--chrome-float-border);border-radius:var(--r-lg);
-  background:var(--chrome-glass-bg);
-  backdrop-filter:var(--chrome-glass-filter);-webkit-backdrop-filter:var(--chrome-glass-filter);
-  box-shadow:var(--chrome-glass-shadow);
+  border:1px solid var(--border);border-radius:var(--r-lg);
+  background:var(--bg-card);
+  box-shadow:var(--shadow-hud);
   opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-5px) scale(calc(.98 * var(--hud-scale)));
   transition:opacity .28s ease,transform .36s var(--ease-out),left .36s var(--ease-out),top .36s var(--ease-out),width .38s var(--ease-out),height .38s var(--ease-out),padding .38s var(--ease-out),border-radius .38s var(--ease-out),visibility 0s linear .36s;
 }
@@ -229,11 +228,10 @@ header{
    .36s transform transition makes the 1x<->2x toggle glide; move-drag sets
    transition:none and moves via left/top so scale is untouched. */
 .live-hud.is-contextual-visible{opacity:1;visibility:visible;pointer-events:auto;transform:scale(var(--hud-scale));transition-delay:0s}
-/* No idle dimming — the HUD's glass matches the header's translucency exactly
-   (same --chrome-glass-bg + backdrop), so it reads as one surface with the top
-   bar rather than a fainter floating panel (Frank 2026-07-26). Live vs not-live
-   is still conveyed by the content (values vs "—"). The .is-idle class stays as
-   a state hook but no longer changes opacity. */
+/* No idle dimming. Since the minimal hybrid pass (spec 2026-09-26 §3) the HUD is
+   a flat --bg-card card with a hairline and --shadow-hud – the header is the only
+   glass surface. Live vs not-live is conveyed by the content (values vs "–");
+   .is-idle stays as a state hook but no longer changes opacity. */
 .live-hud.is-dragging{cursor:grabbing!important;transform:scale(calc(1.015 * var(--hud-scale)))}
 .live-hud-size-btn{
   position:absolute;right:3px;bottom:3px;width:19px;height:19px;padding:0;

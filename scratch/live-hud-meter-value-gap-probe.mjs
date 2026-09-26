@@ -49,7 +49,7 @@ const r = await p.evaluate(async () => {
     square: !hud.classList.contains('is-compact') && Math.abs(hr.width-144) <= 1 && Math.abs(hr.height-144) <= 1,
     washVisible: washFrac > 0,
     valueOverflowsCard: value.getBoundingClientRect().right > cardRect.right + 1,
-    sharedGlass: hs.background === ls.background && hs.backdropFilter === ls.backdropFilter && hs.boxShadow === ls.boxShadow,
+    flatCard: ls.backdropFilter === 'none' && ls.boxShadow !== 'none' && ls.borderTopStyle === 'solid',
     keyboardNudge: !!hud.style.left && !!savedPos && Number.isFinite(savedPos.x),
   };
 });
@@ -57,7 +57,7 @@ const r = await p.evaluate(async () => {
 P('desktop status is the permanent 144x144 square (not a compact capsule)', r.square, r.square);
 P('fader level wash fill is visible behind the value', r.washVisible, r.washVisible);
 P('longest articulation truncates gracefully without overflowing the card', !r.valueOverflowsCard, r.valueOverflowsCard);
-P('status capsule and header share the same glass surface', r.sharedGlass, r.sharedGlass);
+P('status capsule is a flat card with hairline and soft lift', r.flatCard, r.flatCard);
 P('keyboard arrow nudges to a free position and persists (ff_live_hud_pos)', r.keyboardNudge, JSON.stringify(r.keyboardNudge));
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
