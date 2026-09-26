@@ -11,9 +11,8 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 - **Firmware řadí `uacc_values`:** `ff_config.py` `_normalize_bank_core` dělá
   `sorted({...})`, takže ROLLER ORDER z appky (drag & drop) se v zařízení změní na
   vzestupné pořadí; `ks_notes` pořadí drží. Oprava patří do firmware repa.
-- **Welcome „Connect & load“ (K-7):** send-button v welcome režimu má váhu
-  sekundárního pillu (bílý + zelená záře). Změna zasahuje do jeho choreografie –
-  rozhodnout vizuálně s Frankem.
+  *2026-09-26:* oprava + testy připravené ve firmware repu (necommitnuté),
+  čeká na test na zařízení.
 
 ## Hotovo
 
@@ -26,6 +25,8 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 - **K-7:** tab „Bank 1“ bez zdvojeného čísla, popisek „Controller“ u přepínače v
   headeru, × u banku neutrální i v dark, „Reset range“ stejný pill jako
   „Choose range…“ (`k7-details-probe`).
+- **K-7 welcome:** „Connect & load“ je červený primární pill (dřív ho `.idle`
+  sklo stahovalo na sekundární), v appce se vrací sklo (`k7-details-probe`).
 - **Mulish** vložený jednou (`font-weight:300 700`, variabilní font), −160 KB.
 
 ### 2026-09-25 – UX audit očima skladatele, sprint 3 (konzistence)

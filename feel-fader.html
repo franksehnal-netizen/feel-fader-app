@@ -1326,6 +1326,11 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 }
 .welcome-start.show{opacity:1;pointer-events:auto;}
 .welcome-start:hover{background:var(--red2);box-shadow:0 6px 20px rgba(228,87,69,.34);}
+/* K-7 (UX audit 2026-09-25): #send-btn carries .idle on welcome (nothing dirty
+   yet), and .send-btn.idle's glass look buried the only primary action as a
+   secondary pill. Welcome keeps the red primary; .idle glass resumes in-app. */
+.welcome-start.idle{background:var(--red);color:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 4px 16px rgba(228,87,69,.30)}
+.welcome-start.idle:hover{background:var(--red2);color:#fff;box-shadow:0 6px 20px rgba(228,87,69,.34)}
 .welcome-start:active{transform:scale(.97);}
 .welcome-start:disabled{opacity:.6;cursor:default;}
 .welcome-start-msg{width:100%;height:14px;min-height:14px;margin:6px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--fs-sm);line-height:14px;color:var(--danger);}

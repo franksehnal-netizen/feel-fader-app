@@ -57,6 +57,27 @@ const m = await p.evaluate((tabTextsSrc) => {
 }, tabTexts.toString());
 await p.close();
 
+// Welcome "Connect & load" is the red primary, not the .idle glass pill (#send-btn
+// is .idle there because nothing is dirty yet); in-app the glass resumes.
+p = await b.newPage(); p.on('pageerror', e => errs.push(String(e)));
+await p.setViewport({ width: 1280, height: 800 });
+await p.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0' });
+await new Promise(r => setTimeout(r, 1500));
+const w = await p.evaluate(async () => {
+  const btn = document.getElementById('send-btn');
+  const red = (() => { const s = document.createElement('span'); s.style.color = 'var(--red)'; document.body.appendChild(s); const c = getComputedStyle(s).color; s.remove(); return c; })();
+  const out = { red, cls: btn.className, light: getComputedStyle(btn).backgroundColor };
+  document.documentElement.classList.add('dark');
+  out.dark = getComputedStyle(btn).backgroundColor;
+  document.documentElement.classList.remove('dark');
+  skipWelcome(); await new Promise(r => setTimeout(r, 2500));
+  out.inApp = getComputedStyle(btn).backgroundColor;
+  return out;
+});
+await p.close();
+
+P('welcome Connect & load is red primary in both themes', /welcome-start/.test(w.cls) && /\bidle\b/.test(w.cls) && w.light === w.red && w.dark === w.red, JSON.stringify(w));
+P('in-app send button returns to idle glass after welcome', w.inApp !== w.red, w.inApp);
 P('default-named tab shows its name once', d.tabs[0] === 'Bank 1', JSON.stringify(d.tabs));
 P('custom-named tab keeps its number', d.tabs[1] === '2 Strings', JSON.stringify(d.tabs));
 P('mobile: inactive default tabs are just numbers, active shows the name', m[0] === 'Bank 1' && m[1] === '2', JSON.stringify(m));
