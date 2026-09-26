@@ -20,7 +20,9 @@ await new Promise(r => setTimeout(r, 300));
 async function checkOpensAt(label, clickFn, anchorId) {
   await p.evaluate(() => { document.getElementById('help-body').style.display = 'none'; document.getElementById('help-chevron').textContent = '▼'; });
   await p.evaluate(clickFn);
-  await new Promise(r => setTimeout(r, 250));
+  // Smooth scrollIntoView takes ~700 ms; a fixed 250 ms read raced it (target
+  // top 583–650 px vs 600 px viewport → flaky). Wait for arrival, bounded.
+  await p.waitForFunction(id => { const r = document.getElementById(id)?.getBoundingClientRect(); return r && r.top >= 0 && r.top < innerHeight; }, { timeout: 2000 }, anchorId).catch(() => {});
   const r = await p.evaluate((anchorId) => {
     const body = document.getElementById('help-body');
     const target = document.getElementById(anchorId);
