@@ -314,11 +314,10 @@ header{
    otravný"). Overflow is handled by truncation (ellipsis) instead. */
 .live-hud-roller .live-hud-value{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:var(--fs-lg);line-height:17px;letter-spacing:-.02em}
 @media(any-pointer:fine){.live-hud.is-contextual-visible{cursor:grab}}
-.h-left{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
-/* Matches the welcome-onboarding wordmark badge exactly (Frank 2026-08-16,
-   reference screenshot) rather than a bespoke header treatment. */
-.h-title{color:var(--t2);font-size:var(--fs-sm);font-weight:700;letter-spacing:.12em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;user-select:none}
-.h-right{display:flex;align-items:center;gap:var(--space-2)}
+.h-left{display:flex;align-items:center;gap:var(--space-6);flex:1 1 auto;min-width:0}
+/* Wordmark in normal case (spec 2026-09-26 §2). 700 = heaviest embedded Mulish. */
+.h-title{color:var(--t1);font-size:var(--fs-lg);font-weight:700;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap;user-select:none}
+.h-right{display:flex;align-items:center;gap:var(--space-4)}
 
 /* MAIN */
 main{width:100%;}
@@ -1072,8 +1071,8 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .h-status-dot.err{background:var(--red)}
 .h-status-dot.warn{background:var(--amber)}
 .h-status-text{
-  font-size:var(--fs-sm);color:var(--t3);
-  letter-spacing:.02em;
+  font-size:var(--fs-md);color:var(--t2);
+  letter-spacing:0;
   margin-left:4px;
   max-width:20ch;overflow:hidden;white-space:nowrap;
   transition:opacity .4s,max-width .4s ease,margin-left .4s ease;
@@ -1087,7 +1086,6 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
 .h-status.reveal-on-interact:hover .h-status-text,
 .h-status.reveal-on-interact:focus-visible .h-status-text,
 .h-status.reveal-on-interact.is-revealed .h-status-text{max-width:20ch;opacity:1;margin-left:4px;}
-.h-div{width:1px;height:16px;background:var(--border);flex:0 0 auto;}
 
 
 
@@ -1976,15 +1974,15 @@ button:focus-visible{outline-offset:3px;}
   flex:0 0 auto;
   appearance:none;-webkit-appearance:none;
   position:relative;
-  padding:2px 9px;
+  padding:2px 12px;
   border-radius:var(--r-pill);
   border:1px solid transparent;
   background:transparent;
   box-shadow:none;
   cursor:pointer;
   font-family:'Mulish',sans-serif;
-  font-size:var(--fs-md);font-weight:600;
-  color:var(--t3);
+  font-size:var(--fs-base);font-weight:600;
+  color:var(--t2);
   transition:all .15s;
   white-space:nowrap;
   display:flex;align-items:center;gap:var(--space-1);
@@ -2025,19 +2023,18 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-tab.drag-before::before{left:-1px}
 .bank-block-tab.drag-after::after{right:-1px}
-/* The selected edit bank is the primary local-working context, so give its
-   glass pill a little more depth than an inactive chip. Device-live context
-   deliberately lives in the floating HUD, not in this tab strip. */
+/* The edited bank is a flat card-white pill with a hairline (spec 2026-09-26 §2);
+   the bank the hardware is on gets a small green dot (.is-on-device). */
 .bank-block-tabs .bank-block-tab.active{
   color:var(--t1);
   font-weight:600;
-  background:var(--control-glass-bg);
-  backdrop-filter:var(--control-glass-filter);
-  -webkit-backdrop-filter:var(--control-glass-filter);
-  border-color:var(--control-glass-border);
+  background:var(--bg-card);
+  border-color:transparent;
   border-radius:var(--r-pill);
-  box-shadow:var(--control-glass-shadow);
+  box-shadow:0 0 0 1px var(--border);
 }
+.bank-tab-device-dot{display:none;width:5px;height:5px;border-radius:50%;background:var(--green);flex:0 0 auto;margin-left:var(--space-1)}
+.bank-block-tab.is-on-device .bank-tab-device-dot{display:inline-block}
 @media(max-width:600px){
   .bank-block-tab{padding:2px 8px}
   .bank-block-tab .bank-tab-name{max-width:0;opacity:0;margin-left:0}
@@ -2173,7 +2170,6 @@ button:focus-visible{outline-offset:3px;}
 
 /* ── NEW DARK MODE RULES ── */
 html.dark .bank-block-tab{color:var(--t2);border-color:transparent;}  /* inactive tabs stay visually open; only the active pill gets a glass border */
-html.dark .bank-block-tabs .bank-block-tab.active{color:var(--t1);}
 html.dark .section-head{border-bottom-color:var(--border);}
 html.dark .bank-section-divider{background:var(--border);}
 html.dark .stepper{background:var(--bg-input);}
@@ -2197,17 +2193,16 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 <div class="top-sticky">
 <header>
   <div class="h-left">
+    <span class="h-title">Feel Fader</span>
+    <div class="bank-block-tabs" id="bank-tabs"></div>
+  </div>
+  <div class="h-right">
     <div class="h-status-wrap">
       <span class="h-status" id="h-status" aria-live="polite" tabindex="0" onclick="toggleStatusReveal(event)">
         <span class="h-status-dot" id="h-status-dot" aria-hidden="true"></span>
         <span class="h-status-text" id="h-status-text"></span>
       </span>
     </div>
-    <span class="h-title">Feel Fader</span>
-    <span class="h-div" aria-hidden="true"></span>
-    <div class="bank-block-tabs" id="bank-tabs"></div>
-  </div>
-  <div class="h-right">
 
     <div class="controller-toggle-wrap" title="Show/hide the controller view">
       <svg class="controller-toggle-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" aria-hidden="true">
@@ -3174,12 +3169,13 @@ function renderBankTabs() {
     const nm = escHtml(b.name || 'Bank '+(i+1));
     const defaultName = !b.icon && /^Bank \d+$/.test(b.name || 'Bank '+(i+1));   // K-7: "1 Bank 1" → "Bank 1"
     return `<button class="bank-block-tab ${i===activeBank?'active':''}${defaultName?' is-default-name':''}" onclick="selectBank(${i},event)" aria-label="Edit ${nm}" ${i===activeBank?'aria-current="true"':''}
-      draggable="true" data-bank-index="${i}" ondragstart="onBankDragStart(event,${i})" ondragover="onBankDragOver(event,${i})" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,${i})" ondragend="onBankDragEnd()">${iconHtml}<span class="bank-tab-name">${nm}</span></button>`;
+      draggable="true" data-bank-index="${i}" ondragstart="onBankDragStart(event,${i})" ondragover="onBankDragOver(event,${i})" ondragleave="onBankDragLeave(event)" ondrop="onBankDrop(event,${i})" ondragend="onBankDragEnd()">${iconHtml}<span class="bank-tab-name">${nm}</span><span class="bank-tab-device-dot" aria-hidden="true"></span></button>`;
   }).join('');
   const addHtml = cfg.banks.length < MAX_BANKS
     ? `<button class="bank-block-tab-add" onclick="addBank()" title="Add bank" aria-label="Add bank">+</button>`
     : '';
   el.innerHTML = tabsHtml + addHtml;
+  syncDeviceBankMarkers();
   const act = el.querySelector('.bank-block-tab.active');
   if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   _updateTabsFade(el);
@@ -6276,6 +6272,25 @@ function renderLiveFaderValues(changed = {l:true,r:true}){
   if (changed.r) setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
 }
 
+// Device context in the editor (spec 2026-09-26 §2/§4, Frank reversed the
+// "HUD only" rule): the bank the hardware is on gets a green dot in its tab
+// and "· active on device" in the card eyebrow. Same condition as the HUD bank
+// dots (any CONNECTED_* state), so the three markers never disagree.
+function deviceBankIndex() {
+  return connState().startsWith('CONNECTED') ? liveBank : -1;
+}
+function syncDeviceBankMarkers() {
+  const onDevice = deviceBankIndex();
+  document.querySelectorAll('#bank-tabs .bank-block-tab').forEach((tab, i) => {
+    const on = i === onDevice;
+    const name = cfg.banks[i]?.name || `Bank ${i+1}`;
+    tab.classList.toggle('is-on-device', on);
+    tab.setAttribute('aria-label', `Edit ${name}${on ? ' (active on device)' : ''}`);
+    if (on) tab.title = 'Active on device'; else tab.removeAttribute('title');
+  });
+  const eyebrow = document.getElementById('bank-eyebrow-device');
+  if (eyebrow) eyebrow.hidden = activeBank !== onDevice;
+}
 function renderLiveHudBankDots(bankCount, activeIndex){
   const bankHud = document.getElementById('live-hud-bank');
   if (!bankHud) return;
@@ -6308,6 +6323,7 @@ function renderLiveStrip(errs = validate()){
   const bank = cfg.banks[liveBank] || cfg.banks[activeBank];
   if (!bank) { updateContextualLiveStrip(); return; }
   renderLiveHudBankDots(cfg.banks.length, liveBank);
+  syncDeviceBankMarkers();
   setTxt('live-f1-label-long', 'L');
   setTxt('live-f1-label-short', 'L');
   setTxt('live-f2-label-long', 'R');

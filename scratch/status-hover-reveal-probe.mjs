@@ -37,7 +37,9 @@ const afterClick = await p.evaluate(() => {
   const txt = document.getElementById('h-status-text');
   return { maxWidth: getComputedStyle(txt).maxWidth, ariaExpanded: document.getElementById('h-status').getAttribute('aria-expanded') };
 });
-P('Click reveals the text', near(afterClick.maxWidth, 132) && afterClick.ariaExpanded === 'true', JSON.stringify(afterClick));
+// 144 = 20ch at --fs-md (12px), not --fs-sm (11px) – .h-status-text moved to
+// --fs-md in the minimal hybrid header restyle (2026-09-26 §2).
+P('Click reveals the text', near(afterClick.maxWidth, 144) && afterClick.ariaExpanded === 'true', JSON.stringify(afterClick));
 
 // Outside click closes it again.
 await p.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true})));
@@ -53,7 +55,7 @@ const disconnectedState = await p.evaluate(() => {
   const txt = document.getElementById('h-status-text');
   return { hasClass: status.classList.contains('reveal-on-interact'), maxWidth: getComputedStyle(txt).maxWidth };
 });
-P('DISCONNECTED has no reveal-on-interact, text stays visible', !disconnectedState.hasClass && near(disconnectedState.maxWidth, 132), JSON.stringify(disconnectedState));
+P('DISCONNECTED has no reveal-on-interact, text stays visible', !disconnectedState.hasClass && near(disconnectedState.maxWidth, 144), JSON.stringify(disconnectedState));
 
 await p.close();
 await b.close();
