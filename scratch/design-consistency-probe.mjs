@@ -108,6 +108,30 @@ P('help uses the same mode names', r.helpModes.length === 0, r.helpModes.join(',
 // explicit "Spitfire UACC – <section>" for generic lists, never a vague "Spitfire Brass".
 const vague = r.libraryNames.filter(n => /Symphonic Orchestra|BBCSO|^Spitfire (Brass|Woodwinds)$/.test(n));
 P('library names are real products or explicit generic UACC lists', vague.length === 0 && r.libraryNames.includes('Spitfire UACC – Brass') && r.libraryNames.includes('Spitfire UACC – Woodwinds'), vague.join(','));
+
+// Minimal hybrid (spec 2026-09-26 §1): flat page, flat content cards, one glass
+// surface (header), neutral open section.
+P('ambient background tokens are gone', !/--ambient-/.test(src));
+const surf = await p.evaluate(() => {
+  const cs = el => getComputedStyle(el);
+  _openSections.clear(); _lastActiveFaderKey = null; _openSections.add('fader1'); render();
+  const open = document.querySelector('.bank-section.is-open');
+  const cards = [...document.querySelectorAll('.bank-card, .center-col > .panel, .settings-group')];
+  return {
+    bodyBg: cs(document.body).backgroundImage,
+    cards: cards.map(el => ({ cls: el.className, bf: cs(el).backdropFilter, sh: cs(el).boxShadow })),
+    openBg: `${cs(open).backgroundColor}|${cs(open).backgroundImage}`,
+    openBefore: getComputedStyle(open, '::before').content,
+    headerBf: cs(document.querySelector('header')).backdropFilter,
+    halo: getComputedStyle(document.querySelector('.send-callout'), '::before').content,
+  };
+});
+P('body has no ambient radial gradients', !/radial-gradient/.test(surf.bodyBg), surf.bodyBg);
+P('content cards have no backdrop-filter and no shadow', surf.cards.length > 0 && surf.cards.every(c => c.bf === 'none' && c.sh === 'none'), JSON.stringify(surf.cards));
+P('open section has no tint or light gradient', surf.openBg === 'rgba(0, 0, 0, 0)|none' && ['none', 'normal'].includes(surf.openBefore), `${surf.openBg} / ${surf.openBefore}`);
+P('header keeps its glass', !!surf.headerBf && surf.headerBf !== 'none', surf.headerBf);
+P('Send has no frosted halo', ['none', 'normal'].includes(surf.halo), surf.halo);
+
 // Frank's typography rule (2026-09-26): user-facing text uses the en dash (Alt+0150),
 // never the em dash – rendered page, title, tooltips/ARIA, and every string table.
 const EM = '—';
