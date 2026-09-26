@@ -59,8 +59,9 @@ P('F-03: Duplicate button exists and is not disabled at 8-bank cap', f03.exists 
 
 // B3: dark-mode text uses design tokens, not raw hex, on spot-checked elements
 const b3 = await p.evaluate(() => {
+  DEVICE_INFO.hid_enabled = true; cfg.macro_global = true; cfg.macro_keys = [0x2C]; _openSections.add('macro'); render();
   document.documentElement.classList.add('dark');
-  const rm = document.querySelector('.btn-remove-bank');
+  const rm = document.getElementById('macro-clear');
   const lbl = document.querySelector('.info-lbl');
   const r = { rmColor: rm ? getComputedStyle(rm).color : null, lblColor: lbl ? getComputedStyle(lbl).color : null };
   document.documentElement.classList.remove('dark');

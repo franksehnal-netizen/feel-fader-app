@@ -13,8 +13,9 @@ await p.goto(URL, { waitUntil: 'networkidle0' });
 await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 
 const r = await p.evaluate(() => {
-  const wrap = document.querySelector('.bank-actions');
-  const btn = document.querySelector('.btn-remove-bank');
+  addBank(); render();   // Delete row only exists with > 1 bank
+  const wrap = document.querySelector('.settings-group[data-group="bank"]');
+  const btn = document.querySelector('.group-row[data-bank-action="delete"]');
   const wrapRect = wrap.getBoundingClientRect();
   const btnRect = btn.getBoundingClientRect();
   return {
@@ -23,9 +24,9 @@ const r = await p.evaluate(() => {
     scrollWidth: wrap.scrollWidth, clientWidth: wrap.clientWidth
   };
 });
-P('Remove-bank button stays within its container', r.btnRight <= r.wrapRight + 1, JSON.stringify(r));
-P('Remove-bank button stays within the viewport', r.btnRight <= r.viewportWidth, JSON.stringify(r));
-P('.bank-actions has no horizontal overflow', r.scrollWidth <= r.clientWidth + 1, JSON.stringify(r));
+P('Delete bank row stays within its group', r.btnRight <= r.wrapRight + 1, JSON.stringify(r));
+P('Delete bank row stays within the viewport', r.btnRight <= r.viewportWidth, JSON.stringify(r));
+P('Bank group has no horizontal overflow', r.scrollWidth <= r.clientWidth + 1, JSON.stringify(r));
 
 await p.close();
 await b.close();

@@ -43,7 +43,8 @@ const result = await p.evaluate(() => {
   // Device follows a Program Change to the edited bank while the config is dirty.
   dirty = true; liveBank = 2; renderLiveStrip();
   out.afterPc = [...document.querySelectorAll('.bank-block-tab')].map(t => t.classList.contains('is-on-device'));
-  out.eyebrowShown = !document.getElementById('bank-eyebrow-device')?.hidden;
+  const ey = document.getElementById('bank-eyebrow-device');
+  out.eyebrowShown = !!ey && !ey.hidden;
   // Disconnect clears the marker.
   _ffConnected = false; _serialPort = null; renderConnState();
   out.afterDisconnect = [...document.querySelectorAll('.bank-block-tab')].some(t => t.classList.contains('is-on-device'));

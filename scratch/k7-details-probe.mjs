@@ -29,7 +29,8 @@ const d = await p.evaluate(async (tabTextsSrc) => {
   out.tabs = tabTexts();
   const wrap = document.querySelector('.controller-toggle-wrap');
   out.switchLabel = wrap?.innerText.trim();
-  const x = document.querySelector('.btn-remove-bank');
+  DEVICE_INFO.hid_enabled = true; cfg.macro_global = true; cfg.macro_keys = [0x2C]; _openSections.add('macro'); render();
+  const x = document.getElementById('macro-clear');
   out.xLight = x && getComputedStyle(x).color;
   document.documentElement.classList.add('dark');
   await new Promise(r => setTimeout(r, 400));   // ui-control colour transition
@@ -82,7 +83,7 @@ P('default-named tab shows its name once', d.tabs[0] === 'Bank 1', JSON.stringif
 P('custom-named tab keeps its number', d.tabs[1] === '2 Strings', JSON.stringify(d.tabs));
 P('mobile: inactive default tabs are just numbers, active shows the name', m[0] === 'Bank 1' && m[1] === '2', JSON.stringify(m));
 P('header controller switch has a visible label', /Controller/.test(d.switchLabel || ''), d.switchLabel);
-P('bank × is neutral in dark mode too (danger only on hover)', d.xDark === d.t3Dark, `${d.xDark} vs ${d.t3Dark}`);
+P('macro × is neutral in dark mode too (danger only on hover)', d.xDark === d.t3Dark, `${d.xDark} vs ${d.t3Dark}`);
 P('Reset range matches the Choose range pill', !!d.reset && d.reset === d.choose && !d.resetInline, `${d.reset} vs ${d.choose}`);
 P('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();

@@ -694,6 +694,9 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
 .bank-name-input:focus{border-bottom-color:var(--t2);}
 .bank-name-input:focus-visible{outline:none;border-radius:var(--r-sm);border-bottom-color:var(--t2);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 20%,transparent)}
 .bank-name-input::placeholder{color:var(--t3);font-weight:400}
+/* Bank name as the card title (spec 2026-09-26 §4). Same input, same limits,
+   display size; .fader-title-input shares .bank-name-input and stays small. */
+.bank-title-input{font-size:var(--fs-display);font-weight:700;letter-spacing:-.025em;line-height:1.15;max-width:100%;padding:0}
 .btn-remove-bank{
   position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;
   background:transparent;border:none;
@@ -704,23 +707,7 @@ html.dark .icon-picker-trigger svg{opacity:.7;}
 }
 .btn-remove-bank:hover{color:var(--danger);background:var(--danger-bg);border-style:solid;border-color:var(--danger);}
 html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);}
-.bank-actions{position:relative;z-index:2;isolation:isolate;display:flex;align-items:center;gap:3px;flex-shrink:0}
-.bank-action-btn{
-  position:relative;z-index:1;pointer-events:auto;touch-action:manipulation;
-  width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;color:var(--t2);
-}
-.bank-action-btn::before,.btn-remove-bank::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:auto}
-.bank-action-btn svg{position:relative;z-index:1;width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-/* On desktop the bank title is a short editable field, so its utility
-   actions belong to the card's far edge instead of reading as part of the
-   title. Keep the larger, easier-to-hit controls on compact/touch layouts. */
-@media (min-width:768px) and (hover:hover){
-  .bank-actions{margin-left:auto;gap:2px;opacity:.72;transition:opacity .14s ease}
-  .bank-block-name-top:hover .bank-actions,.bank-actions:focus-within{opacity:1}
-  .bank-action-btn,.btn-remove-bank{width:24px;height:24px}
-  .btn-remove-bank{font-size:var(--fs-lg)}
-  .bank-action-btn svg{width:12px;height:12px}
-}
+.btn-remove-bank::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:auto}
 
 /* PANEL NAME EDITABLE */
 .fader-side-cap{font-size:var(--fs-sm);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:4px;}
@@ -764,16 +751,6 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   .h-status-text{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
   header{padding:5px 16px;}
   .bank-block-tab .bank-tab-name{max-width:72px;}
-  /* Was flex-wrap:wrap, dropping .bank-actions to its own row under the
-     icon/name (with width:100%;padding-left:31px to re-align it there).
-     Frank 2026-08-17: "bych chtěl mít buttony... na stejné výškové úrovni
-     jako Bank ikonu" — .bank-name-input already has flex:1;min-width:0
-     (line ~694), so it can compress to make room instead of forcing a
-     wrap; no longer needed now the action buttons are also smaller (28px,
-     see the pointer:coarse block above). */
-  .bank-quick-setup{padding-left:0;flex-wrap:wrap;}
-  .bank-quick-setup-label{width:100%;}
-  .quick-setup-picker{max-width:none;}
   .section-summary{max-width:145px;}
   .btn.btn-ghost{padding:6px 12px;font-size:var(--fs-md);color:var(--t2);}
   .uacc-tag{font-size:var(--fs-sm);padding:3px 6px;}
@@ -1013,7 +990,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
      (non-touch) size these buttons already use elsewhere in the file
      (.btn-remove-bank/.bank-action-btn below), so touch and mouse now
      render identically instead of touch being enlarged. */
-  .btn-remove-bank,.bank-action-btn{width:28px;height:28px}
+  .btn-remove-bank{width:28px;height:28px}
   .icon-picker-trigger{min-width:44px;min-height:44px}
   /* .dark-toggle's own width/height/min-* moved out of this block entirely
      — see the dedicated @media(pointer:coarse) rule placed AFTER its base
@@ -2061,15 +2038,20 @@ button:focus-visible{outline-offset:3px;}
 }
 .bank-block-tab-add:hover{color:var(--t1);background:var(--bg-input);}
 .bank-block-name{
-  display:flex;flex-direction:column;gap:var(--space-1);
-  padding:11px 14px 4px;
+  display:flex;flex-direction:column;gap:2px;
+  padding:18px 18px 14px;
 }
+.bank-eyebrow{font-size:var(--fs-base);color:var(--t2)}
 .bank-block-name-top{
   display:flex;align-items:center;gap:var(--space-2);
 }
-.bank-quick-setup{display:flex;align-items:center;gap:var(--space-2);padding:6px 0 7px 31px;min-width:0}
-.bank-quick-setup-label{font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
-.quick-setup-picker{position:relative;flex:1;min-width:150px;max-width:300px}
+.bank-quick-setup{position:relative;display:flex;align-items:baseline;gap:6px;min-width:0;font-size:var(--fs-lg)}
+.bank-quick-setup-label{color:var(--t2);white-space:nowrap}
+.library-browse-link{border:1px solid transparent;border-radius:var(--r-pill);background:none;padding:0 4px;margin-left:-4px;color:var(--red);font:600 var(--fs-lg) 'Mulish',sans-serif;cursor:pointer}
+.library-browse-link:hover{color:var(--red2)}
+.library-popover{position:absolute;top:calc(100% + 6px);left:0;z-index:120;width:min(360px,calc(100vw - 40px));padding:8px;border-radius:var(--r);background:var(--bg-card);box-shadow:0 0 0 1px var(--border),var(--shadow)}
+.library-popover[hidden]{display:none}
+.quick-setup-picker{position:relative;width:100%}
 /* iOS Safari/Chrome auto-zooms the whole page on focusing an <input> with
    font-size under 16px (Frank 2026-08-17: "otevře se dropdown menu a celé
    se mi to přiblíží"). Real font-size raised to 16px to disable that, then
@@ -2081,12 +2063,12 @@ button:focus-visible{outline-offset:3px;}
 .library-quick-input-scale{display:block;width:100%;height:29px;overflow:hidden;border-radius:var(--r-pill)}
 .library-quick-input{width:133.333%;height:38.667px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 88%,transparent);color:var(--t1);padding:8px 13.333px;font:var(--fs-xl) 'Mulish',sans-serif;outline:none;transform:scale(.75);transform-origin:top left}
 .library-quick-input:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 18%,transparent)}
-.bank-quick-setup.is-first-run-highlight .library-quick-input{animation:library-setup-cue 1.65s var(--ease-out)}
+.bank-quick-setup.is-first-run-highlight .library-browse-link{animation:library-setup-cue 1.65s var(--ease-out)}
 @keyframes library-setup-cue{
-  0%,100%{border-color:var(--border-s);box-shadow:0 0 0 0 transparent}
+  0%,100%{border-color:transparent;box-shadow:0 0 0 0 transparent}
   28%{border-color:color-mix(in srgb,var(--red) 52%,var(--border-s));box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 14%,transparent),0 8px 24px color-mix(in srgb,var(--red) 9%,transparent)}
 }
-@media(prefers-reduced-motion:reduce){.bank-quick-setup.is-first-run-highlight .library-quick-input{animation:none;border-color:color-mix(in srgb,var(--red) 42%,var(--border-s));box-shadow:0 0 0 2px color-mix(in srgb,var(--red) 12%,transparent)}}
+@media(prefers-reduced-motion:reduce){.bank-quick-setup.is-first-run-highlight .library-browse-link{animation:none;border-color:color-mix(in srgb,var(--red) 42%,var(--border-s));box-shadow:0 0 0 2px color-mix(in srgb,var(--red) 12%,transparent)}}
 .bank-card.quick-menu-open{overflow:visible;position:relative;z-index:60}
 .quick-setup-menu{
   position:absolute;top:calc(100% + 6px);z-index:120;padding:6px;border:1px solid var(--glass-border);border-radius:var(--r);
@@ -2095,6 +2077,7 @@ button:focus-visible{outline-offset:3px;}
 }
 .quick-setup-menu{left:0;width:min(360px,calc(100vw - 40px));max-height:310px;overflow-y:auto}
 .quick-setup-menu[hidden]{display:none}
+.library-popover .quick-setup-menu{position:static;margin-top:6px;width:100%;max-height:310px;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
 .quick-setup-group+.quick-setup-group{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .quick-setup-group-label{padding:4px 8px 4px;font-size:var(--fs-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
 .quick-setup-option{
@@ -3226,42 +3209,36 @@ function renderPanels(errs = validate()) {
   _lastRenderedBank = bi;
 
   // Name row is now the first child inside .bank-card (fades with the card on bank change)
+  const bankLabel = escHtml(b.name || 'Bank '+(bi+1));
   const bankNameRowHtml = `
     <div class="bank-block-name">
+      <div class="bank-eyebrow">Bank ${bi+1} of ${cfg.banks.length}<span id="bank-eyebrow-device" ${deviceBankIndex() === bi ? '' : 'hidden'}> · active on device</span></div>
       <div class="bank-block-name-top">
         <button class="icon-picker-trigger ui-control ui-pill ui-glass" onclick="openIconPicker(${bi}, 'icon')" aria-label="Choose icon for bank ${bi+1}">
           ${b.icon
             ? `<span class="bank-icon-display">${escHtml(b.icon)}</span>`
             : `<span class="bank-icon-empty"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>`}
         </button>
-        <input class="bank-name-input" value="${escHtml(b.name || 'Bank '+(bi+1))}"
+        <input class="bank-name-input bank-title-input" value="${bankLabel}"
           onchange="onBankRename(${bi}, this.value)" maxlength="24"
           placeholder="Bank name..." aria-label="Bank ${bi+1} name" />
-        <div class="bank-actions" aria-label="Bank actions">
-          <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="left" data-bank-index="${bi}" onclick="moveBank(${bi},-1,'left')" title="Move bank left" aria-label="Move ${escHtml(b.name || 'Bank '+(bi+1))} left" ${bi===0?'disabled':''}>
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>
-          </button>
-          <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="right" data-bank-index="${bi}" onclick="moveBank(${bi},1,'right')" title="Move bank right" aria-label="Move ${escHtml(b.name || 'Bank '+(bi+1))} right" ${bi===cfg.banks.length-1?'disabled':''}>
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5"/></svg>
-          </button>
-          <button type="button" class="bank-action-btn ui-control ui-pill ui-glass" data-bank-action="duplicate" data-bank-index="${bi}" onclick="duplicateBank(${bi})" title="Duplicate bank" aria-label="Duplicate ${escHtml(b.name || 'Bank '+(bi+1))}">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="8" height="8" rx="2"/><path d="M3 10.5H2.5A1.5 1.5 0 0 1 1 9V2.5A1.5 1.5 0 0 1 2.5 1H9a1.5 1.5 0 0 1 1.5 1.5V3"/></svg>
-          </button>
-          ${cfg.banks.length > 1 ? `<button type="button" class="btn-remove-bank ui-control ui-pill" onclick="removeBank(${bi})" title="Remove bank" aria-label="Remove ${escHtml(b.name || 'Bank '+(bi+1))}">✕</button>` : ''}
-        </div>
       </div>
       <div class="bank-quick-setup">
         <span class="bank-quick-setup-label">Library setup</span>
-        <div class="quick-setup-picker" id="quick-setup-picker-${bi}">
-          <span class="library-quick-input-scale">
-            <input class="library-quick-input" id="quick-setup-input-${bi}" placeholder="Search setups…" autocomplete="off"
-              role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="quick-setup-menu-${bi}"
-              aria-label="Search library and custom setups" onfocus="openQuickSetupMenu(${bi})"
-              oninput="renderQuickSetupMenu(${bi},this.value)" onkeydown="quickSetupInputKey(event,${bi})" />
-          </span>
-          <div class="quick-setup-menu" id="quick-setup-menu-${bi}" role="listbox" hidden>${quickSetupMenuHtml('')}</div>
+        <button type="button" class="library-browse-link" id="library-browse-${bi}"
+          aria-haspopup="dialog" aria-expanded="false" aria-controls="library-popover-${bi}"
+          onclick="toggleLibraryPopover(${bi})">Browse…</button>
+        <div class="library-popover" id="library-popover-${bi}" role="dialog" aria-label="Library setup" hidden>
+          <div class="quick-setup-picker" id="quick-setup-picker-${bi}">
+            <span class="library-quick-input-scale">
+              <input class="library-quick-input" id="quick-setup-input-${bi}" placeholder="Search setups…" autocomplete="off"
+                role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="quick-setup-menu-${bi}"
+                aria-label="Search library and custom setups" onfocus="openQuickSetupMenu(${bi})"
+                oninput="renderQuickSetupMenu(${bi},this.value)" onkeydown="quickSetupInputKey(event,${bi})" />
+            </span>
+            <div class="quick-setup-menu" id="quick-setup-menu-${bi}" role="listbox" hidden>${quickSetupMenuHtml('')}</div>
+          </div>
         </div>
-        <button class="btn btn-ghost quick-preset-btn ui-control ui-pill ui-glass" onclick="openCustomPresetDialog()" aria-label="Save or manage custom library setups">Save setup</button>
       </div>
     </div>
   `;
@@ -8156,7 +8133,7 @@ function quickSetupMenuHtml(query = '') {
     : '<div class="quick-setup-empty">No matching setups</div>';
 }
 function refreshBankMenuLayer() {
-  const open = document.querySelector('.quick-setup-menu:not([hidden])');
+  const open = document.querySelector('.quick-setup-menu:not([hidden]), .library-popover:not([hidden])');
   document.querySelector('.bank-card')?.classList.toggle('quick-menu-open', !!open);
 }
 function renderQuickSetupMenu(bi, query = '') {
@@ -8166,6 +8143,20 @@ function renderQuickSetupMenu(bi, query = '') {
   menu.innerHTML = quickSetupMenuHtml(query);
   menu.hidden = false;
   input.setAttribute('aria-expanded','true');
+  refreshBankMenuLayer();
+}
+// Library setup lives in a popover anchored to "Browse…" (spec 2026-09-26 §4).
+// The picker inside (search, groups, keyboard, preview dialog, Apply) is the
+// same component as before – this only owns open/close and focus return.
+function toggleLibraryPopover(bi, force) {
+  const pop = document.getElementById(`library-popover-${bi}`);
+  const link = document.getElementById(`library-browse-${bi}`);
+  if (!pop || !link) return;
+  const open = force ?? pop.hidden;
+  pop.hidden = !open;
+  link.setAttribute('aria-expanded', String(open));
+  if (open) document.getElementById(`quick-setup-input-${bi}`)?.focus();   // onfocus opens the list
+  else closeQuickSetupMenu(bi);
   refreshBankMenuLayer();
 }
 function openQuickSetupMenu(bi) {
@@ -8230,8 +8221,8 @@ function openLibraryPreview(name) {
   const preset = LIBRARY_PRESETS[name] || customLibraryPresets[name];
   if (!preset) return;
   _libraryPreviewName = name;
-  _libraryPreviewReturnFocus = document.getElementById(`quick-setup-input-${activeBank}`) || document.activeElement;
-  closeQuickSetupMenu(activeBank);
+  _libraryPreviewReturnFocus = document.getElementById(`library-browse-${activeBank}`) || document.activeElement;
+  toggleLibraryPopover(activeBank, false);
   setTxt('library-preview-title', name);
   setTxt('library-preview-subtitle', `Review changes for ${cfg.banks[activeBank]?.name || `Bank ${activeBank+1}`}.`);
   const note = preset.custom
@@ -8271,7 +8262,12 @@ function chooseQuickSetup(name) {
 }
 function quickSetupInputKey(event, bi) {
   const menu = document.getElementById(`quick-setup-menu-${bi}`);
-  if (event.key === 'Escape') { event.preventDefault(); closeQuickSetupMenu(bi); event.currentTarget.blur(); return; }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    toggleLibraryPopover(bi, false);
+    document.getElementById(`library-browse-${bi}`)?.focus();
+    return;
+  }
   if (event.key !== 'ArrowDown' && event.key !== 'Enter') return;
   event.preventDefault();
   if (!menu || menu.hidden) openQuickSetupMenu(bi);
@@ -8300,6 +8296,10 @@ function refreshLibraryPresetOptions() {
   });
 }
 document.addEventListener('pointerdown', event => {
+  document.querySelectorAll('.library-popover:not([hidden])').forEach(pop => {
+    const bi = Number(pop.id.split('-').pop());
+    if (!pop.contains(event.target) && !event.target.closest(`#library-browse-${bi}`)) toggleLibraryPopover(bi, false);
+  });
   document.querySelectorAll('.quick-setup-picker').forEach(picker => {
     if (!picker.contains(event.target)) closeQuickSetupMenu(Number(picker.id.split('-').pop()));
   });
@@ -8693,6 +8693,7 @@ window.sequenceDragOver = sequenceDragOver;
 window.sequenceDrop = sequenceDrop;
 window.sequenceDragEnd = sequenceDragEnd;
 window.rememberRollerAdvanced = rememberRollerAdvanced;
+window.toggleLibraryPopover = toggleLibraryPopover;
 window.openQuickSetupMenu = openQuickSetupMenu;
 window.renderQuickSetupMenu = renderQuickSetupMenu;
 window.chooseQuickSetup = chooseQuickSetup;

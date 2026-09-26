@@ -69,7 +69,7 @@ const PROBES = [
   'status-hover-reveal-probe.mjs',
   'bank-live-dot-probe.mjs',
   'cursor-style-probe.mjs',
-  'desktop-bank-actions-probe.mjs',
+  'bank-card-header-probe.mjs',
   'button-zone-hover-probe.mjs',
   'live-hud-square-probe.mjs',
   'live-hud-free-manipulation-probe.mjs',
