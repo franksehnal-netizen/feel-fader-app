@@ -513,8 +513,7 @@ header,.live-hud{view-transition-name:none}
    reclaimed space when the controller is hidden on a tall window (Frank
    2026-07-26). Pin them to their natural (collapsed) height; the footer still
    sits at the bottom via its own margin-top:auto. */
-.center-col>.panel-wide{flex:0 0 auto;}
-.panel-dot{display:none;}
+.center-col>.panel-wide,.center-col>.settings-group{flex:0 0 auto;}
 
 .panel-name{font-size:var(--fs-base);font-weight:600;color:var(--t1);letter-spacing:-.01em;}
 
@@ -887,7 +886,7 @@ html.dark #device-settings-chevron{color:var(--t3)}
 
 /* FOOTER */
 .site-footer{
-  margin-top:auto;
+  margin-top:auto;color:var(--t3);
   border-top:1px solid var(--border);padding:18px 0 14px;
 }
 .footer-top{
@@ -2124,15 +2123,31 @@ button:focus-visible{outline-offset:3px;}
 }
 /* ADVANCED TOGGLE - clean */
 .advanced-toggle-btn{
-  display:flex;align-items:center;justify-content:space-between;
-  width:100%;padding:12px 16px;
-  background:none;border:none;
+  display:flex;align-items:center;gap:var(--space-3);
+  width:100%;background:none;border:none;
   cursor:pointer;font-family:'Mulish',sans-serif;
-  font-size:var(--fs-base);font-weight:600;color:var(--t1);letter-spacing:-.01em;
-  -webkit-tap-highlight-color:transparent;
-  text-align:left;
+  -webkit-tap-highlight-color:transparent;text-align:left;
 }
+.advanced-toggle-btn.is-open .section-chevron{transform:rotate(90deg)}
 
+/* Settings-style groups under the controls (spec 2026-09-26 §7). */
+.group-cap{margin:var(--space-4) 18px calc(-1 * var(--space-2));font-size:var(--fs-base);color:var(--t2)}
+.settings-group{background:var(--bg-card);border-radius:var(--r);overflow:hidden;box-shadow:none}
+.group-row{position:relative;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:50px;padding:0 18px;border:0;background:none;color:var(--t1);font:400 var(--fs-xl) 'Mulish',sans-serif;text-align:left;cursor:pointer;box-sizing:border-box}
+.group-row+.group-row::before,.group-row+div:not(.group-row)::before,div:not(.group-row)+.group-row::before{content:'';position:absolute;top:0;left:18px;right:0;border-top:1px solid var(--border)}
+.settings-group>div:not(.group-row){position:relative}
+.group-row:hover{background:color-mix(in srgb,var(--t1) 3%,transparent)}
+.group-row:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.group-row-label{flex:1;min-width:0;display:flex;align-items:center;gap:var(--space-2)}
+.group-row-value{font-size:var(--fs-lg);color:var(--t2)}
+.group-row-danger{color:var(--danger)}
+.group-row-split{cursor:default}
+.group-row-split:hover{background:none}
+.group-row-split>span:first-child{flex:1}
+.group-row-actions{display:flex;gap:var(--space-4)}
+.group-row-inline{border:0;background:none;padding:4px 0;color:var(--t2);font:400 var(--fs-lg) 'Mulish',sans-serif;cursor:pointer}
+.group-row-inline:hover{color:var(--t1)}
+.group-row-inline:disabled{opacity:.35;cursor:default}
 
 .onb-replay-btn{margin:0 0 12px;}
 
@@ -2273,17 +2288,15 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 
   
 
-  <!-- DEVICE & SETTINGS (sloučené Device Info + Advanced) -->
-  <div class="panel panel-wide" style="padding:0;overflow:hidden;width:100%">
-    <button class="advanced-toggle-btn" onclick="toggleDeviceSettings()" id="device-settings-toggle-btn" aria-expanded="false" aria-controls="device-settings-body">
-      <div style="display:flex;align-items:center;gap:7px">
-        <div class="panel-dot"></div>
-        <span class="panel-name" style="margin:0">Device &amp; Settings</span>
-        <span class="fw-update-dot" id="fw-update-dot" hidden title="Firmware update available"></span>
-      </div>
-      <span id="device-settings-chevron" style="font-size:var(--fs-sm);color:var(--t3)">▼</span>
+  <!-- DEVICE & SETTINGS + HELP (Feel Fader group, sloučené Device Info + Advanced) -->
+  <div class="group-cap">Feel Fader</div>
+  <div class="settings-group panel-wide" data-group="feel-fader">
+    <button class="advanced-toggle-btn group-row" onclick="toggleDeviceSettings()" id="device-settings-toggle-btn" aria-expanded="false" aria-controls="device-settings-body">
+      <span class="group-row-label">Device &amp; Settings<span class="fw-update-dot" id="fw-update-dot" hidden title="Firmware update available"></span></span>
+      <span class="group-row-value" id="di-firmware-summary">–</span>
+      <span id="device-settings-chevron" aria-hidden="true"><svg class="section-chevron" viewBox="0 0 9 14" aria-hidden="true"><path d="M1.5 1.5L7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </button>
-    <div id="device-settings-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border)">
+    <div id="device-settings-body" style="display:none;padding:12px 18px 18px">
 
       <!-- Subsekce: Device -->
       <div class="settings-subhead">Device</div>
@@ -2360,18 +2373,11 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- HELP / GUIDE -->
-  <div class="panel panel-wide" style="padding:0;overflow:hidden;width:100%">
-    <button class="advanced-toggle-btn" onclick="toggleHelp()" id="help-toggle-btn" aria-expanded="false" aria-controls="help-body">
-      <div style="display:flex;align-items:center;gap:7px">
-        <div class="panel-dot"></div>
-        <span class="panel-name" style="margin:0">Help &amp; Guide</span>
-      </div>
-      <span id="help-chevron" style="font-size:var(--fs-sm);color:var(--t3)">▼</span>
+    <button class="advanced-toggle-btn group-row" onclick="toggleHelp()" id="help-toggle-btn" aria-expanded="false" aria-controls="help-body">
+      <span class="group-row-label">Help &amp; Guide</span>
+      <span id="help-chevron" aria-hidden="true"><svg class="section-chevron" viewBox="0 0 9 14" aria-hidden="true"><path d="M1.5 1.5L7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </button>
-    <div id="help-body" style="display:none;padding:12px 16px 16px;border-top:1px solid var(--border);font-size:var(--fs-md);line-height:1.6;color:var(--t2)">
+    <div id="help-body" style="display:none;padding:12px 18px 18px;font-size:var(--fs-md);line-height:1.6;color:var(--t2)">
       <button class="btn btn-ghost quick-preset-btn onb-replay-btn ui-control ui-pill ui-glass" onclick="onbReplay()" data-i18n="onb.replay">▶ Show intro again</button>
       <div class="settings-subhead">Getting started</div>
       <p style="margin:0 0 12px">Connect your Feel Fader via USB and click <b>Connect &amp; load</b>. The configurator reads the device config; after editing, click <b>Send to device</b> to apply your changes. Shortcuts: <b>Ctrl/⌘ + S</b> sends, <b>Ctrl/⌘ + Z</b> undoes the last change.</p>
@@ -3262,6 +3268,19 @@ function renderPanels(errs = validate()) {
         ${macroSectionContent(bi)}
       </div>
     </div>
+    <div class="group-cap">Bank</div>
+    <div class="settings-group" data-group="bank">
+      <button type="button" class="group-row" data-bank-action="save-setup" data-bank-index="${bi}" onclick="openCustomPresetDialog()">Save as setup…</button>
+      <button type="button" class="group-row" data-bank-action="duplicate" data-bank-index="${bi}" onclick="duplicateBank(${bi})" aria-label="Duplicate ${bankLabel}">Duplicate bank</button>
+      <div class="group-row group-row-split">
+        <span>Move</span>
+        <span class="group-row-actions">
+          <button type="button" class="group-row-inline" data-bank-action="left" data-bank-index="${bi}" onclick="moveBank(${bi},-1,'left')" aria-label="Move ${bankLabel} earlier" ${bi===0?'disabled':''}>‹ Earlier</button>
+          <button type="button" class="group-row-inline" data-bank-action="right" data-bank-index="${bi}" onclick="moveBank(${bi},1,'right')" aria-label="Move ${bankLabel} later" ${bi===cfg.banks.length-1?'disabled':''}>Later ›</button>
+        </span>
+      </div>
+      ${cfg.banks.length > 1 ? `<button type="button" class="group-row group-row-danger" data-bank-action="delete" data-bank-index="${bi}" onclick="removeBank(${bi})" aria-label="Delete ${bankLabel}">Delete bank…</button>` : ''}
+    </div>
   `;
   if ((b.roller_mode || 'cc') === 'keyswitch' && isSectionOpen('roller')) {
     requestAnimationFrame(() => ksRevealRange(bi, false));
@@ -3873,6 +3892,7 @@ function updateDeviceInfo() {
   };
   setVal('di-serial',   serial);
   setVal('di-firmware', firmware);
+  setTxt('di-firmware-summary', firmware ? `Firmware ${firmware}` : '–');
   updateHidToggle();
   updateFaderResponseControl();
   updateMacroUI();
@@ -5962,22 +5982,18 @@ function dlJson(d,n){
 
 function toggleDeviceSettings(){
   const body    = document.getElementById('device-settings-body');
-  const chevron = document.getElementById('device-settings-chevron');
   const btn     = document.getElementById('device-settings-toggle-btn');
   const open    = body.style.display !== 'none';
   body.style.display  = open ? 'none' : 'block';
-  chevron.textContent = open ? '▼' : '▲';
   btn && btn.classList.toggle('is-open', !open);
   btn && btn.setAttribute('aria-expanded', String(!open));
   btn && btn.blur && btn.blur();
 }
 function toggleHelp(){
   const body    = document.getElementById('help-body');
-  const chevron = document.getElementById('help-chevron');
   const btn     = document.getElementById('help-toggle-btn');
   const open    = body.style.display !== 'none';
   body.style.display  = open ? 'none' : 'block';
-  chevron.textContent = open ? '▼' : '▲';
   btn && btn.classList.toggle('is-open', !open);
   btn && btn.setAttribute('aria-expanded', String(!open));
   btn && btn.blur && btn.blur();

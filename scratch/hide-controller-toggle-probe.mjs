@@ -146,10 +146,10 @@ P('unsaved-changes note is visible alongside Send in the sticky row', dirtyNote.
 await p.setViewport({ width: 1280, height: 1900 });
 await new Promise(r => setTimeout(r, 100));
 const panelHeights = await p.evaluate(() => {
-  return [...document.querySelectorAll('.center-col > .panel.panel-wide')]
+  return [...document.querySelectorAll('.center-col > .settings-group')]
     .map(el => Math.round(el.getBoundingClientRect().height));
 });
-P('Device & Settings / Help & Guide keep their natural height on a tall window (no balloon)', panelHeights.every(h => h < 100), JSON.stringify(panelHeights));
+P('Bank / Feel Fader groups keep their natural height on a tall window (no balloon)', panelHeights.every(h => h < 260), JSON.stringify(panelHeights));
 await p.setViewport({ width: 1280, height: 900 });
 
 // localStorage persistence across reload

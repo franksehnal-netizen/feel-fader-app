@@ -50,9 +50,11 @@ const s11b = await p.evaluate(() => {
 P('S11: .h-title has flex-shrink:0 and stays single-line at 360px', s11b.flexShrink === '0' && s11b.whiteSpace === 'nowrap' && s11b.height < 24, JSON.stringify(s11b));
 await p.setViewport({ width: 1280, height: 900 });
 
-// F-03: Duplicate button stays clickable at the 8-bank cap (not disabled)
+// F-03: Duplicate button stays clickable at the 8-bank cap (not disabled).
+// Retargeted (design/minimal task 7): Duplicate left the card top in Task 4
+// and now lives as a row in the Bank group.
 const f03 = await p.evaluate(() => {
-  const btn = document.querySelector('.btn-duplicate-bank') || document.querySelector('[onclick*="duplicateBank"]');
+  const btn = document.querySelector('.group-row[data-bank-action="duplicate"]');
   return { exists: !!btn, disabled: btn ? btn.disabled : null };
 });
 P('F-03: Duplicate button exists and is not disabled at 8-bank cap', f03.exists && f03.disabled === false, JSON.stringify(f03));
