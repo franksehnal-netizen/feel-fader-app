@@ -624,23 +624,6 @@ html.dark .stepper input{border-color:var(--control-glass-border);background:var
 .field-block{display:flex;flex-direction:column;gap:var(--space-1)}
 .field-label{font-size:var(--fs-sm);color:var(--t2);letter-spacing:.03em;text-transform:uppercase}
 
-/* ENCODER */
-.enc-chip{font-family:'IBM Plex Mono',monospace;font-size:var(--fs-xs);padding:2px 6px;border-radius:var(--r-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--t3);transition:all .12s}
-.enc-chip.active{background:var(--t1);color:var(--bg);border-color:var(--t1)}
-
-/* UACC */
-.uacc-grid{display:flex;flex-wrap:wrap;gap:var(--space-1);margin-top:2px}
-.uacc-tag{display:flex;align-items:center;gap:var(--space-1);background:var(--control-glass-bg);backdrop-filter:var(--control-glass-filter);-webkit-backdrop-filter:var(--control-glass-filter);border:1px solid var(--control-glass-border);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:var(--fs-sm);color:var(--t1);box-shadow:var(--control-glass-shadow);transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease}
-.uacc-tag button{background:none;border:none;cursor:pointer;color:var(--t3);font-size:var(--fs-sm);padding:0 0 0 2px;line-height:1;transition:color .12s}
-.uacc-tag button:hover{color:var(--danger)}
-.uacc-tag .tag-order-btn{padding:0 1px;color:var(--t3);font-size:var(--fs-md)}
-.uacc-tag .tag-order-btn:hover{color:var(--t1)}
-.uacc-tag .tag-order-btn:disabled{opacity:.22;cursor:default;color:var(--t3)}
-.uacc-tag .tag-remove-btn{margin-left:1px}
-.uacc-tag.ks-live{border-color:rgba(52,199,89,.5);background:rgba(52,199,89,.1)}
-.uacc-add-row{display:flex;align-items:center;gap:var(--space-2);margin-top:8px}
-.uacc-add-row input{width:96px;background:var(--bg-input);border:1px solid var(--border-s);border-radius:var(--r-sm);padding:4px 8px;font-family:'Mulish',sans-serif;font-size:var(--fs-md);color:var(--t1);outline:none;-moz-appearance:textfield;box-shadow:inset 0 1px 3px rgba(0,0,0,.13)}
-.uacc-add-row input::-webkit-inner-spin-button,.uacc-add-row input::-webkit-outer-spin-button{-webkit-appearance:none}
 .uacc-presets-wrap{position:relative}
 .uacc-preset-dropdown{
   position:absolute;bottom:calc(100% + 6px);left:0;
@@ -752,7 +735,6 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   header{padding:5px 16px;}
   .bank-block-tab .bank-tab-name{max-width:72px;}
   .btn.btn-ghost{padding:6px 12px;font-size:var(--fs-md);color:var(--t2);}
-  .uacc-tag{font-size:var(--fs-sm);padding:3px 6px;}
 }
 .enc-unified-body{
   display:flex;
@@ -770,26 +752,37 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   width:100%;
   min-width:0;
 }
-/* UACC TAG WITH NAME */
-.uacc-num{font-family:'IBM Plex Mono',monospace;font-size:var(--fs-sm);font-weight:500;color:var(--t2);min-width:20px}
-.uacc-label{font-size:var(--fs-sm);color:var(--t2);font-family:'Mulish',sans-serif;}
-
 /* Composer-first keyswitch sequence chips — scoped away from articulation tags */
 .ks-sequence-head{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 6px}
-.ks-sequence-grid{gap:6px}
-.ks-note-chip{min-height:30px;gap:0;padding:3px 4px 3px 9px;border-radius:var(--r-sm)}
-.ks-note-chip:hover{border-color:var(--border-s)}
-.ks-note-name{font-size:var(--fs-sm);font-weight:600;color:var(--t1);white-space:nowrap}
 .ks-name-input{width:112px;height:22px;padding:0 8px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);font:600 var(--fs-sm) 'Mulish',sans-serif;color:var(--t1)}
-.ks-midi-number{min-width:22px;margin-left:6px;padding:2px 5px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--bg-input) 86%,transparent);font:500 var(--fs-xs) 'IBM Plex Mono',monospace;color:var(--t3);text-align:center}
-.ks-note-actions{display:flex;align-items:center;gap:1px;margin-left:5px;padding-left:4px;border-left:1px solid var(--border);opacity:.58;transition:opacity var(--dur-fast) ease}
-.ks-note-chip:hover .ks-note-actions,.ks-note-chip:focus-within .ks-note-actions{opacity:1}
-.ks-note-chip .ks-note-actions button{display:inline-flex;align-items:center;justify-content:center;width:18px;height:20px;padding:0;border-radius:var(--r-pill);font-size:var(--fs-md)}
-.ks-note-chip .ks-note-actions .tag-order-btn:hover{background:color-mix(in srgb,var(--bg-input) 76%,transparent);color:var(--t1)}
-.ks-note-chip .ks-note-actions .tag-remove-btn{margin-left:1px}
-.ks-note-chip .ks-note-actions .tag-remove-btn:hover{background:var(--danger-bg);color:var(--danger)}
-.ks-note-chip.ks-live{border-color:var(--green-border);background:linear-gradient(var(--green-bg),var(--green-bg)),var(--glass-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--green-border) 48%,transparent),inset 0 1px 0 var(--glass-border)}
-@media(pointer:coarse){.ks-note-actions{opacity:1}.ks-note-chip .ks-note-actions button{width:32px;height:32px}}
+
+/* Roller order list (spec 2026-09-26 §6) – shared by articulations and keyswitches. */
+.seq-list{border-top:1px solid var(--border)}
+.seq-row{position:relative;display:flex;align-items:center;gap:var(--space-3);min-height:38px;padding:0 2px;border-bottom:1px solid var(--border);font-size:var(--fs-lg);color:var(--t1);cursor:grab}
+.seq-row:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.seq-index{width:20px;flex:none;text-align:right;font:400 var(--fs-md) 'IBM Plex Mono',monospace;color:var(--t3)}
+.seq-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:400}
+.seq-value{flex:none;font:400 var(--fs-md) 'IBM Plex Mono',monospace;color:var(--t2);font-variant-numeric:tabular-nums}
+.seq-handle{width:14px;flex:none;text-align:center;color:var(--t3);font-size:var(--fs-lg)}
+.seq-actions{display:flex;align-items:center;gap:2px;opacity:0;transition:opacity var(--dur-fast) ease}
+.seq-row:hover .seq-actions,.seq-row:focus-within .seq-actions{opacity:1}
+.seq-actions button{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:var(--r-pill);background:none;color:var(--t3);font-size:var(--fs-md);cursor:pointer}
+.seq-actions .tag-order-btn:hover{background:var(--bg-input);color:var(--t1)}
+.seq-actions .tag-order-btn:disabled{opacity:.3;cursor:default;background:none;color:var(--t3)}
+.seq-actions .tag-remove-btn:hover{background:var(--danger-bg);color:var(--danger)}
+.seq-row.is-live .seq-name{font-weight:700}
+.seq-row.is-live .seq-index{color:var(--green)}
+.seq-row.is-live::before{content:'';position:absolute;left:-12px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--green)}
+.seq-row.is-sequence-dragging{opacity:.42;cursor:grabbing}
+.seq-row.sequence-drop-before{box-shadow:inset 0 2px 0 var(--red)}
+.seq-row.sequence-drop-after{box-shadow:inset 0 -2px 0 var(--red)}
+.seq-add-row{display:flex;align-items:center;gap:var(--space-4);margin-top:var(--space-3)}
+.seq-add-row input{width:110px;height:30px;padding:0 10px;border:0;border-radius:var(--r-pill);background:var(--bg-input);color:var(--t1);font:var(--fs-md) 'Mulish',sans-serif;outline:none;-moz-appearance:textfield}
+.seq-add-row input::-webkit-inner-spin-button,.seq-add-row input::-webkit-outer-spin-button{-webkit-appearance:none}
+.seq-add-row input:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 30%,transparent)}
+.seq-link{border:0;background:none;padding:0;color:var(--red);font:600 var(--fs-lg) 'Mulish',sans-serif;cursor:pointer}
+.seq-link:hover{color:var(--red2)}
+@media(pointer:coarse){.seq-actions{opacity:1}.seq-actions button{width:32px;height:32px}}
 
 /* DEVICE INFO */
 .info-grid{display:flex;flex-direction:column;gap:var(--space-2);}
@@ -1006,7 +999,6 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
      order dance needed. */
   .bank-block-tab{min-height:22px}
   .bank-block-tab-add,.send-btn,.btn,.ks-preset-trigger{min-height:44px}
-  .uacc-tag button{min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
   .tx{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   /* Keep toast chrome compact while the close button retains a 44px hit area. */
   .toast .tx{position:relative;width:26px;height:26px;min-width:26px;min-height:26px}
@@ -2144,18 +2136,12 @@ button:focus-visible{outline-offset:3px;}
 
 .onb-replay-btn{margin:0 0 12px;}
 
-.uacc-tag[draggable="true"]{cursor:grab}
-.uacc-tag.is-sequence-dragging{opacity:.42;cursor:grabbing}
-.uacc-tag.sequence-drop-before{box-shadow:-3px 0 0 var(--red),var(--shadow-sm)}
-.uacc-tag.sequence-drop-after{box-shadow:3px 0 0 var(--red),var(--shadow-sm)}
-
 /* ── NEW DARK MODE RULES ── */
 html.dark .bank-block-tab{color:var(--t2);border-color:transparent;}  /* inactive tabs stay visually open; only the active pill gets a glass border */
 html.dark .bank-section-divider{background:var(--border);}
 html.dark .stepper{background:var(--bg-input);}
 html.dark .stepper input{color:var(--t1);}
 html.dark .stepper-sep{background:var(--border);}
-html.dark .uacc-tag{color:var(--t1);}
 html.dark .bank-name-input{color:var(--t1);}
 /* .bank-block-name: no background in either theme — it sits on .bank-card (var(--bg-card) both themes),
    so a dark-only bg would alpha-fade transparent→opaque off-rhythm vs the rest of the card on theme toggle. */
@@ -3335,21 +3321,41 @@ function faderSectionContent(key, ctrl, bi, errs = validate()) {
     </div></div>`;
 }
 
+// Roller order row shared by articulations and keyswitches (spec 2026-09-26 §6):
+// index · name · value · ≡, Move/× revealed on hover/focus but always in the
+// tab order. Class names inside (.uacc-label/.uacc-num, .ks-note-name/
+// .ks-midi-number) are kept because probes and startKsNameEdit() use them.
+function sequenceRowHtml({kind, bi, index, count, name, value, live, nameClass, valueClass, aria, extraAttrs = '', moveLabel, removeLabel, onMove, onRemove}) {
+  return `
+    <div class="seq-row${live ? ' is-live' : ''}" tabindex="0" draggable="true" data-sequence-kind="${kind}" data-sequence-index="${index}" ${extraAttrs}
+      aria-label="${aria}"
+      ondragstart="sequenceDragStart(event,'${kind}',${bi},${index})" ondragover="sequenceDragOver(event,${index})" ondrop="sequenceDrop(event,${index})" ondragend="sequenceDragEnd()">
+      <span class="seq-index" aria-hidden="true">${index+1}</span>
+      <span class="seq-name ${nameClass}">${name}</span>
+      <span class="seq-value ${valueClass}">${value}</span>
+      <span class="seq-actions" role="group" aria-label="Sequence controls">
+        <button class="tag-order-btn" onclick="${onMove(-1)}" title="Move earlier" aria-label="Move ${moveLabel} earlier" ${index===0?'disabled':''}>‹</button>
+        <button class="tag-order-btn" onclick="${onMove(1)}" title="Move later" aria-label="Move ${moveLabel} later" ${index===count-1?'disabled':''}>›</button>
+        <button class="tag-remove-btn" onclick="${onRemove}" title="Remove" aria-label="${removeLabel}">✕</button>
+      </span>
+      <span class="seq-handle" aria-hidden="true">≡</span>
+    </div>`;
+}
+
 function ccEncoderBody(ctrl, bi, errs = validate()) {
   const encErr  = errs.find(e => e.field === `b${bi}.encoder`)?.msg || '';
   const bankUacc = cfg.banks[bi].uacc_values || [];
   const initVal  = bankUacc[0] ?? 0;
   const initName = uaccName(initVal);
-  const uaccTags = bankUacc.map((v,i) => `
-    <div class="uacc-tag articulation-chip" title="CC ${v}" tabindex="0" draggable="true" data-sequence-kind="uacc" data-sequence-index="${i}"
-      aria-label="${uaccName(v)}, value ${v}, position ${i+1} of ${bankUacc.length}. Drag or use Alt plus arrow keys to reorder."
-      onkeydown="sequenceChipKey(event,'uacc',${bi},${i})" ondragstart="sequenceDragStart(event,'uacc',${bi},${i})" ondragover="sequenceDragOver(event,${i})" ondrop="sequenceDrop(event,${i})" ondragend="sequenceDragEnd()">
-      <span class="uacc-num">${v}</span>
-      <span class="uacc-label">${uaccName(v)}</span>
-      <button class="tag-order-btn" onclick="moveUacc(${i},-1)" title="Move earlier" aria-label="Move ${uaccName(v)} earlier" ${i===0?'disabled':''}>‹</button>
-      <button class="tag-order-btn" onclick="moveUacc(${i},1)" title="Move later" aria-label="Move ${uaccName(v)} later" ${i===bankUacc.length-1?'disabled':''}>›</button>
-      <button class="tag-remove-btn" onclick="removeUacc(${i})" title="Remove" aria-label="Remove articulation CC ${v}">✕</button>
-    </div>`).join('');
+  const uaccTags = bankUacc.map((v,i) => sequenceRowHtml({
+    kind:'uacc', bi, index:i, count:bankUacc.length,
+    name:uaccName(v), value:v, live: encLiveVal !== null && v === encLiveVal,
+    nameClass:'uacc-label', valueClass:'uacc-num',
+    aria:`${uaccName(v)}, value ${v}, position ${i+1} of ${bankUacc.length}. Drag or use Alt plus arrow keys to reorder.`,
+    extraAttrs:`data-value="${v}" title="Value ${v}" onkeydown="sequenceChipKey(event,'uacc',${bi},${i})"`,
+    moveLabel:uaccName(v), removeLabel:`Remove articulation value ${v}`,
+    onMove:d => `moveUacc(${i},${d})`, onRemove:`removeUacc(${i})`,
+  })).join('');
 
   return `
   <div class="enc-unified-body">
@@ -3375,14 +3381,14 @@ function ccEncoderBody(ctrl, bi, errs = validate()) {
 
       <!-- Right: articulation list -->
       <div class="enc-right">
-        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
-        <div class="uacc-grid ks-sequence-grid" id="uacc-grid">${uaccTags}</div>
-        <div class="uacc-add-row" style="margin-top:10px">
+        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">Drag or Alt + ↑↓</span></div>
+        <div class="seq-list" id="uacc-grid">${uaccTags}</div>
+        <div class="seq-add-row">
           <input type="number" id="uacc-input" min="0" max="127" placeholder="Value 0–127" aria-label="Articulation value (0–127)"
             onkeydown="if(event.key==='Enter')addUacc()"/>
-          <button class="btn btn-ghost" onclick="addUacc()">+ Add</button>
+          <button type="button" class="seq-link" onclick="addUacc()">Add articulation…</button>
           <div class="uacc-presets-wrap">
-            <button class="btn btn-ghost" onclick="toggleUaccPresets()" id="uacc-preset-btn">Articulation templates ▾</button>
+            <button type="button" class="seq-link" onclick="toggleUaccPresets()" id="uacc-preset-btn">Templates…</button>
             <div class="uacc-preset-dropdown" id="uacc-preset-dropdown" style="display:none">
               <div class="uacc-dropdown-section">Library articulation lists</div>
               <button onclick="applyArticulationList('Spitfire BBC Symphony Orchestra')">🎻 Spitfire BBC Symphony Orchestra</button>
@@ -3410,18 +3416,15 @@ function keyswitchTagsHtml(bi) {
   const tags = notes.map((n,i) => {
     // UX audit C-1: a named keyswitch leads with its articulation, note second.
     const name = bank.ks_names?.[n] ? escHtml(bank.ks_names[n]) : '';
-    return `
-    <div class="uacc-tag ks-note-chip${n === ksLiveNote ? ' ks-live' : ''}" data-ksnote="${n}" tabindex="0" draggable="true" data-sequence-kind="keyswitch" data-sequence-index="${i}" title="${name ? `${name} · ` : ''}${noteName(n)} · MIDI ${n} · double-click to name"
-      aria-label="${name ? `${name}, ` : ''}${noteName(n)}, MIDI ${n}, position ${i+1} of ${notes.length}. Press F2 to name. Drag or use Alt plus arrow keys to reorder."
-      ondblclick="if(!event.target.closest('button, input'))startKsNameEdit(${bi},${i})" onkeydown="if(event.key==='F2'&&event.target===this){event.preventDefault();startKsNameEdit(${bi},${i});}else sequenceChipKey(event,'keyswitch',${bi},${i})" ondragstart="sequenceDragStart(event,'keyswitch',${bi},${i})" ondragover="sequenceDragOver(event,${i})" ondrop="sequenceDrop(event,${i})" ondragend="sequenceDragEnd()">
-      <span class="ks-note-name">${name || noteName(n)}</span>
-      <span class="ks-midi-number" aria-label="MIDI note ${n}">${name ? `${noteName(n)} · ${n}` : n}</span>
-      <span class="ks-note-actions" role="group" aria-label="Sequence controls">
-        <button class="tag-order-btn" onclick="moveKsNote(${bi},${i},-1)" title="Move earlier" aria-label="Move ${noteName(n)} earlier" ${i===0?'disabled':''}>‹</button>
-        <button class="tag-order-btn" onclick="moveKsNote(${bi},${i},1)" title="Move later" aria-label="Move ${noteName(n)} later" ${i===notes.length-1?'disabled':''}>›</button>
-        <button class="tag-remove-btn" onclick="removeKsNote(${bi},${i})" title="Remove" aria-label="Remove keyswitch MIDI note ${n}">✕</button>
-      </span>
-    </div>`;
+    return sequenceRowHtml({
+      kind:'keyswitch', bi, index:i, count:notes.length,
+      name: name || noteName(n), value: name ? `${noteName(n)} · ${n}` : n,
+      live: n === ksLiveNote, nameClass:'ks-note-name', valueClass:'ks-midi-number',
+      aria:`${name ? `${name}, ` : ''}${noteName(n)}, MIDI ${n}, position ${i+1} of ${notes.length}. Press F2 to name. Drag or use Alt plus arrow keys to reorder.`,
+      extraAttrs:`data-ksnote="${n}" title="${name ? `${name} · ` : ''}${noteName(n)} · MIDI ${n} · double-click to name" ondblclick="if(!event.target.closest('button, input'))startKsNameEdit(${bi},${i})" onkeydown="if(event.key==='F2'&&event.target===this){event.preventDefault();startKsNameEdit(${bi},${i});}else sequenceChipKey(event,'keyswitch',${bi},${i})"`,
+      moveLabel:noteName(n), removeLabel:`Remove keyswitch MIDI note ${n}`,
+      onMove:d => `moveKsNote(${bi},${i},${d})`, onRemove:`removeKsNote(${bi},${i})`,
+    });
   }).join('');
   return tags || '<span class="uacc-note">No keyswitches – set a range or add a note.</span>';
 }
@@ -3518,11 +3521,11 @@ function keyswitchBody(bi) {
             </div>
           </div>
         </div>
-        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">First → last</span></div>
-        <div class="uacc-grid ks-sequence-grid" id="ks-tags-${bi}">${keyswitchTagsHtml(bi)}</div>
-        <div class="uacc-add-row" style="margin-top:8px">
+        <div class="ks-sequence-head"><span class="field-label">ROLLER ORDER</span><span class="uacc-note">Drag or Alt + ↑↓</span></div>
+        <div class="seq-list" id="ks-tags-${bi}">${keyswitchTagsHtml(bi)}</div>
+        <div class="seq-add-row">
           <input type="number" id="ks-note-input-${bi}" placeholder="MIDI 0–127" min="0" max="127" aria-label="Keyswitch MIDI note" />
-          <button class="step-btn" style="width:auto;padding:0 12px;border:1px solid var(--border-s);border-radius:var(--r-sm)" onclick="addKsNote(${bi})" aria-label="Add keyswitch note">+ note</button>
+          <button type="button" class="seq-link" onclick="addKsNote(${bi})" aria-label="Add keyswitch note">Add note…</button>
         </div>
         <div class="uacc-note">Manual exceptions are preserved. The displayed order is the roller stepping order.</div>
       </div>
@@ -3690,12 +3693,10 @@ function encoderSectionContent(ctrl, bi, errs = validate()) {
 
 
 
-function renderEncChips() {
-  const el = document.getElementById('enc-chips');
-  if (!el) return;
-  el.innerHTML = cfg.banks[activeBank].uacc_values.map((v,i) =>
-    `<div class="enc-chip ${i===encIndex?'active':''}">${v}</div>`
-  ).join('');
+// Live articulation row (spec 2026-09-26 §6): the row whose value the roller
+// last sent is marked, same idiom as the keyswitch live row.
+function syncUaccLiveRow() {
+  document.querySelectorAll('#uacc-grid .seq-row').forEach(el => el.classList.toggle('is-live', encLiveVal !== null && +el.dataset.value === encLiveVal));
 }
 
 function renderUacc() {
@@ -4650,7 +4651,7 @@ function sequenceDragOver(event, targetIndex) {
   event.preventDefault();
   document.querySelectorAll('.sequence-drop-before,.sequence-drop-after').forEach(el => el.classList.remove('sequence-drop-before','sequence-drop-after'));
   const rect = event.currentTarget.getBoundingClientRect();
-  event.currentTarget.classList.add(event.clientX > rect.left + rect.width/2 ? 'sequence-drop-after' : 'sequence-drop-before');
+  event.currentTarget.classList.add(event.clientY > rect.top + rect.height/2 ? 'sequence-drop-after' : 'sequence-drop-before');
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
 }
 function sequenceDrop(event, targetIndex) {
@@ -4900,7 +4901,7 @@ function focusValidationError(index = 0) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const target = document.getElementById(err.target) || document.getElementById(`section-toggle-${bi}-${section}`);
     if (!target) return;
-    const visual = target.closest('.stepper,.uacc-add-row,.bank-section') || target;
+    const visual = target.closest('.stepper,.seq-add-row,.bank-section') || target;
     visual.classList.add('validation-target');
     target.scrollIntoView({ behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'center' });
     try { target.focus({ preventScroll:true }); } catch (_) { target.focus?.(); }
@@ -5317,7 +5318,8 @@ function onMidiMsg(event){
       setTxt('enc-artic-name', uaccName(val));
       renderLiveStrip();
       const idx = bank.uacc_values.indexOf(val);
-      if(idx !== -1){ encIndex = idx; renderEncChips(); }
+      if(idx !== -1) encIndex = idx;
+      syncUaccLiveRow();
     }
 
   }
@@ -5326,9 +5328,8 @@ function onMidiMsg(event){
     const note = data[1];
     if(ch === (bank.ks_channel ?? 0) && (bank.ks_notes||[]).includes(note)){
       ksLiveNote = note;
-      document.querySelectorAll('.uacc-tag.ks-live').forEach(el => el.classList.remove('ks-live'));
-      const cell = document.querySelector(`.uacc-tag[data-ksnote="${note}"]`);
-      if (cell) cell.classList.add('ks-live');
+      document.querySelectorAll('.seq-row.is-live[data-ksnote]').forEach(el => el.classList.remove('is-live'));
+      document.querySelector(`.seq-row[data-ksnote="${note}"]`)?.classList.add('is-live');
       renderLiveStrip();
     }
   }

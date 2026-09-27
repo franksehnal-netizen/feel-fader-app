@@ -112,6 +112,7 @@ const PROBES = [
   'library-names-bank-probe.mjs',
   'keyswitch-names-probe.mjs',
   'articulation-templates-unified-probe.mjs',
+  'roller-order-list-probe.mjs',
   'hud-readable-summaries-probe.mjs',
   'design-consistency-probe.mjs',
   'k7-details-probe.mjs',
