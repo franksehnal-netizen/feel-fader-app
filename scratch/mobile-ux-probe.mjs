@@ -791,7 +791,14 @@ async function runProfile(browser, url, profile) {
     // default — open one so there is enough content for the tall viewport to
     // actually scroll the Send anchor out of view below (needed for the
     // dirty-dock check further down).
-    if (!isSectionOpen('fader1')) toggleSection('fader1');
+    // {detail:1} mimics a real tap (like section-toggle-focus-ring-probe's
+    // documented mouse-vs-keyboard signature) so toggleSection() doesn't
+    // treat this as keyboard activation and re-focus the toggle button —
+    // that re-focus scrolls the button into view on its own next frame,
+    // fighting the explicit scrollTo below once the taller minimal-hybrid
+    // header (spec 2026-09-26 §5) puts it far enough outside the viewport
+    // for the browser to actually need to correct for it.
+    if (!isSectionOpen('fader1')) toggleSection('fader1', {detail:1});
     window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
   });
   await settle(page, 420);

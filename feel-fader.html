@@ -710,7 +710,7 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 .btn-remove-bank::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:auto}
 
 /* PANEL NAME EDITABLE */
-.fader-side-cap{font-size:var(--fs-sm);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:4px;}
+.section-mark{width:22px;flex:none;display:flex;justify-content:center;font:500 var(--fs-md) 'IBM Plex Mono',monospace;color:var(--t3)}
 /* Section stays on its own softer, frosty-green highlight — no onboarding
    equivalent to match (onboarding never shows settings panels), scope
    confirmed with Frank 2026-08-18. */
@@ -751,7 +751,6 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
   .h-status-text{position:absolute!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
   header{padding:5px 16px;}
   .bank-block-tab .bank-tab-name{max-width:72px;}
-  .section-summary{max-width:145px;}
   .btn.btn-ghost{padding:6px 12px;font-size:var(--fs-md);color:var(--t2);}
   .uacc-tag{font-size:var(--fs-sm);padding:3px 6px;}
 }
@@ -1845,14 +1844,14 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   }
 }
 .bank-section{
-  padding:11px 14px;
+  padding:0 18px;
   transition:background .2s, box-shadow .2s;
 }
-.section-head.section-toggle{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--border);font-family:'Mulish',sans-serif;color:inherit}
+.bank-section.is-open>.section-collapse-body{padding:4px 0 18px 36px}
+.section-head.section-toggle{width:100%;text-align:left;background:none;border:0;font-family:'Mulish',sans-serif;color:inherit}
 .section-head.section-toggle{cursor:pointer}
-.section-toggle-title{display:flex;flex-direction:column;gap:3px;min-width:0}
+.section-toggle-title{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .section-toggle-meta{margin-left:auto;display:flex;align-items:center;gap:var(--space-3);min-width:0}
-.section-head-editable .section-toggle-title{flex:1}
 .section-toggle-action{display:flex;align-items:center;gap:var(--space-3);min-width:0;margin-left:auto;padding:5px 0 5px 12px;border:0;background:transparent;color:inherit;cursor:pointer;font-family:'Mulish',sans-serif}
 .section-toggle-action:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
 /* Šířka podle obsahu, ne pevných 190 px: prázdné místo napravo od názvu
@@ -1861,14 +1860,14 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
    Web Serial. max-width drží nejhorší případ na dosavadní šířce.
    align-self:flex-start zabraňuje flex-parent stretch (section-toggle-title
    je flex column s align-items:stretch, které by input natáhlo na 190px). */
-.fader-title-input{field-sizing:content;width:auto;min-width:5ch;max-width:min(190px,100%);font-size:var(--fs-base);padding:0;flex:0 1 auto;align-self:flex-start;cursor:text}
-.section-summary{display:inline-flex;align-items:baseline;gap:5px;min-width:0;max-width:260px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-sm);line-height:1.25}
-.section-summary-label{font:600 var(--fs-sm) 'Mulish',sans-serif;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
-.section-summary-meta{font:500 var(--fs-sm) 'IBM Plex Mono',monospace;letter-spacing:0;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.fader-title-input{field-sizing:content;width:auto;min-width:5ch;max-width:min(190px,100%);font-size:var(--fs-xl);font-weight:600;padding:0;flex:0 1 auto;align-self:flex-start;cursor:text}
+.section-toggle-title .panel-name{font-size:var(--fs-xl);font-weight:600;letter-spacing:-.005em}
+.section-summary{display:inline-flex;align-items:baseline;gap:5px;min-width:0;max-width:100%;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-md);line-height:1.25}
+.section-summary-label{font:500 var(--fs-md) 'IBM Plex Mono',monospace;letter-spacing:0;overflow:hidden;text-overflow:ellipsis}
+.section-summary-meta{font:500 var(--fs-md) 'IBM Plex Mono',monospace;letter-spacing:0;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
 .section-summary-sep{color:var(--t3);font:600 var(--fs-xs) 'Mulish',sans-serif}
-.section-chevron{font-size:var(--fs-xs);color:var(--t3);transition:transform .25s var(--ease-out)}
-.bank-section.is-open .section-chevron{transform:rotate(180deg)}
-.bank-section.is-collapsed .section-head{padding-bottom:0;margin-bottom:0;border-bottom-color:transparent}
+.section-chevron{width:9px;height:14px;flex:none;color:var(--t3);transition:transform .25s var(--ease-out)}
+.bank-section.is-open .section-chevron{transform:rotate(90deg)}
 .section-collapse-body[hidden]{display:none}
 @media(min-width:601px){
   .bank-card{overflow:clip}
@@ -1895,16 +1894,17 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 .bank-section-divider{
   height:1px;
   background:var(--border);
-  margin:0;
+  margin:0 0 0 18px;
 }
 .bank-section-encoder{
-  padding:11px 14px;
+  padding:0 18px;
 }
 .section-head{
-  display:flex;align-items:center;gap:var(--space-2);
-  padding-bottom:8px;
-  border-bottom:1px solid var(--border);
-  margin-bottom:9px;
+  display:flex;align-items:center;gap:14px;
+  padding-bottom:0;
+  border-bottom:0;
+  margin-bottom:0;
+  min-height:60px;
 }
 .section-fields{}
 .section-field-row{
@@ -2151,7 +2151,6 @@ button:focus-visible{outline-offset:3px;}
 
 /* ── NEW DARK MODE RULES ── */
 html.dark .bank-block-tab{color:var(--t2);border-color:transparent;}  /* inactive tabs stay visually open; only the active pill gets a glass border */
-html.dark .section-head{border-bottom-color:var(--border);}
 html.dark .bank-section-divider{background:var(--border);}
 html.dark .stepper{background:var(--bg-input);}
 html.dark .stepper input{color:var(--t1);}
@@ -2677,29 +2676,43 @@ function setSectionSummary(id, summary) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = sectionSummaryHtml(summary);
 }
-function sectionHeaderHtml(bi, key, cap, title, summary, tip, extra) {
+// Section marks (spec 2026-09-26 §5): quiet glyph on the left instead of the
+// old uppercase LEFT FADER / RIGHT FADER / ROLLER / BUTTON caption.
+const SECTION_MARKS = {
+  fader1: 'L',
+  fader2: 'R',
+  roller: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="1.5" width="9" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 5h5M4.5 7h5M4.5 9h5" stroke="currentColor" stroke-width="1.1"/></svg>',
+  macro: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="7" cy="7" r="2" fill="currentColor"/></svg>',
+};
+const SECTION_CHEVRON = '<svg class="section-chevron" viewBox="0 0 9 14" aria-hidden="true"><path d="M1.5 1.5L7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function sectionHeaderHtml(bi, key, title, summary, tip, extra) {
   const open = isSectionOpen(key);
   const tipAttr = tip ? ` data-tip="${escHtml(tip)}"` : '';
+  const mark = `<span class="section-mark" aria-hidden="true">${SECTION_MARKS[key]}</span>`;
+  const summaryHtml = summary ? `<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>` : '';
   if (key === 'fader1' || key === 'fader2') {
     const side = key === 'fader1' ? 'Left' : 'Right';
     return `<div class="section-head section-toggle section-head-editable" data-fader="${key}"${tipAttr}
       onclick="if(!event.target.closest('input,button'))toggleSection('${key}',event)">
-      <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span>
+      ${mark}
+      <span class="section-toggle-title">
         <input class="bank-name-input fader-title-input" id="section-title-${bi}-${key}" value="${escHtml(title)}" maxlength="12"
           oninput="onFaderName(${bi},'${key}',this.value)"
           onblur="if(!this.value.trim()){this.value='${defaultFaderName(key)}';onFaderName(${bi},'${key}',this.value)}"
           onkeydown="if(event.key==='Enter')this.blur()" aria-label="${side} fader display name" />
+        ${summaryHtml}
       </span>
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
         onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
-        ${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span>
+        ${SECTION_CHEVRON}
       </button>
     </div>`;
   }
   return `<button type="button" class="section-head section-toggle" id="section-toggle-${bi}-${key}" data-fader="${key}"${tipAttr}
     onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
-      <span class="section-toggle-title"><span class="fader-side-cap">${escHtml(cap)}</span><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span></span>
-      <span class="section-toggle-meta">${extra||''}${summary?`<span class="section-summary" id="section-summary-${bi}-${key}">${sectionSummaryHtml(summary)}</span>`:''}<span class="section-chevron" aria-hidden="true">▼</span></span>
+      ${mark}
+      <span class="section-toggle-title"><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span>${summaryHtml}</span>
+      <span class="section-toggle-meta">${extra||''}${SECTION_CHEVRON}</span>
     </button>`;
 }
 // Collapsed-header summaries (UX audit 2026-09-25 C-5): each section says what
@@ -3301,10 +3314,9 @@ function faderSectionContent(key, ctrl, bi, errs = validate()) {
   const displayLabel = faderDisplayName(ctrl,key);
   const ariaDisplayLabel = escHtml(displayLabel);
   const ccMeaning = musicalCcName(ctrl.cc,`CC ${ctrl.cc}`);
-  const sideCap = key==='fader1' ? 'LEFT FADER' : 'RIGHT FADER';
   const open = isSectionOpen(key);
   return `
-    ${sectionHeaderHtml(bi,key,sideCap,displayLabel,faderSectionSummary(ctrl),'Sends a MIDI CC on a channel you choose. The on-screen fader mirrors the hardware and can\'t be dragged.')}
+    ${sectionHeaderHtml(bi,key,displayLabel,faderSectionSummary(ctrl),'Sends a MIDI CC on a channel you choose. The on-screen fader mirrors the hardware and can\'t be dragged.')}
     <div class="section-collapse-body" id="section-body-${bi}-${key}" ${open?'':'hidden'}>
     <div class="section-fields">
       <div class="section-field-row">
@@ -3539,7 +3551,7 @@ function encoderPanel(ctrl, bi, errs = validate()) {
 
   return `
   <div class="panel panel-wide">
-    ${sectionHeaderHtml(bi,'roller','ROLLER',rollerModeTitle(rmode),rollerSectionSummary(cfg.banks[bi]),'Sends MIDI CC (Articulation), note keyswitches, HID navigation keys, or relative CC, depending on the mode selected below.')}
+    ${sectionHeaderHtml(bi,'roller',rollerModeTitle(rmode),rollerSectionSummary(cfg.banks[bi]),'Sends MIDI CC (Articulation), note keyswitches, HID navigation keys, or relative CC, depending on the mode selected below.')}
     <div class="section-collapse-body" id="section-body-${bi}-roller" ${open?'':'hidden'}>
       <div class="roller-mode-row" role="group" aria-label="Roller mode" data-mode="${rmode}" style="--roller-index:${ROLLER_MODES.indexOf(rmode)}">
         ${ROLLER_MODES.map((m,mi) => {
@@ -3641,7 +3653,7 @@ function macroSectionContent(bi = activeBank) {   // long-press macro; per bank 
     ? `<span class="section-issue-dot warn" aria-hidden="true" title="Connected firmware only supports one macro for all banks"></span><span class="sr-only">Warning: connected firmware only supports one macro for all banks – this bank's macro will be ignored until it's updated.</span>`
     : '';
   return `
-    ${sectionHeaderHtml(bi,'macro','BUTTON','Macro',summary,'A long-press (≥ 0.5 s) sends a configured key combo. Requires Keyboard (HID); a short press still cycles banks.',headerWarn)}
+    ${sectionHeaderHtml(bi,'macro','Button',summary,'A long-press (≥ 0.5 s) sends a configured key combo. Requires Keyboard (HID); a short press still cycles banks.',headerWarn)}
     <div class="section-collapse-body" id="section-body-${bi}-macro" ${open?'':'hidden'}>
     <div class="section-fields">
       ${hidEnableNotice('Button Macro')}

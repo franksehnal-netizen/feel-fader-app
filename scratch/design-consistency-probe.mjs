@@ -134,6 +134,37 @@ P('header keeps its glass', !!surf.headerBf && surf.headerBf !== 'none', surf.he
 P('HUD is flat (no backdrop-filter) with a soft lift', surf.hud.bf === 'none' && surf.hud.sh !== 'none', JSON.stringify(surf.hud));
 P('Send has no frosted halo', ['none', 'normal'].includes(surf.halo), surf.halo);
 
+// Section headers (spec 2026-09-26 §5): a quiet mark instead of an uppercase
+// caption, one title, a mono summary line under it, and a rotating chevron.
+const heads = await p.evaluate(async () => {
+  // The K-1..K-5 block above leaves the roller in Keyswitch mode – reset to Articulation.
+  cfg.banks[0].roller_mode = 'cc';
+  _openSections.clear(); _openSections.add('roller'); render();
+  const out = { rows: [] };
+  for (const key of ['fader1', 'fader2', 'roller', 'macro']) {
+    const head = document.querySelector(`.bank-section[data-fader="${key}"] > .section-head`);
+    const upper = [...head.querySelectorAll('*')].filter(el => el.getClientRects().length && getComputedStyle(el).textTransform === 'uppercase' && el.textContent.trim());
+    const summary = document.getElementById(`section-summary-0-${key}`);
+    const title = document.getElementById(`section-title-0-${key}`);
+    const chev = head.querySelector('.section-chevron');
+    out.rows.push({
+      key,
+      upper: upper.map(el => el.textContent.trim()),
+      title: title?.value ?? title?.textContent,
+      summaryMono: summary ? /Plex Mono/.test(getComputedStyle(summary.querySelector('.section-summary-meta, .section-summary-label') || summary).fontFamily) : null,
+      summaryBelow: summary && title ? summary.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1 : false,
+      chevron: chev ? getComputedStyle(chev).transform : null,
+      mark: head.querySelector('.section-mark')?.textContent.trim() ?? null,
+    });
+  }
+  return out;
+});
+P('section headers carry no uppercase caption', heads.rows.every(r => r.upper.length === 0), JSON.stringify(heads.rows.map(r => r.upper)));
+P('section titles are Expression / Dynamics / Articulation / Button', heads.rows.map(r => r.title).join() === 'Expression,Dynamics,Articulation,Button', heads.rows.map(r => r.title).join());
+P('summary sits under the title in Plex Mono', heads.rows.every(r => r.summaryBelow && r.summaryMono !== false), JSON.stringify(heads.rows));
+P('marks are L / R and icons', heads.rows[0].mark === 'L' && heads.rows[1].mark === 'R', JSON.stringify(heads.rows.map(r => r.mark)));
+P('open section chevron is rotated, closed is not', heads.rows[2].chevron !== 'none' && heads.rows[0].chevron === 'none', JSON.stringify(heads.rows.map(r => r.chevron)));
+
 // Frank's typography rule (2026-09-26): user-facing text uses the en dash (Alt+0150),
 // never the em dash – rendered page, title, tooltips/ARIA, and every string table.
 const EM = '—';
