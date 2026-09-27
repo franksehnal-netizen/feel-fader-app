@@ -75,6 +75,7 @@ const PROBES = [
   'live-hud-square-probe.mjs',
   'live-hud-free-manipulation-probe.mjs',
   'send-dock-gap-symmetry-probe.mjs',
+  'send-note-below-probe.mjs',
   'welcome-heading-gap-probe.mjs',
   'controller-toggle-speed-probe.mjs',
   'section-toggle-focus-ring-probe.mjs',

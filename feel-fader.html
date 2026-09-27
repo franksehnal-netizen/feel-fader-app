@@ -458,6 +458,20 @@ main{width:100%;}
   opacity:0;filter:blur(2px);transform:translate(-4px,-50%) scale(.985);
   transition-duration:.18s,.18s,.18s,.18s,0s;
 }
+/* Desktop, controller visible: the note is one quiet line under Send (spec
+   2026-09-26 §8). .send-anchor already reserves 68px (38 button + 30 below),
+   so the note fits inside the reserved height and nothing moves. The docked
+   Send (.send-anchor.docked) keeps the left-of-button placement above. */
+@media(min-width:601px){
+  .send-anchor:not(.docked) .send-change-note{
+    right:auto;left:50%;top:calc(100% + 6px);max-width:240px;
+    font-size:var(--fs-md);font-weight:400;color:var(--t2);
+    transform:translate(-50%,-4px) scale(.975);transform-origin:center top;
+  }
+  .send-anchor:not(.docked) .send-change-note.is-visible{transform:translate(-50%,0) scale(1)}
+  .send-anchor:not(.docked) .send-change-note.is-visible.is-swapping{transform:translate(-50%,2px) scale(.985)}
+  .send-anchor:not(.docked) .change-popover{top:calc(100% + 34px)}
+}
 .change-popover{
   position:absolute;left:50%;top:calc(100% + 12px);z-index:30;width:min(300px,calc(100vw - 32px));padding:11px;
   transform:translate(-50%,-4px);border:1px solid var(--glass-border);border-radius:var(--r);
@@ -2262,7 +2276,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       </div>
       <div class="send-anchor" id="send-anchor"><div class="send-callout">
         <div class="send-arrow"></div>
-        <button class="send-change-note" id="send-change-note" type="button" aria-live="polite" aria-hidden="true" aria-expanded="false" aria-controls="change-popover" onclick="toggleChangePopover()">Unsaved changes</button>
+        <button class="send-change-note" id="send-change-note" type="button" aria-live="polite" aria-hidden="true" aria-expanded="false" aria-controls="change-popover" onclick="toggleChangePopover()">Changes · Review</button>
         <button class="send-btn" id="send-btn" data-send-button onclick="handlePrimaryAction()">Send to device</button>
         <div class="change-popover" id="change-popover" aria-hidden="true">
           <strong>Pending changes</strong>
@@ -3005,7 +3019,7 @@ function updateChangeSummary() {
   const undo = document.getElementById('change-undo-btn');
   let items = dirty ? configChangeItems() : [];
   if (dirty && !items.length) items = ['Configuration'];
-  if (note && dirty) setSendChangeNoteText(`${items.length} unsaved change${items.length===1?'':'s'}`);
+  if (note && dirty) setSendChangeNoteText(`${items.length} change${items.length===1?'':'s'} · Review`);
   if (list) list.innerHTML = items.slice(0,7).map(item => `<li>${escHtml(item)}</li>`).join('') + (items.length>7?`<li>+ ${items.length-7} more</li>`:'');
   if (undo) {
     undo.disabled = !_undoConfigHistory.length;

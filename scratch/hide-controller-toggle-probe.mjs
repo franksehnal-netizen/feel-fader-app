@@ -123,7 +123,8 @@ P('showing again: stage height restored', restored.wrapHeight > 100, String(rest
 P('showing again: Send button reparented back into device-wrap', restored.anchorInDeviceWrap && !restored.anchorHasDockedClass, JSON.stringify(restored));
 P('showing again: sticky row is hidden again', restored.rowHidden === true, JSON.stringify(restored));
 
-// The "N unsaved changes" note should still show up docked in the sticky row
+// The "N changes · Review" note should still show up docked in the sticky row
+// (text per minimal-hybrid spec 2026-09-26 §8 — was "N unsaved changes").
 const dirtyNote = await p.evaluate(() => {
   cfg.banks[0].fader1.cc = (cfg.banks[0].fader1.cc + 1) % 128;
   dirty = true; runValidation();
@@ -133,7 +134,7 @@ const dirtyNote = await p.evaluate(() => {
     resolve({ text: note.textContent, visible: getComputedStyle(note).display !== 'none' });
   }, 500));
 });
-P('unsaved-changes note is visible alongside Send in the sticky row', dirtyNote.visible && /unsaved/i.test(dirtyNote.text), JSON.stringify(dirtyNote));
+P('unsaved-changes note is visible alongside Send in the sticky row', dirtyNote.visible && /change/i.test(dirtyNote.text), JSON.stringify(dirtyNote));
 
 // Panels below must not stretch to fill the reclaimed space. .panel carries
 // flex:1 (for equal widths inside .panels-row); the standalone wide panels
