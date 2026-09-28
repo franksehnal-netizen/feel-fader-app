@@ -8,7 +8,7 @@ const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args: ['--no-sandbox'] });
 const p = await b.newPage();
-await p.setViewport({ width: 1200, height: 800 });
+await p.setViewport({ width: 1080, height: 800 });   // single-column desktop; ≥1100 px docks the HUD beside the controller (two-column-layout-probe)
 await p.goto(URL, { waitUntil: 'networkidle0' });
 await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); });

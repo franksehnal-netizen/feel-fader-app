@@ -52,9 +52,9 @@ await p.setViewport({ width: 1280, height: 900 });
 
 // F-03: Duplicate button stays clickable at the 8-bank cap (not disabled).
 // Retargeted (design/minimal task 7): Duplicate left the card top in Task 4
-// and now lives as a row in the Bank group.
+// and now lives in Bank actions of the Feel Fader group (2026-09-28).
 const f03 = await p.evaluate(() => {
-  const btn = document.querySelector('.group-row[data-bank-action="duplicate"]');
+  const btn = document.querySelector('#bank-actions-body [data-bank-action="duplicate"]');
   return { exists: !!btn, disabled: btn ? btn.disabled : null };
 });
 P('F-03: Duplicate button exists and is not disabled at 8-bank cap', f03.exists && f03.disabled === false, JSON.stringify(f03));

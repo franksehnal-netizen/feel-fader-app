@@ -31,7 +31,7 @@ const head = await p.evaluate(() => {
 });
 P('eyebrow reads "Bank N of M"', /^Bank 2 of 3/.test(head.eyebrow || ''), head.eyebrow);
 P('device suffix hidden when not connected', head.deviceHidden === true, String(head.deviceHidden));
-P('bank name is the large editable title (32 px, 700, 24 chars)', head.nameValue === 'Bank 2' && head.nameSize === 32 && head.nameWeight === '700' && head.maxLength === 24, JSON.stringify(head));
+P('bank name is the editable display title (20 px since 2026-09-28, 700, 24 chars)', head.nameValue === 'Bank 2' && head.nameSize === 20 && head.nameWeight === '700' && head.maxLength === 24, JSON.stringify(head));
 P('bank icon picker stays next to the title', head.iconBtn);
 P('subtitle is "Library setup Browse…"', head.sub === 'Library setup Browse…', head.sub);
 P('no ‹ › ⧉ × or Save setup above the controls', head.oldActions === 0 && !head.saveSetupInCard, JSON.stringify(head));

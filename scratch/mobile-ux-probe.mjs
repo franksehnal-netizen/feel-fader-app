@@ -100,7 +100,8 @@ async function runDesktopFlow(browser, url) {
   const page = await browser.newPage();
   const checks = [];
   const errors = [];
-  const profile = { name: 'desktop-flow', viewport: { width: 1200, height: 900 } };
+  // Single-column desktop flow; ≥1100 px is the sticky two-column layout (two-column-layout-probe).
+  const profile = { name: 'desktop-flow', viewport: { width: 1080, height: 900 } };
   page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
   page.on('console', message => {
     if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {

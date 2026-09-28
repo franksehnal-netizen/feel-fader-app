@@ -25,7 +25,7 @@ const hidRow = await p.evaluate(() => !!document.querySelector('.info-row-action
 P('HID row carries a data-tip attribute', hidRow, String(hidRow));
 
 // Hover for 2.1s -> tooltip should show with the row's own text.
-const target = await p.$('.info-row-action[data-tip]');
+const target = await p.$('#device-settings-body .info-row-action[data-tip]');   // the open section (Application settings stays collapsed)
 await target.scrollIntoView(); // row sits below the fold at the default 800x600 viewport
 const box = await target.boundingBox();
 await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

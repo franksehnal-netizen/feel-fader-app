@@ -14,8 +14,9 @@ await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 
 const r = await p.evaluate(() => {
   addBank(); render();   // Delete row only exists with > 1 bank
-  const wrap = document.querySelector('.settings-group[data-group="bank"]');
-  const btn = document.querySelector('.group-row[data-bank-action="delete"]');
+  toggleBankActions();   // bank actions live collapsed inside the Feel Fader group
+  const wrap = document.getElementById('bank-actions-body');
+  const btn = document.querySelector('#bank-actions-body [data-bank-action="delete"]');
   const wrapRect = wrap.getBoundingClientRect();
   const btnRect = btn.getBoundingClientRect();
   return {

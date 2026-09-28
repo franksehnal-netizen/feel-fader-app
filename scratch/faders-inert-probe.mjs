@@ -157,7 +157,10 @@ out('roller/thumb highlight matches onboarding\'s own glow exactly (rgba(52,199,
   linkedHighlightOk(linkedHighlight.light) && linkedHighlightOk(linkedHighlight.dark),
   JSON.stringify(linkedHighlight));
 
-for (const viewport of [{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}]) {
+// ≥1100 px the controller intentionally glides from the welcome center into the
+// sticky left column (glideStageIntoColumn, 2026-09-28) – there only the node,
+// width and scroll reset must hold; single-column viewports stay pixel-seamless.
+for (const viewport of [{name:'desktop',width:1080,height:900},{name:'mobile',width:390,height:844},{name:'wide desktop',width:1440,height:900,glides:true}]) {
   const vp = await b.newPage();
   await vp.setViewport({width:viewport.width,height:viewport.height});
   await vp.goto(URL,{waitUntil:'networkidle0'});
@@ -177,7 +180,7 @@ for (const viewport of [{name:'desktop',width:1440,height:900},{name:'mobile',wi
     };
   });
   const identical = rects.sameNode && rects.app.top>=0 &&
-    Math.abs(rects.app.left-rects.welcome.left)<1 &&
+    (viewport.glides || Math.abs(rects.app.left-rects.welcome.left)<1) &&
     Math.abs(rects.app.width-rects.welcome.width)<1;
   out(`${viewport.name} transition resets to top without replacing the controller`,
     rects.scrollY===0 && identical,JSON.stringify(rects));

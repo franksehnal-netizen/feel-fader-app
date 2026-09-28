@@ -21,7 +21,7 @@ const errs=[];
 
 const p = await b.newPage();
 p.on('pageerror', e => errs.push(String(e)));
-await p.setViewport({ width: 1280, height: 900 });
+await p.setViewport({ width: 1080, height: 900 });   // single-column desktop; ≥1100 px docks the HUD beside the controller (two-column-layout-probe)
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 await p.evaluate(() => { localStorage.removeItem('ff_live_hud_pos'); });
 await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); });
