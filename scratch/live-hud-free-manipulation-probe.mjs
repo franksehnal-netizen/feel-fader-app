@@ -21,11 +21,14 @@ const errs=[];
 
 const p = await b.newPage();
 p.on('pageerror', e => errs.push(String(e)));
-await p.setViewport({ width: 1080, height: 900 });   // single-column desktop; ≥1100 px docks the HUD beside the controller (two-column-layout-probe)
+// Undocked desktop HUD (144 px, top-left): from 900 px the default HUD docks beside
+// the controller (two-column-layout-probe) and below it the square is the compact
+// 112 px, so test on a wide desktop with the controller hidden (UX audit 2026-09-28 N-4).
+await p.setViewport({ width: 1440, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 await p.evaluate(() => { localStorage.removeItem('ff_live_hud_pos'); });
-await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); });
-await new Promise(r => setTimeout(r, 500)); // settle the fade-in
+await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); toggleControllerVisibility(false); });
+await new Promise(r => setTimeout(r, 1600)); // settle the fade-in and the controller hide
 
 // 1. Default placement: 144x144, top-left, just under the header
 const def = await p.evaluate(() => {

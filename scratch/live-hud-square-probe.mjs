@@ -8,7 +8,7 @@ const P = (l, ok, x='') => console.log(`${ok?'PASS':'FAIL'}  ${l}${x?'  – '+x:
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: true, pipe: true, args: ['--no-sandbox'] });
 const p = await b.newPage();
-await p.setViewport({ width: 1080, height: 800 });   // single-column desktop; ≥1100 px docks the HUD beside the controller (two-column-layout-probe)
+await p.setViewport({ width: 960, height: 800 });   // narrowest two-column desktop (UX audit 2026-09-28 N-4) keeps the 144 px HUD
 await p.goto(URL, { waitUntil: 'networkidle0' });
 await p.evaluate(() => { try{skipWelcome && skipWelcome()}catch(e){} });
 await p.evaluate(() => { _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); });
@@ -22,6 +22,10 @@ const shape = await p.evaluate(() => {
 P('is-compact never gets added', !shape.hasCompact, JSON.stringify(shape));
 P('Renders as a 144x144 square, not a pill', shape.width === '144px' && shape.height === '144px' && shape.borderRadius === '18px', JSON.stringify(shape));
 
+// The undocked position (single column, below 900 px) keeps its 12 px gap; at
+// ≥900 px the HUD docks level with the controller (two-column-layout-probe).
+await p.setViewport({ width: 880, height: 800 });
+await new Promise(r => setTimeout(r, 600));
 const gap = await p.evaluate(() => {
   const strip = document.getElementById('live-strip');
   const header = document.querySelector('.top-sticky') || document.querySelector('header');

@@ -101,7 +101,7 @@ async function runDesktopFlow(browser, url) {
   const checks = [];
   const errors = [];
   // Single-column desktop flow; ≥1100 px is the sticky two-column layout (two-column-layout-probe).
-  const profile = { name: 'desktop-flow', viewport: { width: 1080, height: 900 } };
+  const profile = { name: 'desktop-flow', viewport: { width: 880, height: 900 } };   // single-column desktop (two columns from 900 px)
   page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
   page.on('console', message => {
     if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
@@ -290,16 +290,18 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Long open configuration section keeps its heading below the app header',
     stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
     `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
-  // 144 px since UX audit 2026-09-25 C-2 (Frank chose variant C; was 112).
-  addCheck(checks, 'Desktop monitor stays a consistent 144x144 square',
-    hudAtController.square && Math.abs(hudAtController.width - 144) <= 1 && Math.abs(hudAtController.height - 144) <= 1
-      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 144) <= 1 && Math.abs(scrolled.hudHeight - 144) <= 1,
+  // Single-column desktop is 601–899 px since UX audit 2026-09-28 N-4, where the
+  // monitor uses the compact 112 px square; 144 px (C-2) is covered at ≥900 px
+  // by live-hud-square-probe and two-column-layout-probe.
+  addCheck(checks, 'Single-column desktop monitor stays a consistent 112x112 square',
+    hudAtController.square && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
+      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 112) <= 1 && Math.abs(scrolled.hudHeight - 112) <= 1,
     `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
   addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
     scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
     scrolled.hudTech.join(' / '));
   addCheck(checks, 'Desktop hardware monitor aligns below the left side of the header',
-    Math.abs(scrolled.hudTopGap - 12) <= 1 && Math.abs(scrolled.hudLeftGap - 28) <= 1,
+    Math.abs(scrolled.hudTopGap - 12) <= 1 && Math.abs(scrolled.hudLeftGap - 16) <= 1,
     `${scrolled.hudLeftGap.toFixed(1)} px left / ${scrolled.hudTopGap.toFixed(1)} px below header`);
   await page.evaluate(() => { _midiState = 'denied'; _ffConnected = false; renderConnState(); });
   await settle(page, 380);

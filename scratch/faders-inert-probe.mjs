@@ -157,10 +157,12 @@ out('roller/thumb highlight matches onboarding\'s own glow exactly (rgba(52,199,
   linkedHighlightOk(linkedHighlight.light) && linkedHighlightOk(linkedHighlight.dark),
   JSON.stringify(linkedHighlight));
 
-// ≥1100 px the controller intentionally glides from the welcome center into the
-// sticky left column (glideStageIntoColumn, 2026-09-28) – there only the node,
-// width and scroll reset must hold; single-column viewports stay pixel-seamless.
-for (const viewport of [{name:'desktop',width:1080,height:900},{name:'mobile',width:390,height:844},{name:'wide desktop',width:1440,height:900,glides:true}]) {
+// ≥900 px the controller intentionally glides from the welcome center into the
+// sticky left column (glideStageIntoColumn, 2026-09-28) – there the node and
+// scroll reset must hold and the glide's first frame must match the welcome
+// controller (no jump); 900–1099 px shrinks it on the way (UX audit N-4).
+// Single-column viewports stay pixel-seamless.
+for (const viewport of [{name:'desktop',width:880,height:900},{name:'mobile',width:390,height:844},{name:'compact two-column desktop',width:1080,height:900,glides:true,shrinks:true},{name:'wide desktop',width:1440,height:900,glides:true}]) {
   const vp = await b.newPage();
   await vp.setViewport({width:viewport.width,height:viewport.height});
   await vp.goto(URL,{waitUntil:'networkidle0'});
@@ -169,21 +171,44 @@ for (const viewport of [{name:'desktop',width:1080,height:900},{name:'mobile',wi
     await new Promise(resolve=>requestAnimationFrame(resolve));
     const device=document.getElementById('device-img');
     const welcome=device.getBoundingClientRect();
+    let firstFrame=null;
+    const glide=window.glideStageIntoColumn;
+    let preGlide=null, hudDuringGlide=null, glideStart=null;
+    const hudLeft=()=>Math.round(document.getElementById('live-strip').getBoundingClientRect().left);
+    window.glideStageIntoColumn=closeWelcome=>{ const q=document.getElementById('device-img').getBoundingClientRect(); preGlide={top:q.top,left:q.left,width:q.width}; glide(closeWelcome); const r=document.getElementById('device-img').getBoundingClientRect(); firstFrame={top:r.top,left:r.left,width:r.width}; glideStart=performance.now(); };
     connectTransitionWelcome();
     await new Promise(resolve=>setTimeout(resolve,1450));
+    if (glideStart!==null) {
+      // Mid-glide (the stage is scaled/translated) vs after the glide settled.
+      await new Promise(resolve=>setTimeout(resolve,Math.max(0,glideStart+400-performance.now())));
+      updateContextualLiveStrip(); hudDuringGlide=hudLeft();
+      await new Promise(resolve=>setTimeout(resolve,1600));
+    }
     const app=document.getElementById('device-img').getBoundingClientRect();
+    const tracks=()=>['track-l','track-r','thumb-r'].map(id=>document.getElementById(id).style.cssText).join('|');
+    const tracksAfter=tracks(); layoutFaders(); const tracksFresh=tracks()===tracksAfter;
     return {
+      tracksFresh, hudDuringGlide, hudFinal:hudLeft(),
       scrollY:window.scrollY,
       sameNode:device===document.getElementById('device-img'),
       welcome:{top:welcome.top,left:welcome.left,width:welcome.width},
-      app:{top:app.top,left:app.left,width:app.width}
+      app:{top:app.top,left:app.left,width:app.width},
+      preGlide, firstFrame
     };
   });
   const identical = rects.sameNode && rects.app.top>=0 &&
     (viewport.glides || Math.abs(rects.app.left-rects.welcome.left)<1) &&
-    Math.abs(rects.app.width-rects.welcome.width)<1;
+    (viewport.shrinks || Math.abs(rects.app.width-rects.welcome.width)<1);
   out(`${viewport.name} transition resets to top without replacing the controller`,
     rects.scrollY===0 && identical,JSON.stringify(rects));
+  out(`${viewport.name} fader tracks are laid out for the final controller size`, rects.tracksFresh, JSON.stringify(rects));
+  if (viewport.glides) {
+    const f = rects.firstFrame, w = rects.preGlide;
+    out(`${viewport.name} docked HUD already sits in its final slot during the glide`,
+      rects.hudDuringGlide !== null && Math.abs(rects.hudDuringGlide - rects.hudFinal) <= 1, JSON.stringify({ during: rects.hudDuringGlide, final: rects.hudFinal }));
+    out(`${viewport.name} glide starts exactly where the welcome controller was (no jump)`,
+      !!f && Math.abs(f.left-w.left)<1.5 && Math.abs(f.top-w.top)<1.5 && Math.abs(f.width-w.width)<1.5, JSON.stringify(rects));
+  }
   await vp.close();
 }
 

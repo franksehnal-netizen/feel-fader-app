@@ -329,7 +329,7 @@ main{width:100%;}
    controlleru"). --stage-col animates to 0 when the controller is hidden.
    Only once the welcome is closed: the sticky column is a stacking context
    and would trap the shared controller (z 205) under the welcome overlay. */
-@media(min-width:1100px){
+@media(min-width:900px){
   body:has(#welcome-screen.hidden) .center-col{--stage-col:420px;max-width:1180px;display:grid;grid-template-columns:var(--stage-col) minmax(0,680px);justify-content:center;column-gap:clamp(32px,4vw,64px);align-items:stretch}
   /* Animate the columns only while the controller toggle runs – otherwise the
      welcome exit would tween the flex gap into the grid gap. */
@@ -347,12 +347,19 @@ main{width:100%;}
   body:has(#welcome-screen.hidden) .center-col>.settings-col{grid-column:2;grid-row:1;padding-top:32px}
   @media(prefers-reduced-motion:reduce){.center-col{transition:none}}
 }
+/* 900–1099 px (a 1920px monitor split with the DAW = 960): two columns with
+   a smaller controller instead of the editor starting below the photo
+   (UX audit 2026-09-28, N-4, variant A). HUD slot and shadow room as above. */
+@media(min-width:900px) and (max-width:1099px){
+  body:has(#welcome-screen.hidden) .center-col{--stage-col:366px;column-gap:28px}
+  body:has(#welcome-screen.hidden) .device-home{width:min(166px,clamp(120px,calc(44.24vh - 126px),220px))}
+}
 /* Single-column desktop: the change note under Send ends ~11px below .stage,
    which clipped it (UX audit 2026-09-28, N-3). It still fits inside the 32px
    gap above the bank card, so extend the clip instead of the padding – more
    padding would break the centred Send (mobile-ux-probe). Mobile keeps its
    own note placement. */
-@media(min-width:601px) and (max-width:1099px){
+@media(min-width:601px) and (max-width:899px){
   body:has(#welcome-screen.hidden) .center-col>.stage-collapse>.stage{overflow:clip;overflow-clip-margin:24px}
 }
 
@@ -1812,7 +1819,9 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   display:flex;align-items:center;justify-content:center;padding:20px;
   animation:fi var(--dur-fast) ease;
 }
-@media(max-width:980px){
+/* 899 (was 980): two columns start at 900 px and keep the 144 px desktop
+   HUD (UX audit 2026-09-25 C-2); the compact square is for narrower screens. */
+@media(max-width:899px){
   .live-hud{left:16px;width:112px;height:112px;padding:8px;border-radius:var(--r-lg)}
   .live-hud[data-side]{left:16px;right:auto}
   .live-hud-inner{grid-template-rows:minmax(0,1fr) 28px;gap:var(--space-1)}
@@ -6431,7 +6440,7 @@ function updateContextualLiveStrip(){
   // Two-column layout: the default HUD docks into a slot left of the sticky
   // controller (body.hud-docked pads the stage), so it never covers the device.
   const docked = visible && !liveHudHasCustomPos() && !_liveHudState.large && !_controllerHidden
-    && window.matchMedia('(min-width:1100px)').matches;
+    && window.matchMedia('(min-width:900px)').matches;
   document.body.classList.toggle('hud-docked', docked);
   // Only drive the default position — a user's custom drag position
   // (inline top, set by applyLiveHudState) must not be overwritten on every
@@ -6442,7 +6451,10 @@ function updateContextualLiveStrip(){
     const m = new DOMMatrix(getComputedStyle(stageEl).transform);
     const col = stageEl.getBoundingClientRect();
     const dev = document.getElementById('device-home').getBoundingClientRect();
-    strip.style.left = `${Math.round(col.left - m.m41)}px`;
+    // The glide may also scale (origin = the controller's top-left, so the
+    // top discount stays m42); the left edge sits originX·(1−scale) off.
+    const originX = parseFloat(getComputedStyle(stageEl).transformOrigin) || 0;
+    strip.style.left = `${Math.round(col.left - m.m41 - originX * (1 - m.a))}px`;
     strip.style.top = `${Math.round(dev.top - m.m42)}px`;
   } else if (!liveHudHasCustomPos()) {
     strip.style.removeProperty('left');
@@ -7252,15 +7264,25 @@ function restoreDeviceHomeNative() {
 // controller moves from the welcome center to the left column here – FLIP it
 // so it glides instead of jumping.
 function glideStageIntoColumn(closeWelcome) {
+  // FLIP on the controller itself, not the stage box: the stage's padding
+  // changes with the column (HUD slot), which made the controller jump ~64px
+  // on the first frame, and 900–1099 px also shrinks it 220 → 166px (UX audit
+  // 2026-09-28, N-4) – so glide position AND scale from the welcome spot.
   const stage = document.getElementById('stage-collapse');
-  const before = stage?.getBoundingClientRect();
+  const device = document.getElementById('device-home');
+  const before = device?.getBoundingClientRect();
   closeWelcome();
+  // Closing the welcome can resize the controller (900–1099 px); the tracks
+  // were laid out in finalizeWelcomeExit() for the welcome size.
+  layoutFaders();
+  positionThumbs();
   if (!stage || !before || _controllerHidden) return;
-  const after = stage.getBoundingClientRect();
-  const dx = before.left - after.left, dy = before.top - after.top;
-  if ((Math.abs(dx) < 1 && Math.abs(dy) < 1) || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const after = device.getBoundingClientRect(), stageBox = stage.getBoundingClientRect();
+  const dx = before.left - after.left, dy = before.top - after.top, scale = before.width / after.width;
+  if ((Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(scale - 1) < 0.005) || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   stage.style.transition = 'none';
-  stage.style.transform = `translate(${dx}px,${dy}px)`;
+  stage.style.transformOrigin = `${after.left - stageBox.left}px ${after.top - stageBox.top}px`;
+  stage.style.transform = `translate(${dx}px,${dy}px) scale(${scale})`;
   void stage.offsetWidth;
   stage.style.transition = 'transform var(--dur-stage) var(--ease-out)';
   stage.style.transform = '';
@@ -7270,6 +7292,7 @@ function glideStageIntoColumn(closeWelcome) {
     finished = true;
     stage.removeEventListener('transitionend', onEnd);
     stage.style.removeProperty('transition');
+    stage.style.removeProperty('transform-origin');
     updateContextualLiveStrip();
   };
   const onEnd = e => { if (e.target === stage && e.propertyName === 'transform') done(); };

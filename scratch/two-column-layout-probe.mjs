@@ -1,4 +1,4 @@
-// Regression probe (Frank 2026-09-28): from 1100 px the controller + Send stay
+// Regression probe (Frank 2026-09-28): from 900 px (UX audit N-4, was 1100) the controller + Send stay
 // sticky in a left column and the editor scrolls on the right; the default live
 // HUD docks in a slot left of the controller and can be switched off (per
 // browser); the welcome keeps the centered single column.
@@ -33,7 +33,7 @@ const rect = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).g
   await p.close();
 }
 
-for (const [W, H] of [[1440, 900], [1100, 760]]) {
+for (const [W, H] of [[1440, 900], [1100, 760], [1080, 800], [960, 800], [900, 760]]) {
   const p = await open(W, H);
   let dev = await rect(p, '#device-home'), col = await rect(p, '#stage-collapse'), hud = await rect(p, '#live-strip'), set = await rect(p, '#settings-col');
   P(`${W}: controller column left of the editor`, col.r <= set.l && Math.abs(dev.t - (set.t + 32)) <= 1, JSON.stringify({ col, set, dev }));
@@ -77,9 +77,9 @@ for (const [W, H] of [[1440, 900], [1100, 760]]) {
 }
 
 {
-  const p = await open(1000, 800);
+  const p = await open(880, 800);
   const one = await p.evaluate(() => ({ grid: getComputedStyle(document.querySelector('.center-col')).display, docked: document.body.classList.contains('hud-docked') }));
-  P('below 1100 px: single column, HUD not docked', one.grid !== 'grid' && !one.docked, JSON.stringify(one));
+  P('below 900 px: single column, HUD not docked', one.grid !== 'grid' && !one.docked, JSON.stringify(one));
   const app = await p.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-group="feel-fader"] > .group-row')].map(r => r.id);
     toggleAppSettings();
@@ -95,7 +95,7 @@ for (const [W, H] of [[1440, 900], [1100, 760]]) {
 }
 
 // UX audit 2026-09-28 N-3: the single-column .stage clipped "N changes · Review".
-for (const [W, H] of [[1080, 800], [960, 800]]) {
+for (const [W, H] of [[880, 800], [700, 800]]) {
   const p = await open(W, H);
   await p.evaluate(() => duplicateBank(activeBank)); await wait(500);
   const note = await p.evaluate(() => {
