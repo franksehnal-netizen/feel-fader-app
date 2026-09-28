@@ -18,7 +18,7 @@ await p.evaluate(() => { skipWelcome(); });
 await new Promise(r => setTimeout(r, 300));
 
 async function checkOpensAt(label, clickFn, anchorId) {
-  await p.evaluate(() => { document.getElementById('help-body').style.display = 'none'; document.getElementById('help-chevron').textContent = '▼'; });
+  await p.evaluate(() => { document.getElementById('help-body').style.display = 'none'; });
   await p.evaluate(clickFn);
   // Smooth scrollIntoView takes ~700 ms; a fixed 250 ms read raced it (target
   // top 583–650 px vs 600 px viewport → flaky). Wait for arrival, bounded.

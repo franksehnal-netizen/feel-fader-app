@@ -12,6 +12,21 @@ await p.goto('http://localhost:8100/feel-fader.html', { waitUntil:'networkidle0'
 await p.evaluate(() => skipWelcome());
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+// Final review 1: .group-cap's negative bottom margin relies on the parent's
+// 16px flex gap to net out to a small positive gap – true in .center-col but
+// .panels-row has gap:0, so the "Bank" caption ends up pulled under the group.
+const caps = await p.evaluate(() => {
+  const info = {};
+  document.querySelectorAll('.group-cap').forEach(capEl => {
+    const label = capEl.textContent.trim();
+    const group = capEl.nextElementSibling;
+    if (group) info[label] = { capBottom: capEl.getBoundingClientRect().bottom, groupTop: group.getBoundingClientRect().top };
+  });
+  return info;
+});
+P('Bank caption is not clipped by the Bank group', !!caps.Bank && caps.Bank.capBottom <= caps.Bank.groupTop, JSON.stringify(caps.Bank));
+P('Feel Fader caption is not clipped by the Feel Fader group', !!caps['Feel Fader'] && caps['Feel Fader'].capBottom <= caps['Feel Fader'].groupTop, JSON.stringify(caps['Feel Fader']));
+
 const one = await p.evaluate(() => {
   cfg.banks.splice(1); activeBank = 0; render();   // single bank, whatever the default config holds
   const g = document.querySelector('.settings-group[data-group="bank"]');

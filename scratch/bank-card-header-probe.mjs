@@ -78,7 +78,7 @@ const afterFirstEscape = await p.evaluate(() => ({
   popover: !document.getElementById('library-popover-1').hidden,
   focus: document.activeElement?.id,
 }));
-P('Escape from a library option focuses the first option first', onOption === true);
+P('ArrowDown from the search field focuses the first option', onOption === true);
 // closeQuickSetupMenu(bi,true) hides the list then calls input.focus(); moving
 // focus FROM the option TO the input re-triggers the input's own onfocus
 // (openQuickSetupMenu), so the list re-opens in the same tick – an existing
@@ -116,6 +116,31 @@ await new Promise(r => setTimeout(r, 80));
 await p.mouse.click(5, 450);
 await new Promise(r => setTimeout(r, 50));
 P('clicking outside closes the popover', await p.evaluate(() => document.getElementById('library-popover-1').hidden));
+
+// Final review 3: tabbing out of the popover (either direction) must close it
+// instead of leaving it open over the fader sections with focus elsewhere.
+await p.click('#library-browse-1');
+await new Promise(r => setTimeout(r, 80));
+// Keep tabbing until focus actually leaves the popover DOM (list may have several options).
+let insidePopover = true, guard = 0;
+while (insidePopover && guard < 20) {
+  await p.keyboard.press('Tab');
+  await new Promise(r => setTimeout(r, 30));
+  insidePopover = await p.evaluate(() => document.getElementById('library-popover-1').contains(document.activeElement));
+  guard++;
+}
+await new Promise(r => setTimeout(r, 50));
+const afterTabOut = await p.evaluate(() => !document.getElementById('library-popover-1').hidden);
+P('tabbing focus out of the popover closes it', insidePopover === false && afterTabOut === false, JSON.stringify({ insidePopover, afterTabOut, guard }));
+
+await p.click('#library-browse-1');
+await new Promise(r => setTimeout(r, 80));
+const shiftTabbed = await p.evaluate(() => document.activeElement?.id === 'quick-setup-input-1');
+await p.keyboard.down('Shift'); await p.keyboard.press('Tab'); await p.keyboard.up('Shift');
+await new Promise(r => setTimeout(r, 50));
+const afterShiftTab = await p.evaluate(() => ({ popover: !document.getElementById('library-popover-1').hidden, focus: document.activeElement?.id }));
+P('search field was focused before Shift+Tab (sanity check)', shiftTabbed === true);
+P('Shift+Tab from the search field to Browse… closes the popover and leaves focus on Browse…', afterShiftTab.popover === false && afterShiftTab.focus === 'library-browse-1', JSON.stringify(afterShiftTab));
 
 // Rename still works through the big title.
 const renamed = await p.evaluate(() => {

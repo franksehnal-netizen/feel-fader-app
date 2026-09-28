@@ -85,6 +85,33 @@ const ks = await p.evaluate(() => {
   return { count: rows.length, live: rows.filter(el => el.classList.contains('is-live')).map(el => el.dataset.ksnote), handle: rows.every(el => el.querySelector('.seq-handle')) };
 });
 P('keyswitches use the same row list with a live row', ks.count === 3 && ks.live.join() === '25' && ks.handle, JSON.stringify(ks));
+
+// Final review 2: a bank switch (Program Change) or a disconnect must drop the
+// live row instantly, not just the next time something else re-renders it.
+await p.evaluate(() => {
+  cfg.banks[0].roller_mode = 'cc'; cfg.banks[0].uacc_values = [20, 1, 42];
+  cfg.banks.splice(1); addBank();
+  cfg.banks[1].roller_mode = 'cc'; cfg.banks[1].uacc_values = [20, 1, 42];
+  activeBank = 0; liveBank = 0; dirty = false;
+  _openSections.clear(); _openSections.add('roller'); render();
+});
+const pc = await p.evaluate(() => {
+  onMidiMsg({ data: new Uint8Array([0xB0 | cfg.banks[0].encoder.channel, cfg.banks[0].encoder.cc, 20]) });
+  const liveBefore = [...document.querySelectorAll('.seq-row.is-live')].map(el => el.dataset.value);
+  onMidiMsg({ data: new Uint8Array([0xC0, 1]) });   // hardware Program Change → bank 1
+  return { liveBefore, liveAfterPc: document.querySelectorAll('.seq-row.is-live').length, activeBank };
+});
+P('CC value marks the live row', pc.liveBefore.join() === '20', JSON.stringify(pc));
+P('Program Change to another bank leaves no stale live row', pc.activeBank === 1 && pc.liveAfterPc === 0, JSON.stringify(pc));
+
+const disc = await p.evaluate(() => {
+  onMidiMsg({ data: new Uint8Array([0xB0 | cfg.banks[1].encoder.channel, cfg.banks[1].encoder.cc, 1]) });
+  const liveBefore = document.querySelectorAll('.seq-row.is-live').length;
+  midiAccess = { inputs: { forEach(){} }, outputs: { forEach(){} } };   // device no longer enumerated
+  connectInputs();
+  return { liveBefore, liveAfterDisconnect: document.querySelectorAll('.seq-row.is-live').length };
+});
+P('disconnect leaves no stale live row', disc.liveBefore === 1 && disc.liveAfterDisconnect === 0, JSON.stringify(disc));
 P('no page errors', errs.length === 0, errs.join(' | '));
 await p.close();
 await b.close();
