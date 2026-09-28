@@ -124,6 +124,7 @@ const PROBES = [
   'n5-review-values-probe.mjs',
   'n2-keyswitch-order-visible-probe.mjs',
   'n7-library-picker-groups-probe.mjs',
+  'sprint-c-consistency-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',

@@ -23,7 +23,7 @@ const r = await p.evaluate(() => {
     labelShort: document.getElementById('live-roller-label-short')?.textContent,
   };
 });
-P('diagnosticRollerMapping reports "Relative CC · Ch3 · CC40"', r.diag === 'Relative CC · Ch 3 · CC 40', r.diag);
+P('diagnosticRollerMapping reports "Relative CC · Ch3 · CC40"', r.diag === 'Relative CC · Ch 3 · CC40', r.diag);
 P('live HUD label says ROLLER · RELATIVE CC, not ARTICULATION', r.label === 'ROLLER · RELATIVE CC', r.label);
 P('live HUD short label is REL', r.labelShort === 'REL', r.labelShort);
 P('no page errors', errs.length===0, errs.join(' | '));

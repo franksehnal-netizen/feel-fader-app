@@ -80,17 +80,16 @@ for (const [W, H] of [[1440, 900], [1100, 760], [1080, 800], [960, 800], [900, 7
   const p = await open(880, 800);
   const one = await p.evaluate(() => ({ grid: getComputedStyle(document.querySelector('.center-col')).display, docked: document.body.classList.contains('hud-docked') }));
   P('below 900 px: single column, HUD not docked', one.grid !== 'grid' && !one.docked, JSON.stringify(one));
+  // UX audit 2026-09-28 N-10: Live monitor moved next to Controller in the header.
   const app = await p.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-group="feel-fader"] > .group-row')].map(r => r.id);
-    toggleAppSettings();
     const sw = document.getElementById('live-hud-switch');
-    const inApp = document.getElementById('app-settings-body').contains(sw) && !document.getElementById('device-settings-body').contains(sw);
-    const open = document.getElementById('app-settings-body').style.display !== 'none';
+    const inHeader = document.querySelector('header').contains(sw);
     sw.click();
-    return { rows, inApp, open, hudOff: !document.getElementById('live-strip').classList.contains('is-contextual-visible') && localStorage.getItem('ff_live_hud_enabled') === '0' };
+    return { rows, inHeader, hudOff: !document.getElementById('live-strip').classList.contains('is-contextual-visible') && localStorage.getItem('ff_live_hud_enabled') === '0' };
   });
-  P('Application settings row sits under Bank actions and holds the Live monitor switch', app.rows[0] === 'bank-actions-toggle-btn' && app.rows[1] === 'app-settings-toggle-btn' && app.inApp && app.open, JSON.stringify(app));
-  P('Live monitor switch in Application settings turns the HUD off', app.hudOff, JSON.stringify(app));
+  P('Feel Fader group has no Application settings row; Live monitor switch sits in the header', app.rows[0] === 'bank-actions-toggle-btn' && !app.rows.includes('app-settings-toggle-btn') && app.inHeader, JSON.stringify(app));
+  P('Live monitor switch in the header turns the HUD off', app.hudOff, JSON.stringify(app));
   await p.close();
 }
 

@@ -61,7 +61,7 @@ P('drag clamp uses the new 144 px size', r.clampX === r.maxX, `${r.clampX} vs ${
 P('collapsed fader headers show channel and CC', r.f1 === 'Ch 1 · CC11' && r.f2 === 'Ch 1 · CC1', `${r.f1} | ${r.f2}`);
 P('collapsed roller header shows articulations and CC', r.roller === '15 articulations · Ch 1 · CC32', r.roller);
 P('fader summary follows a CC step without a full render', r.f1Stepped === 'Ch 1 · CC12', r.f1Stepped);
-P('keyswitch mode summarises notes and range', /^12 keyswitches · Ch 1 · C-2–B-2$/.test(r.rollerKs), r.rollerKs);
+P('keyswitch mode summarises notes and range', /^12 keyswitches · Ch 1 · C-2 → B-2$/.test(r.rollerKs), r.rollerKs);
 P('typed keyswitch channel updates the summary', /Ch 4/.test(r.rollerKsCh), r.rollerKsCh);
 P('relative CC mode summary', r.rollerRel === 'Relative · Ch 1 · CC32', r.rollerRel);
 // M-1 (Frank chose the bigger square): the connected mobile HUD with bank dots

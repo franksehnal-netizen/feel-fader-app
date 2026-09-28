@@ -97,7 +97,7 @@ const ff = await p.evaluate(() => {
 });
 P('Bank actions, Device & Settings and Help & Guide are rows of one Feel Fader group', ff.bothInGroup, JSON.stringify(ff));
 P('Device & Settings still expands, chevron rotates, no ▼/▲ text', ff.devOpen && ff.chev !== 'none' && ff.chevText === '', JSON.stringify(ff));
-P('Device row shows the firmware version slot', ff.fwSummary === '–' || /^Firmware /.test(ff.fwSummary || ''), ff.fwSummary);
+P('Device row shows the connection / firmware summary', ff.fwSummary === 'Not connected' || /^Firmware /.test(ff.fwSummary || ''), ff.fwSummary);
 await p.evaluate(() => openHelpAt('help-roller'));
 await wait(400);
 P('Help deep link still opens Help & Guide', await p.evaluate(() => document.getElementById('help-body').style.display !== 'none'));

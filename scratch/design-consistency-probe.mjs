@@ -151,7 +151,8 @@ const heads = await p.evaluate(async () => {
       key,
       upper: upper.map(el => el.textContent.trim()),
       title: title?.value ?? title?.textContent,
-      summaryMono: summary ? /DM Mono/.test(getComputedStyle(summary.querySelector('.section-summary-meta, .section-summary-label') || summary).fontFamily) : null,
+      // Ch/CC and note tokens stay mono; prose moved to Mulish (UX audit 2026-09-28 N-9).
+      summaryMono: summary?.querySelector('.section-summary-meta') ? /DM Mono/.test(getComputedStyle(summary.querySelector('.section-summary-meta')).fontFamily) : null,
       summaryBelow: summary && title ? summary.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1 : false,
       chevron: chev ? getComputedStyle(chev).transform : null,
       mark: head.querySelector('.section-mark')?.textContent.trim() ?? null,
@@ -161,7 +162,7 @@ const heads = await p.evaluate(async () => {
 });
 P('section headers carry no uppercase caption', heads.rows.every(r => r.upper.length === 0), JSON.stringify(heads.rows.map(r => r.upper)));
 P('section titles are Expression / Dynamics / Articulation / Button', heads.rows.map(r => r.title).join() === 'Expression,Dynamics,Articulation,Button', heads.rows.map(r => r.title).join());
-P('summary sits under the title in DM Mono', heads.rows.every(r => r.summaryBelow && r.summaryMono !== false), JSON.stringify(heads.rows));
+P('summary sits under the title, its Ch/CC tokens in DM Mono', heads.rows.every(r => r.summaryBelow && r.summaryMono !== false), JSON.stringify(heads.rows));
 P('marks are L / R and icons', heads.rows[0].mark === 'L' && heads.rows[1].mark === 'R', JSON.stringify(heads.rows.map(r => r.mark)));
 P('open section chevron is rotated, closed is not', heads.rows[2].chevron !== 'none' && heads.rows[0].chevron === 'none', JSON.stringify(heads.rows.map(r => r.chevron)));
 
