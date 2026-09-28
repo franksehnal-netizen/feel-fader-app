@@ -525,12 +525,13 @@ header,.live-hud{view-transition-name:none}
 }
 .panel-wide{width:100%;max-width:none;box-sizing:border-box;}
 /* .panel carries flex:1 for the side-by-side config panels inside .panels-row
-   (equal widths in that flex ROW). But the standalone wide panels (Device &
-   Settings, Help & Guide) are direct children of .center-col, a flex COLUMN
-   with flex:1 — there flex:1 makes them GROW vertically and balloon into the
-   reclaimed space when the controller is hidden on a tall window (Frank
-   2026-07-26). Pin them to their natural (collapsed) height; the footer still
-   sits at the bottom via its own margin-top:auto. */
+   (equal widths in that flex ROW). But the standalone wide "Feel Fader" group
+   (Device & Settings and Help & Guide, now two rows of one .settings-group)
+   is a direct child of .center-col, a flex COLUMN with flex:1 — there flex:1
+   makes it GROW vertically and balloon into the reclaimed space when the
+   controller is hidden on a tall window (Frank 2026-07-26). Pin it to its
+   natural (collapsed) height; the footer still sits at the bottom via its
+   own margin-top:auto. */
 .center-col>.panel-wide,.center-col>.settings-group{flex:0 0 auto;}
 
 .panel-name{font-size:var(--fs-base);font-weight:600;color:var(--t1);letter-spacing:-.01em;}
@@ -711,7 +712,8 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 
 /* PANEL NAME EDITABLE */
 .section-mark{width:22px;flex:none;display:flex;justify-content:center;font:500 var(--fs-md) 'IBM Plex Mono',monospace;color:var(--t3)}
-/* Section stays on its own softer, frosty-green highlight — no onboarding
+/* Section stays on its own neutral tint (--highlight-section-fill is --t1-based,
+   not green – green is live-only, spec 2026-09-26 §1); no onboarding
    equivalent to match (onboarding never shows settings panels), scope
    confirmed with Frank 2026-08-18. */
 .bank-section.fader-linked{background:var(--highlight-section-fill);border-radius:var(--r-sm);}
@@ -772,6 +774,10 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 /* Composer-first keyswitch sequence chips — scoped away from articulation tags */
 .ks-sequence-head{display:flex;align-items:center;justify-content:space-between;margin:14px 2px 6px}
 .ks-name-input{width:112px;height:22px;padding:0 8px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);font:600 var(--fs-sm) 'Mulish',sans-serif;color:var(--t1)}
+/* In the roller order row (final review 9) .ks-name-input replaces the flex:1
+   .seq-name span – without flex:1 the fixed 112px width shifts the value and
+   drag handle left while editing. */
+.seq-row .ks-name-input{flex:1;min-width:0}
 
 /* Roller order list (spec 2026-09-26 §6) – shared by articulations and keyswitches. */
 .seq-list{border-top:1px solid var(--border)}
@@ -822,9 +828,9 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
 html.dark .response-select-menu{background:color-mix(in srgb,var(--bg) 90%,white);box-shadow:0 10px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);}
 .response-select-option{display:flex;flex-direction:column;gap:1px;width:100%;padding:7px 9px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--t1);font:600 var(--fs-md) 'Mulish',sans-serif;text-align:left;cursor:pointer;transition:background .14s ease,color .14s ease,transform var(--dur-press) ease;}
 .response-select-option small{font-size:var(--fs-xs);font-weight:400;line-height:1.25;color:var(--t3);}
-.response-select-option:hover,.response-select-option:focus-visible{background:color-mix(in srgb,var(--green) 12%,transparent);outline:none;}
-.response-select-option[aria-selected="true"]{background:var(--green);color:#fff;box-shadow:0 2px 7px color-mix(in srgb,var(--green) 30%,transparent);}
-.response-select-option[aria-selected="true"] small{color:rgba(255,255,255,.78);}
+.response-select-option:hover,.response-select-option:focus-visible{background:var(--bg-input);outline:none;}
+.response-select-option[aria-selected="true"]{background:var(--bg-card);color:var(--t1);box-shadow:var(--shadow-sm);}
+.response-select-option[aria-selected="true"] small{color:var(--t3);}
 .response-select-option:active{transform:scale(.98);}
 .hid-switch{display:inline-flex;align-items:center;gap:var(--space-2);cursor:pointer;position:relative}
 .hid-switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
@@ -852,7 +858,6 @@ html.dark .hid-switch-thumb{background:rgba(245,245,247,.90)}
 .info-val{font-family:'Mulish',sans-serif;font-size:var(--fs-base);color:var(--t1);font-weight:400;user-select:none;}
 html.dark .info-lbl{color:var(--t2)}
 html.dark .info-val{color:var(--t1)}
-html.dark #device-settings-chevron{color:var(--t3)}
 
 /* BOTTOM */
 .btn{display:inline-flex;align-items:center;gap:var(--space-1);padding:8px 12px;border-radius:var(--r-pill);font-family:'Mulish',sans-serif;font-size:var(--fs-md);font-weight:600;cursor:pointer;border:1px solid;transition:color .13s ease,background-color .13s ease,border-color .13s ease,transform var(--dur-press) ease,box-shadow .13s ease;white-space:nowrap}
@@ -997,7 +1002,7 @@ html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !imp
      go further still ("chci subtilnější, zmenšit") and align them with the
      Bank icon next to them — dropped to 28px, which is simply the base
      (non-touch) size these buttons already use elsewhere in the file
-     (.btn-remove-bank/.bank-action-btn below), so touch and mouse now
+     (.btn-remove-bank below), so touch and mouse now
      render identically instead of touch being enlarged. */
   .btn-remove-bank{width:28px;height:28px}
   .icon-picker-trigger{min-width:44px;min-height:44px}
@@ -2150,6 +2155,10 @@ button:focus-visible{outline-offset:3px;}
 
 /* Settings-style groups under the controls (spec 2026-09-26 §7). */
 .group-cap{margin:var(--space-4) 18px calc(-1 * var(--space-2));font-size:var(--fs-base);color:var(--t2)}
+/* .panels-row has gap:0 (unlike .center-col's 16px), so the negative bottom
+   margin above pulls the next group up into the caption text instead of just
+   closing the flex gap – "Bank" caption ends up half hidden (final review 1). */
+.panels-row>.group-cap{margin:var(--space-6) 18px var(--space-2)}
 .settings-group{background:var(--bg-card);border-radius:var(--r);overflow:hidden;box-shadow:none}
 .group-row{position:relative;display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:50px;padding:0 18px;border:0;background:none;color:var(--t1);font:400 var(--fs-xl) 'Mulish',sans-serif;text-align:left;cursor:pointer;box-sizing:border-box}
 .group-row+.group-row::before,.group-row+div:not(.group-row)::before,div:not(.group-row)+.group-row::before{content:'';position:absolute;top:0;left:18px;right:0;border-top:1px solid var(--border)}
@@ -2183,7 +2192,7 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
 /* Glass fallback + lighter compositor load on small screens. Inputs and steppers
    deliberately remain opaque so configuration values retain maximum contrast. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .panel,.bank-card,.modal,.icon-picker-modal,.toast,.sync-banner,.live-hud{background:var(--bg-card)}
+  .modal,.icon-picker-modal,.toast,.sync-banner{background:var(--bg-card)}
 }
 </style>
 </head>
@@ -2402,11 +2411,11 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       <div class="settings-subhead" id="help-faders">Faders</div>
       <p style="margin:0 0 12px">Each fader sends a MIDI <b>CC</b> on a <b>channel</b> you choose (Expression / Dynamics by default). The on-screen faders <b>mirror the hardware</b> – they are display only and cannot be dragged.</p>
       <div class="settings-subhead" id="help-banks">Banks</div>
-      <p style="margin:0 0 12px">Bank names and icons are saved in this browser and – with firmware 1.1.0+ – also on the device, so they follow it between computers. The frosty pill is the bank you're editing; the small controller icon marks the bank currently active on the hardware. Library setups show a review before changing the bank; built-in setups are starting points and should be checked against the exact library patch.</p>
+      <p style="margin:0 0 12px">Bank names and icons are saved in this browser and – with firmware 1.1.0+ – also on the device, so they follow it between computers. The flat pill is the bank you're editing; a small green dot marks the bank currently active on the hardware. Library setups show a review before changing the bank; built-in setups are starting points and should be checked against the exact library patch.</p>
       <div class="settings-subhead" id="help-roller">Roller modes</div>
       <p style="margin:0 0 12px"><b>Articulation</b> – the roller steps through articulations (UACC). <b>Keyswitch</b> – the roller sends note keyswitches selected on a piano keyboard (see below). <b>Navigation</b> – the roller sends a keyboard key per detent (e.g. arrows) to navigate your DAW; requires Keyboard (HID). <b>Relative CC</b> – the roller sends a relative step (value 1 = up, 127 = down) on the configured CC/channel, for external MIDI processing (e.g. a per-track keyswitch mapper).</p>
       <div class="settings-subhead" id="help-keyswitch">Keyswitch mode</div>
-      <p style="margin:0 0 12px">In Keyswitch mode the roller sends MIDI note keyswitches on the configured channel. Click one piano key or drag across a range; rotating the roller steps through the selected notes. Reorder long sequences by dragging chips or with Alt + arrow keys.</p>
+      <p style="margin:0 0 12px">In Keyswitch mode the roller sends MIDI note keyswitches on the configured channel. Click one piano key or drag across a range; rotating the roller steps through the selected notes. Reorder long sequences by dragging rows or with Alt + arrow keys.</p>
       <div class="settings-subhead" id="help-macro">Button macro (long-press)</div>
       <p style="margin:0 0 12px">A <b>long-press</b> (≥ 0.5 s) of the device button sends a defined key combo – e.g. play/stop or a DAW shortcut. Requires Keyboard (HID). A <b>short press</b> still cycles banks. The Button Macro panel remains visible while HID is off and offers a direct Enable Keyboard action.</p>
       <div class="settings-subhead" id="help-hid">Keyboard (HID)</div>
@@ -3735,6 +3744,16 @@ function encoderSectionContent(ctrl, bi, errs = validate()) {
 function syncUaccLiveRow() {
   document.querySelectorAll('#uacc-grid .seq-row').forEach(el => el.classList.toggle('is-live', encLiveVal !== null && +el.dataset.value === encLiveVal));
 }
+// Final review 2: the live value belongs to whichever bank is live on the
+// device. Bank switch (Program Change) and disconnect must drop BOTH the
+// in-memory live value and any stale .is-live marker before the next render,
+// or a row from the previous bank/session keeps reading as live.
+function clearLiveRows() {
+  encLiveVal = null;
+  ksLiveNote = null;
+  syncUaccLiveRow();
+  document.querySelectorAll('.seq-row.is-live[data-ksnote]').forEach(el => el.classList.remove('is-live'));
+}
 
 function renderUacc() {
   // UACC list is now rendered inline inside encoderPanel — no separate render needed
@@ -4511,15 +4530,15 @@ function removeBank(bi) {
   if (cfg.banks.length <= 1) { toast('e', t('toast.bank_min')); return; }
   const bankName = cfg.banks[bi].name || `Bank ${bi+1}`;
   openConfirm({
-    title: `Remove “${bankName}”?`,
+    title: `Delete “${bankName}”?`,
     message: 'This removes the bank from the local configuration. You can undo it from the change summary.',
-    confirmLabel: 'Remove bank',
+    confirmLabel: 'Delete bank',
     onConfirm: () => {
       const removed = JSON.parse(JSON.stringify(cfg.banks[bi]));
       cfg.banks.splice(bi, 1);
       if (activeBank >= cfg.banks.length) activeBank = cfg.banks.length - 1;
       dirty = true; render();
-      toast('i', `“${bankName}” removed`, {
+      toast('i', `“${bankName}” deleted`, {
         label: 'Undo',
         onClick: () => {
           cfg.banks.splice(Math.min(bi, cfg.banks.length), 0, removed);
@@ -5316,7 +5335,8 @@ function connectInputs(){
     _ffConnected = false;   // reset so the next physical connect triggers a fresh CMD_R
     DEVICE_INFO.schema_version = null;   // stale value could drive a false/suppressed firmware-mismatch warning for the next device
     DEVICE_INFO.update = null; renderFirmwareOffer();
-    liveSeen.f1 = false; liveSeen.f2 = false; encLiveVal = null; ksLiveNote = null;
+    liveSeen.f1 = false; liveSeen.f2 = false;
+    clearLiveRows();
     // Don't tear down UI if config is already loaded — device may reconnect shortly
     if (!loaded) {
       showWelcome();
@@ -5376,12 +5396,12 @@ function onMidiMsg(event){
     const pc=data[1];
     if(pc < cfg.banks.length){
       liveBank = pc;
+      clearLiveRows();   // drop the previous bank's live marker before any repaint
       if (!dirty) {
         if (_keyCapture) cancelKeyCapture();   // in-flight capture no longer matches the bank about to be shown
         activeBank = pc;   // sync UI to hardware — but not while the user has unsaved edits open
         renderPanels();
       }
-      encLiveVal = null; ksLiveNote = null;
       setActiveTab(activeBank);
       renderUacc();
       renderLiveStrip();
@@ -8359,6 +8379,16 @@ document.addEventListener('pointerdown', event => {
     statusEl.classList.remove('is-revealed');
     statusEl.setAttribute('aria-expanded', 'false');
   }
+});
+// Tabbing (or Shift+Tab) out of an open library popover closes it – otherwise it
+// stays open over the fader sections while focus moves elsewhere (final review 3).
+// Covers both directions: focus leaving to something after the popover, and
+// Shift+Tab from the search field back onto Browse… itself.
+document.addEventListener('focusout', event => {
+  const pop = event.target.closest('.library-popover:not([hidden])');
+  if (!pop) return;
+  const bi = Number(pop.id.split('-').pop());
+  if (!pop.contains(event.relatedTarget)) toggleLibraryPopover(bi, false);
 });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && document.getElementById('change-popover')?.classList.contains('is-open')) closeChangePopover();
