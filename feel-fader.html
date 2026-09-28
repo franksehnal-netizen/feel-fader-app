@@ -470,6 +470,10 @@ main{width:100%;}
   }
   .send-anchor:not(.docked) .send-change-note.is-visible{transform:translate(-50%,0) scale(1)}
   .send-anchor:not(.docked) .send-change-note.is-visible.is-swapping{transform:translate(-50%,2px) scale(.985)}
+  /* .send-change-note.is-feedback (line ~454) sets --green-text for "✓ Config
+     sent" / "Already in sync" / "✓ Device loaded"; it must outrank the grey
+     .t2 above (review finding, fix round 1) — success stays green everywhere. */
+  .send-anchor:not(.docked) .send-change-note.is-feedback{color:var(--green-text)}
   .send-anchor:not(.docked) .change-popover{top:calc(100% + 34px)}
 }
 .change-popover{

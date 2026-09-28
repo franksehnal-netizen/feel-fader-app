@@ -37,6 +37,26 @@ const pop = await p.evaluate(() => {
 });
 P('change popover opens below the note, not over it', pop.gap >= 4, JSON.stringify(pop));
 await p.evaluate(() => toggleChangePopover(false));
+
+// Review finding (fix round 1): .send-anchor:not(.docked) .send-change-note
+// ties in specificity with .send-change-note.is-feedback and used to win by
+// source order, greying out the success feedback on desktop. Success must
+// stay green (spec: green reserved for success states).
+await p.evaluate(() => { dirty = false; showSendInlineFeedback('Already in sync'); });
+await wait(600);
+const feedback = await p.evaluate(() => {
+  const note = document.getElementById('send-change-note');
+  const probe = document.createElement('span');
+  probe.style.color = 'var(--green-text)';
+  document.body.appendChild(probe);
+  const green = getComputedStyle(probe).color;
+  probe.remove();
+  return { color: getComputedStyle(note).color, green, isFeedback: note.classList.contains('is-feedback') };
+});
+P('success feedback ("Already in sync") stays green on desktop', feedback.isFeedback && feedback.color === feedback.green, JSON.stringify(feedback));
+// Restore the dirty-note state the docked check below expects.
+await p.evaluate(() => { clearTimeout(_sendInlineTimer); _sendInlineFeedback = ''; dirty = true; syncSendChangeNote(); updateChangeSummary(); });
+
 await p.evaluate(() => { document.getElementById('controller-toggle-input').click(); });
 await wait(1500);
 const docked = await p.evaluate(() => {

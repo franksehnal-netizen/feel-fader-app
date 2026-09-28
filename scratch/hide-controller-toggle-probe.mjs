@@ -134,7 +134,7 @@ const dirtyNote = await p.evaluate(() => {
     resolve({ text: note.textContent, visible: getComputedStyle(note).display !== 'none' });
   }, 500));
 });
-P('unsaved-changes note is visible alongside Send in the sticky row', dirtyNote.visible && /change/i.test(dirtyNote.text), JSON.stringify(dirtyNote));
+P('"N changes · Review" note is visible alongside Send in the sticky row', dirtyNote.visible && /change/i.test(dirtyNote.text), JSON.stringify(dirtyNote));
 
 // Panels below must not stretch to fill the reclaimed space. .panel carries
 // flex:1 (for equal widths inside .panels-row); the standalone wide panels
