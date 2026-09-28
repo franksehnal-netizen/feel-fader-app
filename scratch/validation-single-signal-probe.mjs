@@ -123,12 +123,15 @@ const visibleSectionErrors = () => p.evaluate(() => {
 // starting point is itself error-free) and measure the settled height.
 await p.evaluate(() => { setRollerMode(0,'keyswitch'); renderPanels(); runValidation(); });
 await new Promise(r => setTimeout(r, 150));
-const ksHeightBefore = await rollerSectionH();
+// The keyswitch list is visible main content since UX audit 2026-09-28 N-2,
+// so emptying it shrinks the section by design – compare without the list.
+const ksListH = () => p.evaluate(() => document.getElementById('ks-tags-0').getBoundingClientRect().height);
+const ksHeightBefore = await rollerSectionH() - await ksListH();
 
 // Empty the note list -> validate() emits "add at least one keyswitch note".
 await p.evaluate(() => { cfg.banks[0].ks_notes = []; renderPanels(); runValidation(); });
 await new Promise(r => setTimeout(r, 150));
-const ksHeightAfter = await rollerSectionH();
+const ksHeightAfter = await rollerSectionH() - await ksListH();
 const ks = await visibleSectionErrors();
 P('keyswitch mode: exactly one visible roller error', ks.count === 1, `${ks.count}: ${ks.text}`);
 P('keyswitch mode: roller error text is non-empty', ks.text.length > 0, JSON.stringify(ks.text));

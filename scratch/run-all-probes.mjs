@@ -122,6 +122,8 @@ const PROBES = [
   'n1-new-bank-copies-active-probe.mjs',
   'n6-cc-conflict-both-controls-probe.mjs',
   'n5-review-values-probe.mjs',
+  'n2-keyswitch-order-visible-probe.mjs',
+  'n7-library-picker-groups-probe.mjs',
   'audit/p1-xss-config-import.mjs',
   'audit/p1-proto-pollution.mjs',
   'audit/p1-macro-nav-xss.mjs',
