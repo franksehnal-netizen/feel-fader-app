@@ -279,7 +279,7 @@ Na desktopu je stav připojení trvale čitelný text vedle bodu — jakmile se 
 
 **Interakce:**
 - Klik na záložku → `selectBank(i)` — přepne `activeBank` a překreslí panely
-- Tlačítko „+" → `addBank()` — přidá bank s defaultní konfigurací
+- Tlačítko „+" → `addBank()` — přidá na konec kopii aktivního banku (mapování, kanál, roller) jako „Bank N" a přepne na ni; Library setup neotevírá
 - Drag & drop záložky → změní pořadí banků v `cfg.banks`; stejné pořadí se po **Send to device** používá při přepínání na hardware.
 - Šipky u názvu banku → přístupná alternativa změny pořadí pro klávesnici a dotyk.
 

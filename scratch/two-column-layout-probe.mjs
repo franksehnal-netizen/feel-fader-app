@@ -94,5 +94,19 @@ for (const [W, H] of [[1440, 900], [1100, 760]]) {
   await p.close();
 }
 
+// UX audit 2026-09-28 N-3: the single-column .stage clipped "N changes · Review".
+for (const [W, H] of [[1080, 800], [960, 800]]) {
+  const p = await open(W, H);
+  await p.evaluate(() => duplicateBank(activeBank)); await wait(500);
+  const note = await p.evaluate(() => {
+    const n = document.getElementById('send-change-note'), st = document.querySelector('.stage'), cs = getComputedStyle(st);
+    const margin = cs.overflow === 'clip' ? parseFloat(cs.overflowClipMargin) || 0 : 0;
+    return { vis: n.classList.contains('is-visible'), nb: Math.round(n.getBoundingClientRect().bottom), clip: Math.round(st.getBoundingClientRect().bottom + margin), card: Math.round(document.querySelector('.bank-card').getBoundingClientRect().top) };
+  });
+  P(`${W} (single column): change note under Send is not clipped`, note.vis && note.nb <= note.clip, JSON.stringify(note));
+  P(`${W} (single column): change note stays above the bank card`, note.nb <= note.card, JSON.stringify(note));
+  await p.close();
+}
+
 P('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();

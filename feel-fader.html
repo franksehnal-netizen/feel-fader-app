@@ -347,6 +347,14 @@ main{width:100%;}
   body:has(#welcome-screen.hidden) .center-col>.settings-col{grid-column:2;grid-row:1;padding-top:32px}
   @media(prefers-reduced-motion:reduce){.center-col{transition:none}}
 }
+/* Single-column desktop: the change note under Send ends ~11px below .stage,
+   which clipped it (UX audit 2026-09-28, N-3). It still fits inside the 32px
+   gap above the bank card, so extend the clip instead of the padding – more
+   padding would break the centred Send (mobile-ux-probe). Mobile keeps its
+   own note placement. */
+@media(min-width:601px) and (max-width:1099px){
+  body:has(#welcome-screen.hidden) .center-col>.stage-collapse>.stage{overflow:clip;overflow-clip-margin:24px}
+}
 
 /* STAGE
    Coupled single-phase choreography (Frank 2026-07-26): the box (grid rows)
@@ -3050,27 +3058,62 @@ function recordConfigCheckpoint() {
     _lastRenderedConfig = cloneConfig(cfg);
   }
 }
+// "CC11 → CC7" / "Ch 1 → Ch 2" / both – Review shows values, not categories
+// (UX audit 2026-09-28, N-5).
+function mappingChangeText(name, now = {}, before = {}) {
+  const cc = now.cc !== before.cc, ch = now.channel !== before.channel;
+  if (cc && ch) return `${name} Ch ${before.channel+1} · CC${before.cc} → Ch ${now.channel+1} · CC${now.cc}`;
+  if (cc) return `${name} CC${before.cc} → CC${now.cc}`;
+  if (ch) return `${name} Ch ${before.channel+1} → Ch ${now.channel+1}`;
+  return '';
+}
+function listChangeText(noun, now = [], before = []) {
+  return now.length !== before.length ? `${noun} ${before.length} → ${now.length}` : noun;
+}
 function configChangeItems(base = _syncedConfigSnapshot, current = cfg) {
   const items = [], same = (a,b) => configSignature(a) === configSignature(b);
   const oldBanks = base?.banks || [], newBanks = current?.banks || [];
-  const oldOrder = oldBanks.map(bank => bank.name || '').join('\u0000');
-  const newOrder = newBanks.map(bank => bank.name || '').join('\u0000');
+  const names = banks => banks.map(bank => bank.name || '');
   if (oldBanks.length !== newBanks.length) items.push(`Banks: ${oldBanks.length} → ${newBanks.length}`);
-  else if (oldOrder !== newOrder) items.push('Bank order or names');
+  else if (names(oldBanks).join('\u0000') !== names(newBanks).join('\u0000')
+    && [...names(oldBanks)].sort().join('\u0000') === [...names(newBanks)].sort().join('\u0000')) items.push('Bank order');
   newBanks.forEach((bank,index) => {
     const label = bank.name || `Bank ${index+1}`;
     const sameName = oldBanks.filter(item => (item.name || '') === (bank.name || ''));
     const before = sameName.length === 1 ? sameName[0] : oldBanks[index];
     if (!before) { items.push(`${label}: new bank`); return; }
+    // Renames are per bank, independent of a bank count change.
+    if ((before.name || '') !== (bank.name || '')) items.push(`${before.name || `Bank ${index+1}`} renamed → ${label}`);
     if (bank.icon !== before.icon) items.push(`${label}: icon`);
-    if (!same(bank.fader1,before.fader1)) items.push(`${label}: ${faderDisplayName(bank.fader1,'fader1')} mapping`);
-    if (!same(bank.fader2,before.fader2)) items.push(`${label}: ${faderDisplayName(bank.fader2,'fader2')} mapping`);
-    const rollerNow = {encoder:bank.encoder,roller_mode:bank.roller_mode,nav_keys_cw:bank.nav_keys_cw,nav_keys_ccw:bank.nav_keys_ccw,nav_invert:bank.nav_invert};
-    const rollerBefore = {encoder:before.encoder,roller_mode:before.roller_mode,nav_keys_cw:before.nav_keys_cw,nav_keys_ccw:before.nav_keys_ccw,nav_invert:before.nav_invert};
-    if (!same(rollerNow,rollerBefore)) items.push(`${label}: Roller`);
-    const articulationsNow = {uacc_values:bank.uacc_values,ks_notes:bank.ks_notes,ks_names:bank.ks_names,ks_channel:bank.ks_channel,ks_velocity:bank.ks_velocity};
-    const articulationsBefore = {uacc_values:before.uacc_values,ks_notes:before.ks_notes,ks_names:before.ks_names,ks_channel:before.ks_channel,ks_velocity:before.ks_velocity};
-    if (!same(articulationsNow,articulationsBefore)) items.push(`${label}: articulations / keyswitches`);
+    ['fader1','fader2'].forEach(key => {
+      if (same(bank[key],before[key])) return;
+      const name = faderDisplayName(bank[key],key), oldName = faderDisplayName(before[key],key);
+      const parts = [];
+      if (name !== oldName) parts.push(`${oldName} renamed → ${name}`);
+      const mapping = mappingChangeText(name, bank[key], before[key]);
+      if (mapping) parts.push(mapping);
+      if (!parts.length) parts.push(`${name} mapping`);
+      parts.forEach(part => items.push(`${label}: ${part}`));
+    });
+    const modeNow = bank.roller_mode || 'cc', modeBefore = before.roller_mode || 'cc';
+    const navNow = {nav_keys_cw:bank.nav_keys_cw,nav_keys_ccw:bank.nav_keys_ccw,nav_invert:bank.nav_invert};
+    const navBefore = {nav_keys_cw:before.nav_keys_cw,nav_keys_ccw:before.nav_keys_ccw,nav_invert:before.nav_invert};
+    const rollerParts = [];
+    if (modeNow !== modeBefore) rollerParts.push(`Roller ${rollerModeTitle(modeBefore)} → ${rollerModeTitle(modeNow)}`);
+    const rollerMapping = mappingChangeText('Roller', bank.encoder, before.encoder);
+    if (rollerMapping) rollerParts.push(rollerMapping);
+    else if (!same(bank.encoder,before.encoder)) rollerParts.push('Roller');
+    if (!same(navNow,navBefore)) rollerParts.push('Roller navigation keys');
+    rollerParts.forEach(part => items.push(`${label}: ${part}`));
+    // A mode switch auto-fills the new mode's list – it is part of that one
+    // item, not a separate "articulations / keyswitches" change.
+    if (modeNow === modeBefore) {
+      if (!same(bank.uacc_values,before.uacc_values)) items.push(`${label}: ${listChangeText('articulations', bank.uacc_values, before.uacc_values)}`);
+      if (!same(bank.ks_notes,before.ks_notes)) items.push(`${label}: ${listChangeText('keyswitches', bank.ks_notes, before.ks_notes)}`);
+      if (!same(bank.ks_names,before.ks_names)) items.push(`${label}: keyswitch names`);
+      if (bank.ks_channel !== before.ks_channel) items.push(`${label}: keyswitch Ch ${before.ks_channel+1} → Ch ${bank.ks_channel+1}`);
+      if (bank.ks_velocity !== before.ks_velocity) items.push(`${label}: keyswitch velocity ${before.ks_velocity} → ${bank.ks_velocity}`);
+    }
   });
   if (!same(base?.macro_keys || [],current?.macro_keys || [])) items.push('Button macro');
   if ((base?.macro_global !== false) !== (current?.macro_global !== false)) items.push('Button macro scope');
@@ -4554,39 +4597,33 @@ function closeConfirm(accepted) {
 }
 
 function nextBankName() {
-  // Find the lowest number not already used by any "Bank N" name
+  // Named by the new bank's position (appended last); a taken number moves
+  // on to the next free one. Filling the lowest freed number named the 4th
+  // bank "Bank 2" after a rename (Frank 2026-09-28).
   const used = new Set(
     cfg.banks
       .map(b => b.name?.match(/^Bank (\d+)$/))
       .filter(Boolean)
       .map(m => parseInt(m[1], 10))
   );
-  let n = 1;
+  let n = cfg.banks.length + 1;
   while (used.has(n)) n++;
   return 'Bank ' + n;
 }
 
 function addBank() {
   if (cfg.banks.length >= MAX_BANKS) { toast('i', t('toast.bank_max')); return; }
-  const bi   = cfg.banks.length;
-  const name = nextBankName();
-  cfg.banks.push({
-    name,
-    icon:        '',
-    uacc_values: [...DEFAULT_UACC],
-    fader1:      {cc:1,  channel:bi%16, label:'Expression'},
-    fader2:      {cc:2,  channel:bi%16, label:'Dynamics'},
-    encoder:     {cc:32, channel:bi%16},
-    roller_mode: 'cc',
-    ks_notes:    [],
-    ks_channel:  bi % 16,
-    ks_velocity: 100,
-    nav_keys_cw:  [0x52],
-    nav_keys_ccw: [0x51],
-    nav_invert:   false,
-    macro_keys:   [],
-  });
-  dirty = true; render();
+  // "+" = next bank as a copy of the one being edited (same mapping, channel
+  // and labels), appended as "Bank N" and selected. The old fixed defaults
+  // (CC1 "Expression", channel = index) contradicted the CC names and shifted
+  // the channel (UX audit 2026-09-28, N-1).
+  const copy = JSON.parse(JSON.stringify(cfg.banks[activeBank]));
+  copy.name = nextBankName();
+  cfg.banks.push(copy);
+  activeBank = cfg.banks.length - 1;
+  dirty = true;
+  _lastRenderedBank = -1;
+  render();
 }
 function removeBank(bi) {
   if (cfg.banks.length <= 1) { toast('e', t('toast.bank_min')); return; }
@@ -4998,10 +5035,13 @@ function validate() {
     for (let a = 0; a < ctrls.length - 1; a++) {
       for (let bb = a + 1; bb < ctrls.length; bb++) {
         const ca = b[ctrls[a]], cb = b[ctrls[bb]];
-        if (ca && cb && ca.cc === cb.cc && ca.channel === cb.channel)
-          errs.push({field:`b${i}.${ctrls[a]}`, target:`b${i}-${ctrls[a]}-cc`, msg:t('validate.cc_conflict')
-            .replace('{b}', b.name||i+1).replace('{k1}', controlFriendlyName(b,ctrls[a])).replace('{k2}', controlFriendlyName(b,ctrls[bb]))
-            .replace('{cc}', ca.cc).replace('{ch}', ca.channel+1)});
+        if (!(ca && cb && ca.cc === cb.cc && ca.channel === cb.channel)) continue;
+        // Both sides of the pair, each named first from its own section – the
+        // one being edited used to stay silent (UX audit 2026-09-28, N-6).
+        [[ctrls[a], ctrls[bb]], [ctrls[bb], ctrls[a]]].forEach(([own, other]) =>
+          errs.push({field:`b${i}.${own}`, target:`b${i}-${own}-cc`, msg:t('validate.cc_conflict')
+            .replace('{b}', b.name||i+1).replace('{k1}', controlFriendlyName(b,own)).replace('{k2}', controlFriendlyName(b,other))
+            .replace('{cc}', ca.cc).replace('{ch}', ca.channel+1)}));
       }
     }
   });
