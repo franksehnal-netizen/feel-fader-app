@@ -54,17 +54,6 @@ const feedback = await p.evaluate(() => {
   return { color: getComputedStyle(note).color, green, isFeedback: note.classList.contains('is-feedback') };
 });
 P('success feedback ("Already in sync") stays green on desktop', feedback.isFeedback && feedback.color === feedback.green, JSON.stringify(feedback));
-// Restore the dirty-note state the docked check below expects.
-await p.evaluate(() => { clearTimeout(_sendInlineTimer); _sendInlineFeedback = ''; dirty = true; syncSendChangeNote(); updateChangeSummary(); });
-
-await p.evaluate(() => { document.getElementById('controller-toggle-input').click(); });
-await wait(1500);
-const docked = await p.evaluate(() => {
-  const note = document.getElementById('send-change-note').getBoundingClientRect();
-  const btn = document.getElementById('send-btn').getBoundingClientRect();
-  return { leftOf: note.right <= btn.left + 1, sameRow: Math.abs((note.top + note.bottom) / 2 - (btn.top + btn.bottom) / 2) < 3 };
-});
-P('docked Send keeps the note on its left', docked.leftOf && docked.sameRow, JSON.stringify(docked));
 P('no page errors', errs.length === 0, errs.join(' | '));
 await p.close();
 await b.close();

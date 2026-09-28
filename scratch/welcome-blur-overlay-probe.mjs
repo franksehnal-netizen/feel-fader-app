@@ -102,12 +102,10 @@ const hitTest = await p3.evaluate(() => {
 });
 P('clicking where a fader sits hits the welcome overlay, not the fader', !hitTest.hitIsThumb && hitTest.hitInsideWelcome, JSON.stringify(hitTest));
 
-// 5. Interplay with the "hide controller" toggle: a previously-hidden
-//    preference must not hijack #send-btn's position:fixed containing block.
-//    (.stage gets `transform` from .stage-collapse.is-collapsed>.stage — if
-//    that class were applied before welcome closes, #send-btn.welcome-floating
-//    would resolve `fixed` against the transformed .stage instead of the
-//    viewport. Fix: applyStageCollapse() is deferred until finalizeWelcomeExit().)
+// 5. A stale "hide controller" preference from before 2026-09-29 (the switch
+//    is gone) must neither transform .stage during welcome (that would hijack
+//    #send-btn's position:fixed containing block) nor collapse the controller
+//    after it.
 const p4 = await b.newPage();
 p4.on('pageerror', e => errs.push(String(e)));
 await p4.setViewport({ width: 1280, height: 900 });
@@ -136,7 +134,7 @@ P('#send-btn.welcome-floating is centered on the true viewport, not a transforme
 await p4.evaluate(() => skipWelcome());
 await new Promise(r => setTimeout(r, 200));
 const afterSkipHidden = await p4.evaluate(() => document.getElementById('stage-collapse').classList.contains('is-collapsed'));
-P('stage-collapse applies once welcome has actually closed', afterSkipHidden, String(afterSkipHidden));
+P('a stale ff-controller-hidden no longer collapses the controller after welcome', !afterSkipHidden, String(afterSkipHidden));
 await p4.evaluate(() => localStorage.removeItem('ff-controller-hidden'));
 
 // 6. Hit-test #send-btn's own on-screen paint position while welcome is up.

@@ -8,7 +8,7 @@
 //     cannot be pushed up under the top bar (top limit = header bottom + the
 //     same margin used on the sides)
 //   - position + size persist under ff_live_hud_pos and restore on reload
-//   - Home / double-click reset to default
+//   - Home / double-click send it to the top-left corner at 1x (Frank 2026-09-29)
 //   - glass matches the header exactly (no idle dimming) and left is animated
 //     so reset / enlarge read as one smooth glide, not a jump-then-slide
 import { createRequire } from 'module';
@@ -21,14 +21,14 @@ const errs=[];
 
 const p = await b.newPage();
 p.on('pageerror', e => errs.push(String(e)));
-// Undocked desktop HUD (144 px, top-left): from 900 px the default HUD docks beside
-// the controller (two-column-layout-probe) and below it the square is the compact
-// 112 px, so test on a wide desktop with the controller hidden (UX audit 2026-09-28 N-4).
+// Wide desktop HUD (144 px). From 900 px the default HUD docks beside the
+// controller (placement: two-column-layout-probe); below it the square is the
+// compact 112 px (UX audit 2026-09-28 N-4).
 await p.setViewport({ width: 1440, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 await p.evaluate(() => { localStorage.removeItem('ff_live_hud_pos'); });
-await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); toggleControllerVisibility(false); });
-await new Promise(r => setTimeout(r, 1600)); // settle the fade-in and the controller hide
+await p.evaluate(() => { try{skipWelcome&&skipWelcome()}catch(e){} _midiState='granted'; _ffConnected=true; _serialPort={}; connState(); renderConnState(); initLiveHudPositioning(); renderLiveStrip(); updateContextualLiveStrip(); document.getElementById('live-strip').classList.add('is-contextual-visible'); });
+await new Promise(r => setTimeout(r, 1600)); // settle the fade-in
 
 // 1. Default placement: 144x144, top-left, just under the header
 const def = await p.evaluate(() => {
@@ -37,7 +37,6 @@ const def = await p.evaluate(() => {
   return { w: Math.round(s.width), h: Math.round(s.height), left: Math.round(s.left), top: Math.round(s.top), headerBottom: Math.round(hb) };
 });
 P('default HUD is 144x144', near(def.w,144) && near(def.h,144), JSON.stringify(def));
-P('default sits top-left just under the header (~12px below)', near(def.left,28,2) && near(def.top, def.headerBottom+12, 2), JSON.stringify(def));
 
 // 2. Size toggle -> 2x, then back
 const sizes = await p.evaluate(async () => {
@@ -87,14 +86,15 @@ const restored = await p.evaluate(() => ({ x: _liveHudState.x, y: _liveHudState.
   scale: getComputedStyle(document.getElementById('live-strip')).getPropertyValue('--hud-scale').trim() }));
 P('position + size restore from localStorage on reload', restored.x===620 && restored.y===300 && restored.large===true && restored.scale==='2', JSON.stringify(restored));
 
-// 6. Reset returns to default
+// 6. Reset (double-click / Home) sends it to the top-left corner at 1x and persists that
 const reset = await p.evaluate(() => {
   resetLiveHud();
   const strip = document.getElementById('live-strip');
-  return { inlineLeft: strip.style.left, dataSide: strip.dataset.side, large: _liveHudState.large,
+  const hb = document.querySelector('header').getBoundingClientRect().bottom;
+  return { inlineLeft: strip.style.left, top: Math.round(parseFloat(strip.style.top) - hb), large: _liveHudState.large,
     saved: JSON.parse(localStorage.getItem('ff_live_hud_pos')||'null') };
 });
-P('reset clears custom position and size (back to default)', !reset.inlineLeft && reset.dataSide==='left' && reset.large===false && reset.saved && reset.saved.x===null, JSON.stringify(reset));
+P('reset sends the HUD to the top-left corner at 1x and persists it', reset.inlineLeft==='12px' && reset.top===12 && reset.large===false && reset.saved && reset.saved.x===12, JSON.stringify(reset));
 
 // 7. Glass matches the header exactly — no idle dimming (opacity 1 even when idle)
 const glass = await p.evaluate(async () => {

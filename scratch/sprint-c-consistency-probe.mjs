@@ -83,7 +83,7 @@ const n10 = await p.evaluate(() => {
     settingsWording: document.body.innerHTML.includes('Device &amp; Settings'),
   };
 });
-P('N-10: Live monitor switch sits in the header next to Controller', n10.liveInHeader && n10.controllerInHeader, JSON.stringify(n10));
+P('N-10: Live monitor switch sits in the header, Controller switch is gone', n10.liveInHeader && !n10.controllerInHeader, JSON.stringify(n10));
 P('N-10: no separate Application settings group', !n10.appGroup);
 P('N-10: device row is called "Device"', n10.label === 'Device', n10.label);
 P('N-10: device summary says "Not connected" / "Firmware 1.3.0"', n10.before === 'Not connected' && n10.after === 'Firmware 1.3.0' && n10.disconnected === 'Not connected', JSON.stringify(n10));
@@ -118,17 +118,19 @@ const n13 = await p.evaluate(() => {
 P('N-13: keyswitch preview lists names and "+N more"', /Legato/.test(n13.lux) && /\+\d+ more/.test(n13.lux), n13.lux);
 P('N-13: UACC preview lists articulation names', new RegExp(await p.evaluate(() => uaccName(LIBRARY_PRESETS['Spitfire BBC Symphony Orchestra'].uacc_values[0]))).test(n13.bbc), n13.bbc);
 
-// N-13b: "Enable Keyboard…" has a visible edge in dark mode.
+// N-13b: "Enable Keyboard…" stands out in dark mode – since 2026-09-29 the
+// notice is flat, so the filled pill (not an extra border) carries it.
 const n13b = await p.evaluate(() => {
   document.documentElement.setAttribute('data-theme', 'dark');
   cfg.banks[0].roller_mode = 'track_nav'; DEVICE_INFO.hid_enabled = false; _openSections.add('roller'); render();
   const btn = document.querySelector('.hid-inline-action');
   const cs = btn && getComputedStyle(btn);
-  const out = { found: !!btn, border: cs?.borderTopColor, width: cs?.borderTopWidth };
+  const card = getComputedStyle(document.querySelector('.bank-card')).backgroundColor;
+  const out = { found: !!btn, bg: cs?.backgroundColor, card };
   document.documentElement.removeAttribute('data-theme'); cfg.banks[0].roller_mode = 'cc'; render();
   return out;
 });
-P('N-13: "Enable Keyboard…" has a visible border in dark mode', n13b.found && n13b.width !== '0px' && !/rgba\(0, 0, 0, 0\)/.test(n13b.border), JSON.stringify(n13b));
+P('N-13: "Enable Keyboard…" is a filled pill distinct from the card in dark mode', n13b.found && n13b.bg !== n13b.card && !/rgba\(0, 0, 0, 0\)/.test(n13b.bg), JSON.stringify(n13b));
 
 // N-13c: the Browse… focus ring does not cover "Library setup".
 const n13c = await p.evaluate(() => {

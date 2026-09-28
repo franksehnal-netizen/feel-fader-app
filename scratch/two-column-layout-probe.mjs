@@ -63,16 +63,24 @@ for (const [W, H] of [[1440, 900], [1100, 760], [1080, 800], [960, 800], [900, 7
   P(`${W}: controller does not move when the HUD appears`, (await rect(p, '#device-home')).l === devOn.l);
   await p.evaluate(() => { _liveHudState.x = 700; _liveHudState.y = 300; applyLiveHudState(true); }); await wait(400);
   P(`${W}: controller does not move when the HUD is dragged away`, (await rect(p, '#device-home')).l === devOn.l);
-  await p.evaluate(() => resetLiveHud()); await wait(500);
-  P(`${W}: reset (dblclick/Home) returns the HUD to its slot`, (await rect(p, '#live-strip')).l === (await rect(p, '#stage-collapse')).l);
-
-  await p.evaluate(() => toggleControllerVisibility(false)); await wait(1500);
-  set = await rect(p, '#settings-col');
-  P(`${W}: hidden controller – editor re-centers, HUD undocked`, Math.abs((set.l + set.w / 2) - W / 2) < 12 && !(await p.evaluate(() => document.body.classList.contains('hud-docked'))), JSON.stringify(set));
-  // HUD re-docks after the 1.1 s column animation (1.3 s timer) + its .36 s glide.
-  await p.evaluate(() => toggleControllerVisibility(true)); await wait(2200);
-  hud = await rect(p, '#live-strip'); col = await rect(p, '#stage-collapse');
-  P(`${W}: controller shown again – HUD re-docks`, hud.l === col.l, JSON.stringify({ hud, col }));
+  // Double-click (and Home) send the HUD to the top-left corner, not back to
+  // the docked slot (Frank 2026-09-29).
+  await p.evaluate(() => document.getElementById('live-strip').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))); await wait(500);
+  const corner = await p.evaluate(() => {
+    const s = document.getElementById('live-strip').getBoundingClientRect();
+    return { l: Math.round(s.left), gap: Math.round(s.top - document.querySelector('header').getBoundingClientRect().bottom),
+      docked: document.body.classList.contains('hud-docked'), large: _liveHudState.large };
+  });
+  P(`${W}: double-click sends the HUD to the top-left corner (12 px margins, 1x)`, corner.l === 12 && corner.gap === 12 && !corner.docked && !corner.large, JSON.stringify(corner));
+  P(`${W}: controller does not move when the HUD goes to the corner`, (await rect(p, '#device-home')).l === devOn.l);
+  const home = await p.evaluate(async () => {
+    _liveHudState.x = 700; _liveHudState.y = 300; applyLiveHudState(true);
+    const strip = document.getElementById('live-strip');
+    strip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 450));
+    return { x: _liveHudState.x, left: Math.round(strip.getBoundingClientRect().left) };
+  });
+  P(`${W}: Home also sends the HUD to the corner`, home.x === 12 && home.left === 12, JSON.stringify(home));
   await p.close();
 }
 
@@ -80,16 +88,19 @@ for (const [W, H] of [[1440, 900], [1100, 760], [1080, 800], [960, 800], [900, 7
   const p = await open(880, 800);
   const one = await p.evaluate(() => ({ grid: getComputedStyle(document.querySelector('.center-col')).display, docked: document.body.classList.contains('hud-docked') }));
   P('below 900 px: single column, HUD not docked', one.grid !== 'grid' && !one.docked, JSON.stringify(one));
-  // UX audit 2026-09-28 N-10: Live monitor moved next to Controller in the header.
+  // UX audit 2026-09-28 N-10: Live monitor sits in the header; the Controller
+  // switch next to it was removed (Frank 2026-09-29).
   const app = await p.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-group="feel-fader"] > .group-row')].map(r => r.id);
     const sw = document.getElementById('live-hud-switch');
     const inHeader = document.querySelector('header').contains(sw);
+    const controllerSwitch = !!document.getElementById('controller-toggle-input');
     sw.click();
-    return { rows, inHeader, hudOff: !document.getElementById('live-strip').classList.contains('is-contextual-visible') && localStorage.getItem('ff_live_hud_enabled') === '0' };
+    return { rows, inHeader, controllerSwitch, hudOff: !document.getElementById('live-strip').classList.contains('is-contextual-visible') && localStorage.getItem('ff_live_hud_enabled') === '0' };
   });
   P('Feel Fader group has no Application settings row; Live monitor switch sits in the header', app.rows[0] === 'bank-actions-toggle-btn' && !app.rows.includes('app-settings-toggle-btn') && app.inHeader, JSON.stringify(app));
   P('Live monitor switch in the header turns the HUD off', app.hudOff, JSON.stringify(app));
+  P('header has no Controller show/hide switch', !app.controllerSwitch, JSON.stringify(app));
   await p.close();
 }
 
