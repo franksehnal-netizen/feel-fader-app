@@ -56,6 +56,13 @@ Feel Fader web app dává smysl **jen na desktopu s fyzicky připojeným control
 5. Chrome DevTools MCP zapni pouze pro živý problém, který probe nevysvětluje
    (console, network, performance nebo interaktivní stav).
 
+**Invariant – nikdy `node scratch/<probe>.mjs` přímo.** Každý start headless
+Chrome s čistým profilem = 1 neúspěšné přihlášení do Windows (Security 4625);
+10 za 10 min zamkne Frankův účet i RDP (2026-09-29). `npm test -- a.mjs b.mjs`
+jede v jednom sdíleném Chrome. Ad-hoc screenshoty dělej v jednom `launch`
+(víc stránek), max ~5 startů Chrome za 10 min. Přímé spuštění blokuje
+uživatelský hook `~/.claude/hooks/guard-headless-chrome.ps1`.
+
 **Invariant — MCP nikdy nesahá na reálný HW.** MCP-driven session běží přes stejný interní-stav-poke vzor jako probes (`_midiState = 'granted'; _ffConnected = true; _serialPort = {}; connState(); renderConnState();` přes `evaluate`). **Nikdy** reálný `navigator.serial.requestPort()` + SysEx přes MCP → zasekne MIDI endpoint (chce replug, HW nález 2026-07-07). Reálný HW test zůstává ruční, mimo MCP.
 
 **Mechanika:** `.mcp.json` obsahuje jen Chrome DevTools a je cwd-scoped. Server

@@ -36,8 +36,9 @@ P('N-8: HUD range uses a compact "→"', n8.hud === 'Ch1·C0→G0', n8.hud);
 P('N-8: diagnostics range uses " → "', n8.diag.endsWith('C0 → G0'), n8.diag);
 P('N-8: library picker range uses " → "', / → /.test(n8.picker) && !/[A-G]#?-?\d–/.test(n8.picker), n8.picker);
 
-// N-9: prose and plain numbers in Mulish (DM Mono has a slashed zero); Ch/CC
-// and note tokens stay mono; one "Ch 1 · CC11" format outside the HUD.
+// N-9: prose and plain numbers in Mulish; Ch/CC and note tokens are Mulish 600
+// with tabular figures (DM Mono dropped 2026-09-29); one "Ch 1 · CC11" format
+// outside the HUD.
 const n9 = await p.evaluate(() => {
   _openSections.add('roller'); _openSections.add('fader1'); render();
   const fam = sel => { const el = document.querySelector(sel); return el ? getComputedStyle(el).fontFamily : 'missing'; };
@@ -48,6 +49,9 @@ const n9 = await p.evaluate(() => {
   const diag = midiDiagnosticsData();
   return {
     label: fam('.section-summary-label'), meta: fam('.section-summary-meta'),
+    metaWeight: getComputedStyle(document.querySelector('.section-summary-meta')).fontWeight, metaNum: num('.section-summary-meta'),
+    labelWeight: getComputedStyle(document.querySelector('.section-summary-label')).fontWeight,
+    monoLeft: [...document.querySelectorAll('*')].filter(el => /DM Mono|monospace/.test(getComputedStyle(el).fontFamily) && !el.closest('script,style,code,pre')).length,
     seqValue: fam('.seq-value'), seqIndex: fam('.seq-index'), ksKey: fam('.ks-key'), ksStep: fam('.ks-stepval'), stepper: fam('.stepper input'),
     seqNum: num('.seq-value'), stepperNum: num('.stepper input'),
     ccSpaced: texts.filter(t => /\bCC \d/.test(t)),
@@ -57,7 +61,8 @@ const n9 = await p.evaluate(() => {
 });
 const mulish = f => /Mulish/.test(f) && !/DM Mono/.test(f);
 P('N-9: prose summary ("8 keyswitches") in Mulish', mulish(n9.label), n9.label);
-P('N-9: Ch/CC and note tokens stay in DM Mono', /DM Mono/.test(n9.meta), n9.meta);
+P('N-9: Ch/CC and note tokens in Mulish 600, heavier than the 400 prose', mulish(n9.meta) && n9.metaWeight === '600' && n9.labelWeight === '400' && /tabular-nums/.test(n9.metaNum), JSON.stringify({ meta: n9.meta, w: n9.metaWeight, lw: n9.labelWeight, num: n9.metaNum }));
+P('no element renders in DM Mono / monospace any more', n9.monoLeft === 0, String(n9.monoLeft));
 P('N-9: roller order values and index in Mulish', mulish(n9.seqValue) && mulish(n9.seqIndex), `${n9.seqValue} / ${n9.seqIndex}`);
 P('N-9: keyboard labels and FROM/TO in Mulish', mulish(n9.ksKey) && mulish(n9.ksStep), `${n9.ksKey} / ${n9.ksStep}`);
 P('N-9: stepper numbers (channel, CC, velocity) in Mulish', mulish(n9.stepper), n9.stepper);
