@@ -113,18 +113,16 @@ out('single controller persists while the app resets to its canonical top positi
 
 const linkPage = await b.newPage();
 await linkPage.goto(URL,{waitUntil:'networkidle0'});
-// Redesigned 2026-08-18: hardware-zone highlight (fader thumb/roller/button)
-// now matches onboarding's own glow EXACTLY (rgba(52,199,89,...) drop-shadow/
-// box-shadow, not the softer --highlight-rgb system) — Frank: "chci aby byly
-// ty zvýrazněné prvky zvýrazněné stejným způsobem jako v onboarding screenu".
-// The settings SECTION deliberately keeps the old, softer --highlight-rgb
-// treatment (no onboarding equivalent to match, scope confirmed with Frank).
+// Hardware-zone highlight (fader thumb/roller/button) = white "A4"-shaped ring
+// (Frank 2026-09-29), identical in onboarding; never green (green is
+// live-only, spec 2026-09-26 §1).
 const linkedHighlight = await linkPage.evaluate(async () => {
   skipWelcome();
   render();
   const read = async () => {
     hoverFaderLink('fader1',true);
     hoverFaderLink('roller',true);
+    hoverFaderLink('macro',true);
     const sectionEl=document.querySelector('.bank-section[data-fader="fader1"]');
     const sectionClassOn=sectionEl.className;
     await new Promise(resolve=>setTimeout(resolve,400));
@@ -135,9 +133,12 @@ const linkedHighlight = await linkPage.evaluate(async () => {
     const zone=zoneStyle.backgroundColor;
     const zoneOutline=zoneStyle.outlineColor;
     const zoneShadow=zoneStyle.boxShadow;
+    const macro=getComputedStyle(document.getElementById('zone-macro')).backgroundColor;
+    const thumbTransition=getComputedStyle(document.getElementById('thumb-l')).transitionProperty;
     hoverFaderLink('fader1',false);
     hoverFaderLink('roller',false);
-    return {section,thumb,zone,zoneOutline,zoneShadow,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
+    hoverFaderLink('macro',false);
+    return {section,thumb,zone,zoneOutline,zoneShadow,macro,thumbTransition,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
   };
   const light=await read();
   document.documentElement.classList.add('dark');
@@ -146,15 +147,17 @@ const linkedHighlight = await linkPage.evaluate(async () => {
   return {light,dark};
 });
 await linkPage.close();
-const linkedHighlightOk = theme => {
+const linkedHighlightOk = (theme, btnRgb) => {
   const rgba = value => (value.match(/[\d.]+/g)||[]).map(Number);
   const zone=rgba(theme.zone),outline=rgba(theme.zoneOutline);
-  return theme.thumb.includes('drop-shadow') && theme.thumb.includes('52, 199, 89') &&
-    theme.zoneShadow.includes('52, 199, 89') &&
+  const noGreen=![theme.thumb,theme.zoneShadow,theme.macro].some(v=>v.includes('52, 199, 89'));
+  return theme.thumb.includes('drop-shadow') && theme.thumb.includes('255, 255, 255') &&
+    theme.zoneShadow.includes('255, 255, 255') && theme.macro.includes(btnRgb) && noGreen &&
+    theme.thumbTransition.includes('filter') && !theme.thumbTransition.includes('transform') &&
     zone[3]===0 && outline[3]===0; // roller's own surface (fill+outline) stays fully untinted, matching onboarding's outline:0
 };
-out('roller/thumb highlight matches onboarding\'s own glow exactly (rgba(52,199,89,...)), surface untinted',
-  linkedHighlightOk(linkedHighlight.light) && linkedHighlightOk(linkedHighlight.dark),
+out('thumb/roller/button highlight is the white ring in both themes, never green, surface untinted',
+  linkedHighlightOk(linkedHighlight.light,'255, 255, 255') && linkedHighlightOk(linkedHighlight.dark,'255, 255, 255'),
   JSON.stringify(linkedHighlight));
 
 // ≥900 px the controller intentionally glides from the welcome center into the

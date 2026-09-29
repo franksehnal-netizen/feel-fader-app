@@ -38,6 +38,8 @@ Interní dokumentace pro Franka a Ivana. Popisuje aktuální stav appky — funk
 | `--shadow` / `--shadow-sm` | Elevace | dvouvrstvá | tmavší varianta |
 | `--shadow-hud` | Jemné zvednutí plovoucího HUD – jediný stín na ploché ploše | `0 8px 24px rgba(0,0,0,.06)` | `0 8px 24px rgba(0,0,0,.35)` |
 | `--highlight-section-fill` | Neutrální tónování sekce propojené s ovladačem na fotce – zelená je jen live | `color-mix(in srgb,var(--t1) 4%,transparent)` | `color-mix(in srgb,var(--t1) 6%,transparent)` |
+| `--link-ring-rgb` | Bílý prstenec zvýrazněného ovladače na fotce (fadery, roller, tlačítko – appka i onboarding) + záře Connect & load v onboardingu | `255,255,255` | stejné |
+| `--link-edge` | Tenký tmavý obrys, aby bílý prstenec byl vidět na světlé stránce (tlačítko na hraně, Connect & load) | `rgba(20,20,24,.4)` | `transparent` |
 
 > 🪤 **Past — `--green` vs `--green-text`:** `--green` (#34c759) je jasná zelená pro **fill/tečku** na neutrálním pozadí. Pro **text** (hlavně na `--green-bg`) použij VŽDY `--green-text`, které je ztmavené (light) / zesvětlené (dark) kvůli kontrastu. `--green` jako barva textu = nečitelné na světlém, špatný kontrast — nedělat.
 

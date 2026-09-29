@@ -16,6 +16,23 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-09-29 – zvýraznění ovladačů bílým prstencem, tiché chipy v onboardingu, FEEL FADER
+
+- **Zvýraznění ovladačů:** místo syté zelené záře (zelená = jen live, spec
+  2026-09-26 §1) bílý prstenec „A4“ – ostrá hrana + měkké halo ve tvaru staré
+  záře. Stejně v appce (`.fader-linked`) i v onboardingu (`[data-onb-feature]`),
+  tokeny `--link-ring-rgb` / `--link-edge`. Záře jezdce nabíhá přes `transition`
+  jen na `filter` (live `transform` dál bez animace).
+- **Connect & load (onboarding, krok 4):** bílá záře místo zelené; v light
+  režimu tlačítko na hraně i Connect & load s tenkým tmavým obrysem.
+- **Chipy v onboardingu:** místo pilulek, které vypadaly klikatelně, tichý
+  řádek textu s „·“ (legenda „Tap → Switch bank“). Vycentrovaný, ve fixním
+  rozvržení ukotvený 14 px nad navigací; zalomený řádek nezačíná tečkou
+  (`markOnbDetailLineStarts()`).
+- **Wordmark:** „FEEL FADER“ v liště prostrkanými kapitálkami jako v onboardingu.
+- Probes: `faders-inert-probe` (bílý prstenec, nikdy zelená), `onb-product-tour-probe`
+  (prstenec + řádek s chipy na desktopu i telefonu).
+
 ### 2026-09-26 – dotažení UX auditu (M-1, výchozí UACC, K-7, font)
 
 - **M-1:** mobilní Live HUD 112 px, typ 10/12/8 px, bez překryvu (probe v

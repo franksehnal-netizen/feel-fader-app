@@ -36,7 +36,11 @@ const result = await p.evaluate(async () => {
     liveValue: liveValues.f1,
   };
 });
-P('live controller thumb has no CSS transform catch-up transition', result.thumbTransitionDuration === '0s' && result.thumbTransitionProperty === 'all', JSON.stringify(result));
+// Only the highlight ring (filter) may fade (2026-09-29); transform must never
+// be transitioned, directly or via `all` with a non-zero duration.
+const transitioned = result.thumbTransitionProperty.split(',').map(s => s.trim())
+  .filter((prop, i) => (result.thumbTransitionDuration.split(',')[i] || result.thumbTransitionDuration.split(',')[0]).trim() !== '0s');
+P('live controller thumb has no CSS transform catch-up transition', !transitioned.some(prop => prop === 'transform' || prop === 'all'), JSON.stringify(result));
 P('Live HUD fader fill does not animate its transform', !result.fillTransitionProperty.includes('transform'), result.fillTransitionProperty);
 P('high-rate fader diagnostics avoid per-message allocations', result.diagnosticArrayCopies <= 1, String(result.diagnosticArrayCopies));
 P('coalesced fader messages still retain the latest live value', result.liveValue === 39, String(result.liveValue));

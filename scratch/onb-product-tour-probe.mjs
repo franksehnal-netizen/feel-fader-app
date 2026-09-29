@@ -1,6 +1,6 @@
 // Regression: first-run onboarding is a vertically stacked, manually paced
 // product tour around the stationary controller. The wordmark sits above it,
-// cardless copy below it, and only a green glow marks the active control.
+// cardless copy below it, and only a neutral ring marks the active control.
 import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
@@ -68,10 +68,46 @@ const desktopState = await desktop.evaluate(() => {
 P('desktop stacks wordmark, controller, Connect & load, then cardless copy', Math.abs(desktopState.deviceCenterX - desktopState.viewportCenterX) <= 5 && desktopState.wordmarkBottom <= desktopState.deviceTop - 8 && desktopState.ctaTop >= desktopState.deviceBottom + 16 && desktopState.copyTop >= desktopState.ctaBottom + 18 && Math.abs(desktopState.copyCenterX - desktopState.viewportCenterX) <= 5, JSON.stringify(desktopState));
 P('tour removes global blur so the hardware stays legible', desktopState.backdrop === 'none', JSON.stringify(desktopState));
 P('all controller elements remain fully visible', desktopState.deviceOpacity === '1' && desktopState.tracksOpacity === '1', JSON.stringify(desktopState));
-P('active faders use a pronounced green glow', desktopState.faderGlow !== 'none' && desktopState.faderGlow.includes('52, 199, 89'), JSON.stringify(desktopState));
+// White ring (Frank 2026-09-29), same as the app's .fader-linked – green is live-only.
+P('active faders use the white ring, not green', desktopState.faderGlow !== 'none' && desktopState.faderGlow.includes('255, 255, 255') && !desktopState.faderGlow.includes('52, 199, 89'), JSON.stringify(desktopState));
 P('underlying app chrome and panels are hidden during onboarding', desktopState.headerVisibility === 'hidden' && desktopState.panelsVisibility === 'hidden', JSON.stringify(desktopState));
 P('both onboarding faders stay still', desktopState.leftFaderAnimation === 'none' && desktopState.rightFaderAnimation === 'none', JSON.stringify(desktopState));
 P('Back arrow is optically aligned with the slide dots', desktopState.navCenterDelta <= 3, JSON.stringify(desktopState));
+
+// Capability line (Frank 2026-09-29): quiet non-clickable text, centered, and a
+// constant distance above the nav on every beat regardless of description length.
+const detailsLine = page => page.evaluate(async () => {
+  const beats = [];
+  for (let i = 0; i < _ONB_BEATS.length; i++) {
+    onbBeatGo(i, true);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const d = document.querySelector('.onb-beat-details').getBoundingClientRect();
+    const sub = document.querySelector('.onb-beat-sub').getBoundingClientRect();
+    const nav = document.querySelector('.onb-nav').getBoundingClientRect();
+    const pill = getComputedStyle(document.querySelector('.onb-detail-pill'));
+    const pillEls = [...document.querySelectorAll('.onb-detail-pill')];
+    const lines = new Map();
+    pillEls.forEach(el => { const r = el.getBoundingClientRect(), k = Math.round(r.top); lines.set(k, [...(lines.get(k) || []), r]); });
+    const navCenter = nav.left + nav.width / 2;
+    beats.push({
+      gap: Math.round(nav.top - d.bottom), overlap: d.top < sub.bottom - 0.5, lines: lines.size,
+      // every (wrapped) line is centered on its own
+      centerDelta: Math.max(...[...lines.values()].map(rs => Math.round(Math.abs((rs[0].left + rs.at(-1).right) / 2 - navCenter)))),
+      // a wrapped line never starts with the "·" separator
+      danglingDot: pillEls.some((el, i) => i > 0 && Math.round(el.getBoundingClientRect().top) !== Math.round(pillEls[i - 1].getBoundingClientRect().top) && getComputedStyle(el, '::before').content !== 'none'),
+      chip: pill.borderTopStyle !== 'none' || pill.backgroundColor !== 'rgba(0, 0, 0, 0)' || pill.boxShadow !== 'none',
+    });
+  }
+  onbBeatGo(0, true);
+  return beats;
+});
+const detailsOk = beats => beats.every(b => b.gap === beats[0].gap && !b.overlap && b.centerDelta <= 2 && !b.chip && !b.danglingDot);
+const desktopDetails = await detailsLine(desktop);
+P('desktop capability line is quiet text, centered, constant gap above nav on every beat', detailsOk(desktopDetails), JSON.stringify(desktopDetails));
+const phoneTour = await openTour(390, 844);
+const phoneDetails = await detailsLine(phoneTour);
+P('phone capability line is quiet text, centered, constant gap above nav on every beat', detailsOk(phoneDetails), JSON.stringify(phoneDetails));
+await phoneTour.close();
 P('Continue without device is visible at the bottom edge', desktopState.skipText === 'Continue without device' && desktopState.skipVisibility !== 'none' && desktopState.skipBottomGap >= 1 && desktopState.skipBottomGap <= 4, JSON.stringify(desktopState));
 P('first slide exposes an explicit Next action and a disabled Back action', desktopState.nextText.includes('Next') && desktopState.nextVisibility !== 'hidden' && desktopState.prevDisabled, JSON.stringify(desktopState));
 P('tour has no auto-advance timer', desktopState.timerIdle, String(desktopState.timerIdle));
@@ -108,7 +144,7 @@ const buttonGlow = await desktop.evaluate(() => {
   const style = getComputedStyle(zone);
   return { width:rect.width, height:rect.height, radius:style.borderRadius, background:style.backgroundColor, clipPath:style.clipPath, outline:style.outlineStyle };
 });
-P('button highlight is one solid circular light point', Math.abs(buttonGlow.width - buttonGlow.height) <= 1 && buttonGlow.width <= 12 && buttonGlow.radius === '50%' && buttonGlow.background.includes('0.96') && buttonGlow.clipPath === 'none' && buttonGlow.outline === 'none', JSON.stringify(buttonGlow));
+P('button highlight is one solid circular light point', Math.abs(buttonGlow.width - buttonGlow.height) <= 1 && buttonGlow.width <= 12 && buttonGlow.radius === '50%' && buttonGlow.background.includes('0.92') && buttonGlow.clipPath === 'none' && buttonGlow.outline === 'none', JSON.stringify(buttonGlow));
 await desktop.screenshot({ path:path.join(outputDir, 'onboarding-desktop-button.png') });
 
 const skipWhenConnected = await desktop.evaluate(() => {
