@@ -68,6 +68,12 @@
   --highlight-section-fill:color-mix(in srgb,var(--t1) 4%,transparent);  /* neutral: green is live-only (spec 2026-09-26 §1) */
   --highlight-section-glow:transparent;
   --link-ring-rgb:255,255,255; /* white highlight ring for every controller zone + onboarding Connect & load (Frank 2026-09-29) */
+  /* Highlight timing (Frank 2026-09-29: "jemnější, víc dýchat"): reacts at once, then rises
+     slowly and organically; the fade-out lingers even a little longer (a slow cross-fade between controls). Base state carries the OUT timing, the lit state the IN timing. */
+  --dur-link-in:1.3s;
+  --dur-link-out:1.8s;
+  --ease-link:cubic-bezier(.22,.61,.36,1);   /* responds on the first frame, long soft tail */
+  --link-delay:0ms;
   --link-edge:rgba(20,20,24,.4); /* thin dark outline so the white ring stays visible where it sits on the light page (button zone, Connect & load) */
   --amber:#e6a23c;
   --piano-white:#fbfbfd;
@@ -400,7 +406,7 @@ main{width:100%;}
    ~60ms, so leave the realtime path unanimated. The welcome handoff sets its
    own temporary settle transition inline and remains unchanged. Only the
    highlight ring (filter) fades, so it eases in like the roller/button zones. */
-.fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);transition:filter var(--dur-base) ease;pointer-events:none;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.fader-thumb{position:absolute;left:50%;top:0;transform:translate3d(-50%,0,0);transition:filter var(--dur-link-out) var(--ease-link);pointer-events:none;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .fader-thumb img{display:block;width:100%;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))}
 
 
@@ -723,16 +729,19 @@ html.dark .btn-remove-bank:hover{background:color-mix(in srgb,var(--danger) 10%,
    not green – green is live-only, spec 2026-09-26 §1); no onboarding
    equivalent to match (onboarding never shows settings panels), scope
    confirmed with Frank 2026-08-18. */
-.bank-section.fader-linked{background:var(--highlight-section-fill);border-radius:var(--r-sm);}
+.bank-section.fader-linked{background:var(--highlight-section-fill);border-radius:var(--r-sm);transition:background var(--dur-link-in) var(--ease-link) var(--link-delay), box-shadow .2s;}
 /* Hardware-zone highlight = white ring (Frank 2026-09-29, "A4" shape): a crisp
    edge (reads as selection) plus the old soft halo shape. Not green – green is live-only (spec 2026-09-26 §1). Onboarding uses
    the SAME values (its [data-onb-feature] rules) so both stay consistent
    (Frank 2026-08-18 parity request, kept). Faders ring the THUMB shape itself
    via drop-shadow, not a separate layer behind the track. */
+.fader-track.fader-linked .fader-thumb,.device-wrap.welcome-mode[data-onb-feature="faders"] .fader-thumb{transition:filter var(--dur-link-in) var(--ease-link) var(--link-delay)}
 .fader-track.fader-linked .fader-thumb{
   filter:drop-shadow(0 0 .6px rgba(var(--link-ring-rgb),1)) drop-shadow(0 0 .6px rgba(var(--link-ring-rgb),1)) drop-shadow(0 0 9px rgba(var(--link-ring-rgb),.6)) drop-shadow(0 0 20px rgba(var(--link-ring-rgb),.32));
 }
-.ctrl-zone{position:absolute;border-radius:10px;outline:1px solid transparent;outline-offset:1px;transition:background .2s,box-shadow .2s,outline-color .2s;}
+.ctrl-zone{position:absolute;border-radius:10px;outline:1px solid transparent;outline-offset:1px;transition:background var(--dur-link-out) var(--ease-link),box-shadow var(--dur-link-out) var(--ease-link),outline-color var(--dur-link-out) var(--ease-link);}
+#zone-roller.fader-linked,#zone-macro.fader-linked,
+.device-wrap.welcome-mode[data-onb-feature="roller"] #zone-roller,.device-wrap.welcome-mode[data-onb-feature="button"] #zone-macro{transition:background var(--dur-link-in) var(--ease-link) var(--link-delay),box-shadow var(--dur-link-in) var(--ease-link) var(--link-delay),outline-color var(--dur-link-in) var(--ease-link) var(--link-delay)}
 /* Roller: same ring as onboarding's [data-onb-feature="roller"] #zone-roller. */
 #zone-roller.fader-linked{background:transparent;outline-color:transparent;box-shadow:0 0 0 1.5px rgba(var(--link-ring-rgb),.9),0 0 12px 5px rgba(var(--link-ring-rgb),.6),0 0 26px 11px rgba(var(--link-ring-rgb),.32);}
 #zone-macro{border-radius:0 var(--r-pill) var(--r-pill) 0;clip-path:inset(-50px -50px -50px 0);}   /* půlkruh na hraně těla, oblouk ven; clip-path utne glow na ploché straně → čisté zalícování s hranou */
@@ -1483,7 +1492,7 @@ body.welcome-connecting #send-btn.welcome-floating{
 .device-wrap.welcome-mode .fader-tracks{display:block!important;pointer-events:none;z-index:2}
 .device-wrap.welcome-mode[data-onb-feature] .device-img,
 .device-wrap.welcome-mode[data-onb-feature] .fader-tracks,
-.device-wrap.welcome-mode[data-onb-feature] .ctrl-zone{transition:opacity var(--dur-base) ease,filter var(--dur-base) ease,background var(--dur-base) ease,box-shadow var(--dur-base) ease,outline-color var(--dur-base) ease}
+.device-wrap.welcome-mode[data-onb-feature] .ctrl-zone{transition:opacity var(--dur-base) ease,filter var(--dur-base) ease,background var(--dur-link-out) var(--ease-link),box-shadow var(--dur-link-out) var(--ease-link),outline-color var(--dur-base) ease}
 /* Same white ring as the app's .fader-linked highlight (keep in sync). */
 .device-wrap.welcome-mode[data-onb-feature="faders"] .fader-thumb{
   filter:drop-shadow(0 0 .6px rgba(var(--link-ring-rgb),1)) drop-shadow(0 0 .6px rgba(var(--link-ring-rgb),1)) drop-shadow(0 0 9px rgba(var(--link-ring-rgb),.6)) drop-shadow(0 0 20px rgba(var(--link-ring-rgb),.32));
@@ -1843,7 +1852,7 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 }
 .bank-section{
   padding:0 18px;
-  transition:background .2s, box-shadow .2s;
+  transition:background var(--dur-link-out) var(--ease-link), box-shadow .2s;   /* same timing as the controller-zone ring */
 }
 .bank-section.is-open>.section-collapse-body{padding:4px 0 18px 36px}
 .section-head.section-toggle{width:100%;text-align:left;background:none;border:0;font-family:'Mulish',sans-serif;color:inherit}

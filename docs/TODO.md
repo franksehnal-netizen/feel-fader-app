@@ -30,6 +30,10 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
   rozvržení ukotvený 14 px nad navigací; zalomený řádek nezačíná tečkou
   (`markOnbDetailLineStarts()`).
 - **Wordmark:** „FEEL FADER“ v liště prostrkanými kapitálkami jako v onboardingu.
+- **Časování zvýraznění:** prstenec na ovladači i podbarvení sekce reagují hned
+  a nabíhají pomalu a organicky (1,3 s), zhasínají ještě pomaleji (1,8 s),
+  bez zpoždění; tokeny `--dur-link-in` / `--dur-link-out` / `--ease-link` /
+  `--link-delay`, hlídá `faders-inert-probe`.
 - Probes: `faders-inert-probe` (bílý prstenec, nikdy zelená), `onb-product-tour-probe`
   (prstenec + řádek s chipy na desktopu i telefonu).
 

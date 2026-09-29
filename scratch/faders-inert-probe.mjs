@@ -135,10 +135,16 @@ const linkedHighlight = await linkPage.evaluate(async () => {
     const zoneShadow=zoneStyle.boxShadow;
     const macro=getComputedStyle(document.getElementById('zone-macro')).backgroundColor;
     const thumbTransition=getComputedStyle(document.getElementById('thumb-l')).transitionProperty;
+    // Rise/fade timing (Frank 2026-09-29): lit state = IN (1.3s, no delay), base = OUT (1.8s),
+    // identical for thumb ring, controller zones and the linked section.
+    const timing=()=>['thumb-l','zone-roller','zone-macro'].map(id=>document.getElementById(id))
+      .concat(sectionEl).map(el=>{const st=getComputedStyle(el);return st.transitionDuration.split(',')[0].trim()+'/'+st.transitionDelay.split(',')[0].trim();});
+    const timingIn=timing();
     hoverFaderLink('fader1',false);
     hoverFaderLink('roller',false);
     hoverFaderLink('macro',false);
-    return {section,thumb,zone,zoneOutline,zoneShadow,macro,thumbTransition,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
+    const timingOut=timing();
+    return {timingIn,timingOut,section,thumb,zone,zoneOutline,zoneShadow,macro,thumbTransition,sectionClassOn,sectionClass:sectionEl.className,sectionFill:sectionStyle.getPropertyValue('--highlight-section-fill')};
   };
   const light=await read();
   document.documentElement.classList.add('dark');
@@ -154,6 +160,7 @@ const linkedHighlightOk = (theme, btnRgb) => {
   return theme.thumb.includes('drop-shadow') && theme.thumb.includes('255, 255, 255') &&
     theme.zoneShadow.includes('255, 255, 255') && theme.macro.includes(btnRgb) && noGreen &&
     theme.thumbTransition.includes('filter') && !theme.thumbTransition.includes('transform') &&
+    theme.timingIn.every(t=>t==='1.3s/0s') && theme.timingOut.every(t=>t==='1.8s/0s') &&
     zone[3]===0 && outline[3]===0; // roller's own surface (fill+outline) stays fully untinted, matching onboarding's outline:0
 };
 out('thumb/roller/button highlight is the white ring in both themes, never green, surface untinted',
