@@ -346,6 +346,11 @@ main{width:100%;}
      device for its 44px-blur shadow instead of cutting it off at the edge. */
   body:has(#welcome-screen.hidden) .center-col>.stage-collapse>.stage{padding-left:160px;padding-right:40px}
   body:has(#welcome-screen.hidden) .center-col>.settings-col{grid-column:2;grid-row:1;padding-top:32px}
+  /* Footer is page chrome, not part of the editor: span both columns so it
+     doesn't sit under the settings only (Frank 2026-09-29). Row 1 takes the
+     spare height so the footer stays pinned to the bottom. */
+  body:has(#welcome-screen.hidden) .center-col{grid-template-rows:1fr auto}
+  body:has(#welcome-screen.hidden) .center-col>.site-footer{grid-column:1/-1;grid-row:2}
   @media(prefers-reduced-motion:reduce){.center-col{transition:none}}
 }
 /* 900–1099 px (a 1920px monitor split with the DAW = 960): two columns with
@@ -943,10 +948,15 @@ html.dark .info-val{color:var(--t1)}
   font-size:var(--fs-sm);color:var(--t3);
   border-top:1px solid var(--border);padding-top:10px;
 }
+/* Mirror .footer-top: legal/version left, compat + origin right (Frank 2026-09-29).
+   Groups wrap as a whole so "Made in…" never drops alone under the left group. */
+.footer-bottom-group{display:flex;flex-wrap:wrap;gap:8px 20px}
+.footer-bottom-end{margin-left:auto}
 html.dark #footer-logo{filter:grayscale(1) invert(1) !important;opacity:.85 !important}
 @media(max-width:600px){
   .footer-top{flex-direction:column;}
   .footer-links{align-items:flex-start;}
+  .footer-bottom-end{margin-left:0}
 }
 
 /* MODAL */
@@ -2441,6 +2451,8 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
     </div>
   </div>
 
+  </div><!-- /settings-col -->
+
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="footer-top">
@@ -2454,13 +2466,16 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 Acoustic Empire s.r.o.</span>
-      <span>v 1.0.0</span>
-      <span data-i18n="footer.compat">Works with Chrome &amp; Edge · Web Serial &amp; Web MIDI required</span>
-      <span data-i18n="footer.made">Made in Czech Republic</span>
+      <div class="footer-bottom-group">
+        <span>© 2026 Acoustic Empire s.r.o.</span>
+        <span>v 1.0.0</span>
+      </div>
+      <div class="footer-bottom-group footer-bottom-end">
+        <span data-i18n="footer.compat">Works with Chrome &amp; Edge · Web Serial &amp; Web MIDI required</span>
+        <span data-i18n="footer.made">Made in Czech Republic</span>
+      </div>
     </div>
   </footer>
-  </div><!-- /settings-col -->
 </div><!-- /center-col -->
 </main>
 
