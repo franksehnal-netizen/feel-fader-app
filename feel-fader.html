@@ -2175,6 +2175,8 @@ button:focus-visible{outline-offset:3px;}
 .custom-preset-body{padding:16px 20px;display:grid;gap:15px}
 .custom-preset-name{width:100%;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);color:var(--t1);padding:8px 11px;font:var(--fs-base) 'Mulish',sans-serif;outline:none}
 .custom-preset-name:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 18%,transparent)}
+.owner-name-input{flex:1;min-width:0;max-width:220px;border:1px solid var(--border-s);border-radius:var(--r-pill);background:var(--bg-input);color:var(--t1);padding:8px 11px;font:var(--fs-base) 'Mulish',sans-serif;outline:none}
+.owner-name-input:focus-visible{border-color:var(--focus);box-shadow:0 0 0 2px color-mix(in srgb,var(--focus) 18%,transparent)}
 .custom-preset-scopes{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
 .custom-preset-scope{display:flex;align-items:center;gap:var(--space-2);font-size:var(--fs-md);color:var(--t2);line-height:1.35;cursor:pointer}
 .custom-preset-list{display:grid;gap:6px;max-height:190px;overflow:auto}
@@ -2407,6 +2409,11 @@ html.dark .advanced-toggle-btn{color:var(--t1);}
           <progress id="fw-update-progress" max="100" value="0" hidden aria-label="Firmware update progress"></progress>
         </div>
         <div class="info-row"><span class="info-lbl">Serial</span><span class="info-val" id="di-serial" style="color:var(--t2)">–</span></div>
+        <div class="info-row info-row-action" id="owner-row" hidden data-tip="Saved on the device – the app greets you by name when it connects.">
+          <label class="info-lbl" for="owner-input">Your name</label>
+          <input class="owner-name-input" id="owner-input" maxlength="24" placeholder="Optional" autocomplete="off" spellcheck="false"
+            onkeydown="onOwnerKeydown(event)" onblur="saveOwnerName()">
+        </div>
         <div class="info-row info-row-action" data-tip="Enable HID to let the device send keystrokes – required for the Navigation roller mode and the button long-press macro.">
           <span class="info-lbl">Keyboard (HID)</span>
           <label class="hid-switch" title="Required for Navigation and Button Macro">
@@ -2993,6 +3000,8 @@ const DEVICE_INFO = {
   fader_response_presets: false,
   fader_response: null,
   update: null,           // z CMD_INFO: {supported, slot} — firmware umí in-app update (fw ≥ 1.3.0)
+  supports_owner: false,  // z CMD_INFO: firmware umí CMD_OWNER (fw ≥ 1.4.0)
+  owner: '',              // jméno vlastníka uložené v zařízení ('' = nenastaveno)
 };
 
 const LS_CFG_KEY        = 'ff-cfg';
@@ -3903,6 +3912,44 @@ function updateHidToggle(){
   const el=document.getElementById('hid-toggle');
   if(el){ el.checked = !!DEVICE_INFO.hid_enabled; el.disabled = !(_ffConnected || DEVICE_INFO.hid_available); }
 }
+// Owner name (feel-fader-firmware spec 2026-09-30-owner-name-design) – lives in
+// its own device slot, not in cfg: saved immediately like HID, never via Send.
+function updateOwnerRow(){
+  const row = document.getElementById('owner-row');
+  const input = document.getElementById('owner-input');
+  if (!row || !input) return;
+  const s = connState();
+  const connected = s === 'CONNECTED_LIVE' || s === 'CONNECTED_BLIND';
+  row.hidden = !(connected && DEVICE_INFO.supports_owner && protocolVersion === 2);
+  if (document.activeElement !== input) input.value = DEVICE_INFO.owner;
+}
+function onOwnerKeydown(e){
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+  else if (e.key === 'Escape') { e.target.value = DEVICE_INFO.owner; e.target.blur(); }
+}
+let _ownerSaving = false;
+async function saveOwnerName(){
+  const input = document.getElementById('owner-input');
+  if (!input || _ownerSaving) return;
+  const owner = input.value.trim();
+  if (owner === DEVICE_INFO.owner) { input.value = owner; return; }
+  if (_fwUpdating) { toast('i', 'Firmware update in progress – wait until the device restarts.'); input.value = DEVICE_INFO.owner; return; }
+  _ownerSaving = true;
+  try {
+    await serialRequest('CMD_OWNER', JSON.stringify({ owner }), 2000);
+    DEVICE_INFO.owner = owner;
+    toast('s', owner ? 'Name saved' : 'Name removed');
+    try { await serialReadInfo(); } catch (e) {}   // read-back; best effort
+  } catch (e) {
+    const err = /^ERR:(.+)$/.exec(e.message || '');
+    toast('e', err && err[1] === 'space'
+      ? 'Not enough device memory – send your settings once, then try again.'
+      : "Couldn't save name");
+  } finally {
+    _ownerSaving = false;
+    updateOwnerRow();
+  }
+}
 function updateFaderResponseControl(){
   const select = document.getElementById('fader-response-select');
   const trigger = document.getElementById('fader-response-trigger');
@@ -4075,6 +4122,7 @@ function updateDeviceInfo() {
   setVal('di-firmware', firmware);
   setTxt('di-firmware-summary', deviceSummaryText());
   updateHidToggle();
+  updateOwnerRow();
   updateFaderResponseControl();
   updateMacroUI();
   renderMidiDiagnostics();
@@ -5819,7 +5867,7 @@ function serialRequest(cmd, payload, timeoutMs) {
     await writer.write(new TextEncoder().encode(line + '\n'));
     writer.releaseLock();
     if (!v2 && (cmd === 'CMD_W' || cmd === 'CMD_HID')) return '';   // legacy: bez odpovědi
-    const expect = { CMD_R: 'CFG', CMD_INFO: 'INFO', CMD_W: 'ACK', CMD_HID: 'ACK',
+    const expect = { CMD_R: 'CFG', CMD_INFO: 'INFO', CMD_W: 'ACK', CMD_HID: 'ACK', CMD_OWNER: 'ACK',
                      CMD_UB: 'ACK', CMD_UC: 'ACK', CMD_UE: 'ACK', CMD_UA: 'ACK' }[cmd];
     return await _readReply(port, v2, expect, rid, timeoutMs);
   };
@@ -5894,6 +5942,8 @@ async function serialReadInfo() {
   DEVICE_INFO.update = (info.update && typeof info.update === 'object')
     ? { supported: info.update.supported === true, slot: String(info.update.slot || '') }
     : null;
+  DEVICE_INFO.supports_owner = info.supports_owner === true;
+  DEVICE_INFO.owner = typeof info.owner === 'string' ? info.owner : '';
   // Sync live-bank indicator to the device's actual current bank on (re)connect,
   // so it isn't stuck at Bank 1 until the next Program Change (firmware reports
   // its bank_index in CMD_INFO; liveBank sync-on-load 2026-07-29).
@@ -6719,6 +6769,7 @@ function renderConnState(){
   renderLiveStrip();
   renderMidiDiagnostics();
   updateNvmDegradedNotice();
+  updateOwnerRow();
 }
 function positionLiveNote() {
   const note = document.getElementById('live-note');

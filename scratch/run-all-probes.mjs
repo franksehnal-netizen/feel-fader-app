@@ -138,6 +138,7 @@ const PROBES = [
   'audit/p3-external-requests.mjs',
   'audit/p4-no-webserial-degradation.mjs',
   'audit/p5-heap-growth.mjs',
+  'owner-name-probe.mjs',
 ];
 
 const requestedProbes = process.argv.slice(2);
