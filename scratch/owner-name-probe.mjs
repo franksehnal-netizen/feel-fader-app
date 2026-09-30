@@ -75,5 +75,43 @@ const errOther = await p.evaluate(async () => {
 P('other error → generic toast, input reverted', errOther.value === 'Ivan'
   && errOther.toastTxt.includes("Couldn't save name"), JSON.stringify(errOther));
 
+// ── Greeting: Connect & load (doStart) ──
+async function freshStart(owner) {
+  await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+  return p.evaluate(async (owner) => {
+    showWelcome(); await new Promise(requestAnimationFrame);
+    window.loadConfigFromDevice = async () => { protocolVersion = 2; DEVICE_INFO.owner = owner; };
+    await doStart();
+    const msg = document.getElementById('welcome-start-msg');
+    return { text: msg.textContent, greeting: msg.classList.contains('is-greeting'), bold: !!msg.querySelector('b'),
+             again: takeOwnerGreeting() };
+  }, owner);
+}
+const g1 = await freshStart('Frank');
+P('Connect & load greets by name', g1.text === 'Welcome back, Frank' && g1.greeting, JSON.stringify(g1));
+P('greeting only once per page', g1.again === '', JSON.stringify(g1));
+const g2 = await freshStart('');
+P('no owner → welcome line unchanged', g2.text === '' && !g2.greeting, JSON.stringify(g2));
+const g3 = await freshStart('<b>x</b>');
+P('owner rendered literally (escape)', g3.text === 'Welcome back, <b>x</b>' && !g3.bold, JSON.stringify(g3));
+
+// ── Greeting: silent load of a known device ──
+await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+const silent = await p.evaluate(async () => {
+  showWelcome(); await new Promise(requestAnimationFrame);
+  navigator.serial.getPorts = async () => [{}];
+  window.serialReadInfo = async () => { protocolVersion = 2; DEVICE_INFO.config_source = 'nvm'; DEVICE_INFO.owner = 'Frank'; return {}; };
+  window.loadConfigFromDevice = async () => {};
+  dirty = false;
+  localStorage.removeItem('ff-config-hash');
+  await onDeviceConnected();
+  const first = [...document.querySelectorAll('#toasts .toast-message')].map(e => e.textContent);
+  await onDeviceConnected();   // replug during work: welcome no longer visible
+  const second = [...document.querySelectorAll('#toasts .toast-message')].map(e => e.textContent);
+  return { first, second };
+});
+P('silent load greets with one toast', silent.first.filter(t => t === 'Welcome back, Frank').length === 1, JSON.stringify(silent));
+P('later reconnect does not greet again', silent.second.filter(t => t === 'Welcome back, Frank').length === 1, JSON.stringify(silent));
+
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

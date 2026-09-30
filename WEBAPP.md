@@ -194,6 +194,7 @@ se v demo režimu nepoužívá.
 - **MIDI detekce neproběhne** (port quirk) → stejné tlačítko obejde MIDI přes serial picker bez čekání na timeout.
 - **Continue without device → pak připojíš zařízení** → `onDeviceConnected()` znovu vyjede welcome se Startem.
 - Zrušení pickeru je tiché. Při skutečné chybě / timeoutu zůstane welcome beze změny výšky, tlačítko přejde na **Try again** a pevný jednořádkový stav ukáže pouze **Connection failed**.
+- **Uvítání vlastníka** (fw ≥ 1.4.0, jméno z `CMD_INFO.owner`): po Connect & load se ve stavovém řádku `#welcome-start-msg` (třída `is-greeting`, barva `--t2`) na dobu transition ukáže „Welcome back, {owner}"; tiché načtení známého zařízení místo toho ukáže info toast. Nejvýš jednou za načtení stránky (`takeOwnerGreeting()`); replug během práce nezdraví. Jméno se nastavuje v Device → Your name (`CMD_OWNER`, okamžitě, mimo config).
 
 **Connect transition** (spouští se přes `hideWelcome()` → `connectTransitionWelcome()`):
 1. Podkladová appka se vždy synchronně vrátí na `scrollTop=0` (`history.scrollRestoration='manual'`), takže welcome nikdy neodhalí starou pozici u spodku stránky.
