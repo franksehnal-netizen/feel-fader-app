@@ -32,12 +32,13 @@ const d = await p.evaluate(async (tabTextsSrc) => {
   DEVICE_INFO.hid_enabled = true; cfg.macro_global = true; cfg.macro_keys = [0x2C]; _openSections.add('macro'); render();
   const x = document.getElementById('macro-clear');
   out.xLight = x && getComputedStyle(x).color;
-  document.documentElement.classList.add('dark');
-  await new Promise(r => setTimeout(r, 400));   // ui-control colour transition
+  // The app's instant theme path (.theme-snapshot): a bare class toggle would
+  // run the .ui-control colour fade, which now rides --hover-out (1.8s).
+  applyTheme(true, false);
   const probe = document.createElement('span'); probe.style.color = 'var(--t3)'; document.body.appendChild(probe);
   out.t3Dark = getComputedStyle(probe).color; probe.remove();
   out.xDark = x && getComputedStyle(x).color;
-  document.documentElement.classList.remove('dark');
+  applyTheme(false, false);
   _openSections.clear(); _openSections.add('roller');
   setRollerMode(0, 'keyswitch'); await new Promise(r => setTimeout(r, 400)); render();
   const choose = document.getElementById('ks-preset-trigger-0');
