@@ -3061,6 +3061,7 @@ let _lastRenderedConfig = cloneConfig(cfg);
 const UNDO_LIMIT = 10;
 let _undoConfigHistory = [];
 let _suspendUndoCapture = false;
+let _unsentLiveHintShown = false;   // maybeHintUnsentLive(): once per unsent change set
 
 function markConfigSynced() {
   _syncedConfigSnapshot = cloneConfig(cfg);
@@ -3260,6 +3261,7 @@ function reflectDirty() {
   // UX audit 2026-09-25 F-1: a change that is reversed (step up/down, mode
   // there and back) returns to the synced config — same rule as undo.
   if (dirty && _syncedConfigSnapshot && configSignature(cfg) === configSignature(_syncedConfigSnapshot)) dirty = false;
+  if (!dirty) _unsentLiveHintShown = false;
   recordConfigCheckpoint();
   if (dirty && _sendConfirmed) {
     _sendConfirmed = false;
@@ -5481,6 +5483,16 @@ function connectInputs(){
 }
 
 
+// Unsent edits on the bank the device is on (Frank 2026-09-30): the device still runs
+// the last sent config, so its live values can look wrong (a reordered roller "skips"
+// a value until Send). Say so once per unsent change set; reflectDirty() resets it.
+function maybeHintUnsentLive() {
+  if (!dirty || _unsentLiveHintShown || activeBank !== liveBank) return;
+  const synced = _syncedConfigSnapshot?.banks?.[liveBank];
+  if (synced && configSignature(synced) === configSignature(cfg.banks[liveBank])) return;
+  _unsentLiveHintShown = true;
+  toast('i', 'Device still uses the last sent settings – Send to apply your changes.', { label: t('btn.send'), onClick: () => doSend() });
+}
 function onMidiMsg(event){
   const data=event.data, st=data[0];
   monitorMidiBacklog(event);
@@ -5500,9 +5512,11 @@ function onMidiMsg(event){
     const cc=data[1],val=data[2];
     if(cc===bank.fader1.cc && ch===bank.fader1.channel){
       liveValues.f1=val;liveSeen.f1=true;_faderDirty.l=true;scheduleFaderFrame();
+      maybeHintUnsentLive();
     }
     if(cc===bank.fader2.cc && ch===bank.fader2.channel){
       liveValues.f2=val;liveSeen.f2=true;_faderDirty.r=true;scheduleFaderFrame();
+      maybeHintUnsentLive();
     }
     if(cc===bank.encoder.cc && ch===bank.encoder.channel){
       encLiveVal = val;
@@ -5514,6 +5528,7 @@ function onMidiMsg(event){
       if(idx !== -1) encIndex = idx;
       syncUaccLiveRow();
       pulseSectionLive('roller');
+      maybeHintUnsentLive();
     }
 
   }
@@ -5526,6 +5541,7 @@ function onMidiMsg(event){
       document.querySelector(`.seq-row[data-ksnote="${note}"]`)?.classList.add('is-live');
       renderLiveStrip();
       pulseSectionLive('roller');
+      maybeHintUnsentLive();
     }
   }
   // Bank switch via Program Change from hardware button

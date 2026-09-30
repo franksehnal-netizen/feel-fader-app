@@ -49,6 +49,7 @@ const PROBES = [
   'c10-bank-switch-preserves-edit-probe.mjs',
   'c11-connect-with-dirty-edits-probe.mjs',
   'connect-shows-device-bank-probe.mjs',
+  'unsent-live-hint-probe.mjs',
   'a3-nvm-degraded-notice-probe.mjs',
   'send-without-web-serial-probe.mjs',
   'live-hud-meter-value-gap-probe.mjs',
