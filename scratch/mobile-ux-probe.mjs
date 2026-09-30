@@ -705,9 +705,10 @@ async function runProfile(browser, url, profile) {
   await page.click('#toasts .toast .tx');
   await settle(page, 340);
   const toastDismissed = await page.evaluate(() => !document.querySelector('#toasts .toast'));
-  addCheck(checks, 'Global notifications use a compact centered liquid-glass pill',
-    toastState && toastState.height <= 44 && toastState.centerGap <= 1 && toastState.radius >= toastState.height / 2
-      && toastState.backdrop !== 'none' && toastState.closeHit && toastDismissed,
+  // Flat card since 2026-09-30 (minimal hybrid surfaces; toast-flat-style-probe): radius --r, no blur.
+  addCheck(checks, 'Global notifications use a compact centered flat card',
+    toastState && toastState.height <= 44 && toastState.centerGap <= 1 && toastState.radius === 12
+      && toastState.backdrop === 'none' && toastState.closeHit && toastDismissed,
     toastState ? `${toastState.height.toFixed(1)} px / center ${toastState.centerGap.toFixed(1)} px / ${toastState.backdrop} / dismissed ${toastDismissed}` : 'missing');
 
   const transitionStart = await page.evaluate(() => {

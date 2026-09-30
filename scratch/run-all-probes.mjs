@@ -51,6 +51,7 @@ const PROBES = [
   'connect-shows-device-bank-probe.mjs',
   'unsent-live-hint-probe.mjs',
   'button-longpress-glow-probe.mjs',
+  'toast-flat-style-probe.mjs',
   'a3-nvm-degraded-notice-probe.mjs',
   'send-without-web-serial-probe.mjs',
   'live-hud-meter-value-gap-probe.mjs',
