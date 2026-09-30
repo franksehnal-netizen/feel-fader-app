@@ -5894,12 +5894,14 @@ async function serialReadInfo() {
 // Shared: read device info + config over serial. Opens the port (picker only if not yet granted).
 async function loadConfigFromDevice() {
   await _serialEnsureOpen();                    // grant/open — shows picker only if no port granted yet
-  try { await serialReadInfo(); } catch(e) {}   // device info (firmware/serial/HID) — best effort
+  let deviceBank = 0;                           // Bank 1 unless CMD_INFO reports the device's current bank
+  try { await serialReadInfo(); deviceBank = liveBank; } catch(e) {}   // device info (firmware/serial/HID) — best effort
   const jsonStr = await serialReadConfig();
   let p = JSON.parse(jsonStr);
   if (!p.banks) throw new Error('Invalid structure');
   p = normalizeFwConfig(p);
-  cfg = p; loaded = true; dirty = false; activeBank = 0; markConfigSynced();
+  // Open on the bank the device is on (Frank 2026-09-30), not always Bank 1.
+  cfg = p; loaded = true; dirty = false; activeBank = deviceBank < p.banks.length ? deviceBank : 0; markConfigSynced();
   cfgSave();
   storageSet(LS_SERIAL_PID_KEY, _serialPort.getInfo().usbProductId);
   _serialGranted = true;
@@ -5994,6 +5996,11 @@ async function _onDeviceConnected() {
       const differs = protocolVersion === 2 && stored && DEVICE_INFO.config_hash
                        && stored !== DEVICE_INFO.config_hash;
       if (!dirty) {
+        // Banner paths keep the local config – still show the bank the device is on
+        // (its tab carries the device dot). Unsaved edits keep their bank (C10/C11).
+        if ((isDefaults || differs) && liveBank < cfg.banks.length && activeBank !== liveBank) {
+          activeBank = liveBank; render();
+        }
         if (isDefaults) { showSyncBanner('defaults'); renderConnState(); }
         else if (differs) { showSyncBanner('differs'); renderConnState(); }
         else { await loadConfigFromDevice(); renderConnState(); }
