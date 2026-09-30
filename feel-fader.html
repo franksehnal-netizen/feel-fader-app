@@ -3940,7 +3940,13 @@ async function saveOwnerName(){
     await serialRequest('CMD_OWNER', JSON.stringify({ owner }), 2000);
     DEVICE_INFO.owner = owner;
     toast('s', owner ? 'Name saved' : 'Name removed');
-    try { await serialReadInfo(); } catch (e) {}   // read-back; best effort
+    // Read-back via a plain CMD_INFO, not serialReadInfo(): its legacy bootstrap flips
+    // protocolVersion to 1 under any queued transaction (e.g. Send clicked right after
+    // blur) and its render() would rebuild an input the user just moved into.
+    try {
+      const info = JSON.parse(await serialRequest('CMD_INFO', null, 2000));
+      DEVICE_INFO.owner = typeof info.owner === 'string' ? info.owner : '';
+    } catch (e) {}   // best effort
   } catch (e) {
     const err = /^ERR:(.+)$/.exec(e.message || '');
     toast('e', err && err[1] === 'space'

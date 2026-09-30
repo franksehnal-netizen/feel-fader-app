@@ -48,10 +48,11 @@ const save = await p.evaluate(async () => {
   return { noop, sent, owner: DEVICE_INFO.owner, value: input.value, toastTxt };
 });
 P('no-op blur sends nothing', save.noop === 0, String(save.noop));
-P('Enter sends CMD_OWNER with trimmed name', save.sent.length === 1 && save.sent[0][0] === 'CMD_OWNER'
-  && save.sent[0][1] === JSON.stringify({ owner: 'Ivan' }), JSON.stringify(save.sent));
+const ownerSends = save.sent.filter(c => c[0] === 'CMD_OWNER');   // + one CMD_INFO read-back
+P('Enter sends CMD_OWNER with trimmed name', ownerSends.length === 1
+  && ownerSends[0][1] === JSON.stringify({ owner: 'Ivan' }), JSON.stringify(save.sent));
 P('owner state updated + toast', save.owner === 'Ivan' && save.toastTxt.includes('Name saved'), JSON.stringify(save));
-P('Escape reverts without sending', save.value === 'Ivan' && save.sent.length === 1, JSON.stringify(save));
+P('Escape reverts without sending', save.value === 'Ivan' && ownerSends.length === 1, JSON.stringify(save));
 
 const errSpace = await p.evaluate(async () => {
   window.serialRequest = async () => { throw new Error('ERR:space'); };
@@ -74,6 +75,28 @@ const errOther = await p.evaluate(async () => {
 });
 P('other error → generic toast, input reverted', errOther.value === 'Ivan'
   && errOther.toastTxt.includes("Couldn't save name"), JSON.stringify(errOther));
+
+// ── Read-back after save must stay on protocol v2 (final review I1): serialReadInfo()'s
+// legacy bootstrap would flip protocolVersion to 1 under a Send queued right after blur.
+await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
+await p.evaluate(() => { skipWelcome(); });
+await new Promise(r => setTimeout(r, 300));
+const rb = await p.evaluate(async () => {
+  _serialPort = { getInfo: () => ({ usbProductId: 1 }) }; protocolVersion = 2;
+  DEVICE_INFO.supports_owner = true; DEVICE_INFO.owner = ''; renderConnState(); toggleDeviceSettings();
+  const calls = [];
+  window.serialRequest = async (cmd) => {
+    calls.push([cmd, protocolVersion]);
+    return cmd === 'CMD_INFO' ? JSON.stringify({ schema_version: 3, config_hash: 'deadbeef', supports_owner: true, owner: 'Ivan' }) : '';
+  };
+  const input = document.getElementById('owner-input');
+  input.focus(); input.value = ' Ivan'; input.blur();
+  await new Promise(r => setTimeout(r, 50));
+  return { calls, pv: protocolVersion, owner: DEVICE_INFO.owner };
+});
+P('save + read-back never drop to legacy protocol', rb.pv === 2 && rb.calls.every(c => c[1] === 2)
+  && rb.calls.some(c => c[0] === 'CMD_INFO'), JSON.stringify(rb));
+P('read-back owner applied', rb.owner === 'Ivan', JSON.stringify(rb));
 
 // ── Greeting: Connect & load (doStart) ──
 async function freshStart(owner) {
