@@ -8,13 +8,20 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Otevřené
 
-- **Firmware řadí `uacc_values`:** `ff_config.py` `_normalize_bank_core` dělá
-  `sorted({...})`, takže ROLLER ORDER z appky (drag & drop) se v zařízení změní na
-  vzestupné pořadí; `ks_notes` pořadí drží. Oprava patří do firmware repa.
-  *2026-09-26:* oprava + testy připravené ve firmware repu (necommitnuté),
-  čeká na test na zařízení.
+- **Vydat firmware s opravami z 2026-09-30** (`f209252`, `68ac299`): zatím jen na
+  Frankově kusu (dev flash), ostatní zařízení je dostanou až s novým balíčkem
+  (`publish-ff-firmware.ps1`).
 
 ## Hotovo
+
+### 2026-09-30 – firmware: pořadí rolleru a směr šipek (ověřeno na zařízení)
+
+- **ROLLER ORDER se už neřadí:** `_normalize_bank_core` zachová pořadí z appky,
+  duplicity pryč (první výskyt vyhrává). Firmware `f209252`.
+- **Navigation (šipky) ve správném směru:** roll nahoru hlásí záporné delta (stejná
+  konvence jako keyswitch a cc_relative); track_nav bral kladné jako nahoru, takže
+  pole ROLL UP se posílalo při pohybu dolů. INVERT dál prohazuje. Firmware
+  `68ac299`, test `tests/test_track_nav_direction.py`.
 
 ### 2026-09-30 – hover s časováním záře controlleru, zvýrazněná sekce přes celou šířku
 
