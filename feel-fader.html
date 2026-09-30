@@ -1904,6 +1904,7 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 .section-live-fader::before{content:'';position:absolute;inset:0;transform:scaleY(var(--live-frac,0));transform-origin:bottom;background:color-mix(in srgb,var(--t2) 20%,transparent)}
 .section-live-num{position:relative;z-index:1;min-width:3ch;text-align:center;font-weight:700;font-size:var(--fs-md)}
 .section-live-roller{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.section-live-button{justify-content:center;min-width:32px;height:26px;padding:0 5px}   /* same box as .section-live-fader → the dot sits on the fader numbers' axis (Frank 2026-09-30) */
 .section-live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 rgba(var(--link-ring-rgb),0);transition:width var(--hover-out),height var(--hover-out),box-shadow var(--hover-out)}
 /* Long press (macro fired): the fader-thumb glow recipe on a ring (spec 2026-09-30). */
 .section-live.is-held{color:var(--t1)}

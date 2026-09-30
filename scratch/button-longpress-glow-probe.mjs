@@ -17,7 +17,8 @@ const r = await p.evaluate(async () => {
   const ring = () => document.getElementById('section-live-macro');
   const held = () => !!ring()?.classList.contains('is-held');
   const evt = (bytes) => onMidiMsg({ data: new Uint8Array(bytes), timeStamp: performance.now() });
-  const out = { exists: !!ring() };
+  const cx = id => { const r = document.getElementById(id).getBoundingClientRect(); return { x: r.left + r.width / 2, w: r.width, h: r.height }; };
+  const out = { exists: !!ring(), fader: cx('section-live-fader1'), button: cx('section-live-macro') };
   evt([0xF0,0x7D,0x01,0x08,0x01,0xF7]); out.lit = held();
   const dot = ring()?.querySelector('.section-live-dot');
   out.shadow = dot ? getComputedStyle(dot).boxShadow : '';
@@ -32,6 +33,7 @@ const r = await p.evaluate(async () => {
   return out;
 });
 P('CMD_EVT 0x01 lights the Button ring', r.lit === true, JSON.stringify(r));
+P('ring sits on the fader numbers\' vertical axis, same box (Frank 2026-09-30)', Math.abs(r.fader.x - r.button.x) <= 0.5 && r.fader.w === r.button.w && r.fader.h === r.button.h, `${JSON.stringify(r.fader)} vs ${JSON.stringify(r.button)}`);
 P('ring carries a glow (box-shadow) on the link timing', r.shadow !== 'none' && r.transition.split(',').some(d => d.trim() === '1.3s'), `${r.shadow} | ${r.transition}`);
 P('a second press keeps it lit (timer restarts, no flicker)', r.stillLit === true, JSON.stringify(r));
 P('ring clears 350 ms after the last event', r.off === true, JSON.stringify(r));
