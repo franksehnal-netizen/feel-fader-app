@@ -1888,6 +1888,25 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 .section-head.section-toggle{cursor:pointer}
 .section-toggle-title{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .section-toggle-meta{margin-left:auto;display:flex;align-items:center;gap:var(--space-3);min-width:0}
+/* Live value at the right of each section head (Frank 2026-09-30): what the hardware
+   sends right now – fader number on a level wash, roller articulation/keyswitch (relative:
+   last direction), button flash on a short press. Only while live and the card shows
+   the device's bank; otherwise nothing. Appears/fades and brightens while values
+   arrive on the controller-glow timing (--hover-in/--hover-out); the number and bar
+   themselves never lag. */
+.section-live{display:inline-flex;align-items:center;gap:6px;min-width:0;color:var(--t2);font:600 var(--fs-sm) 'Mulish',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;opacity:0;transition:opacity var(--hover-out),color var(--hover-out)}
+.section-live.is-on{opacity:1;transition:opacity var(--hover-in),color var(--hover-out)}
+.section-live.is-on.is-moving{color:var(--t1);transition:opacity var(--hover-in),color var(--hover-in)}
+/* Fader = a miniature Live HUD cell (Frank 2026-09-30): bold number on a wash that
+   rises from the bottom with the level – same scaleY technique as
+   .live-hud-item::before, a touch stronger so the level reads at this size. */
+.section-live-fader{position:relative;overflow:hidden;justify-content:center;min-width:32px;height:26px;padding:0 5px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--t2) 4%,transparent)}
+.section-live-fader::before{content:'';position:absolute;inset:0;transform:scaleY(var(--live-frac,0));transform-origin:bottom;background:color-mix(in srgb,var(--t2) 20%,transparent)}
+.section-live-num{position:relative;z-index:1;min-width:3ch;text-align:center;font-weight:700;font-size:var(--fs-md)}
+.section-live-roller{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.section-live-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+@media(max-width:600px){.section-live-roller{max-width:96px}}
+@media(prefers-reduced-motion:reduce){.section-live{transition:none}}
 .section-toggle-action{display:flex;align-items:center;gap:var(--space-3);min-width:0;margin-left:auto;padding:5px 0 5px 12px;border:0;background:transparent;color:inherit;cursor:pointer;font-family:'Mulish',sans-serif}
 .section-toggle-action:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:var(--r-sm)}
 /* Šířka podle obsahu, ne pevných 190 px: prázdné místo napravo od názvu
@@ -2759,6 +2778,14 @@ const SECTION_MARKS = {
   macro: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="3" fill="currentColor"/></svg>',
 };
 const SECTION_CHEVRON = '<svg class="section-chevron" viewBox="0 0 9 14" aria-hidden="true"><path d="M1.5 1.5L7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// Empty live-value slot per section head; syncSectionLive() fills it.
+function sectionLiveSlotHtml(key) {
+  const inner = key === 'fader1' || key === 'fader2'
+    ? '<span class="section-live-num"></span>'
+    : key === 'macro' ? '<span class="section-live-dot"></span>' : '';
+  const cls = key === 'roller' ? ' section-live-roller' : key === 'macro' ? ' section-live-button' : ' section-live-fader';
+  return `<span class="section-live${cls}" id="section-live-${key}" aria-hidden="true">${inner}</span>`;
+}
 function sectionHeaderHtml(bi, key, title, summary, tip, extra) {
   const open = isSectionOpen(key);
   const tipAttr = tip ? ` data-tip="${escHtml(tip)}"` : '';
@@ -2778,7 +2805,7 @@ function sectionHeaderHtml(bi, key, title, summary, tip, extra) {
       </span>
       <button type="button" class="section-toggle-action" id="section-toggle-${bi}-${key}"
         onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}" aria-label="${open?'Collapse':'Expand'} ${escHtml(title)} settings">
-        ${SECTION_CHEVRON}
+        ${sectionLiveSlotHtml(key)}${SECTION_CHEVRON}
       </button>
     </div>`;
   }
@@ -2786,7 +2813,7 @@ function sectionHeaderHtml(bi, key, title, summary, tip, extra) {
     onclick="toggleSection('${key}',event)" aria-expanded="${open}" aria-controls="section-body-${bi}-${key}">
       ${mark}
       <span class="section-toggle-title"><span class="panel-name${key==='roller'?' roller-mode-title':''}" id="section-title-${bi}-${key}">${escHtml(title)}</span>${summaryHtml}</span>
-      <span class="section-toggle-meta">${extra||''}${SECTION_CHEVRON}</span>
+      <span class="section-toggle-meta">${extra||''}${sectionLiveSlotHtml(key)}${SECTION_CHEVRON}</span>
     </button>`;
 }
 // Collapsed-header summaries (UX audit 2026-09-25 C-5): each section says what
@@ -3419,6 +3446,7 @@ function renderPanels(errs = validate()) {
   // pick up any section that's open by default (no hover involved) — see
   // syncFaderLink() comment.
   ['fader1','fader2','roller','macro'].forEach(syncFaderLink);
+  syncSectionLive();   // the rebuilt heads start with empty live slots
   updateStickySectionHeads();
 }
 
@@ -5249,7 +5277,7 @@ function flushFaderFrame(){
   // High-rate fader CC must stay on a tiny fast path. Rebuilding every label,
   // validation marker and contextual HUD position at up to 125 Hz lets other
   // MIDI-heavy tabs push this page into a visible event backlog.
-  renderLiveFaderValues(changed);
+  renderLiveFaderValues(changed, true);
 }
 function pF(tid,thid,v){
   const th=document.getElementById(thid);
@@ -5485,6 +5513,7 @@ function onMidiMsg(event){
       const idx = bank.uacc_values.indexOf(val);
       if(idx !== -1) encIndex = idx;
       syncUaccLiveRow();
+      pulseSectionLive('roller');
     }
 
   }
@@ -5496,6 +5525,7 @@ function onMidiMsg(event){
       document.querySelectorAll('.seq-row.is-live[data-ksnote]').forEach(el => el.classList.remove('is-live'));
       document.querySelector(`.seq-row[data-ksnote="${note}"]`)?.classList.add('is-live');
       renderLiveStrip();
+      pulseSectionLive('roller');
     }
   }
   // Bank switch via Program Change from hardware button
@@ -5512,6 +5542,7 @@ function onMidiMsg(event){
       setActiveTab(activeBank);
       renderUacc();
       renderLiveStrip();
+      pulseSectionLive('macro', true);   // short press = bank switch; long press (macro) is HID-only, never reaches the app
     }
   }
 }
@@ -6431,7 +6462,7 @@ function updateContextualLiveStrip(){
   strip.classList.toggle('is-idle',!live);
   strip.setAttribute('aria-hidden',String(!visible));
 }
-function renderLiveFaderValues(changed = {l:true,r:true}){
+function renderLiveFaderValues(changed = {l:true,r:true}, moved = false){
   const allowed = connState() === 'CONNECTED_LIVE';
   const setLiveValue = (id, itemId, value, seen) => {
     const valid = allowed && seen && Number.isFinite(value);
@@ -6445,6 +6476,61 @@ function renderLiveFaderValues(changed = {l:true,r:true}){
   };
   if (changed.l) setLiveValue('live-f1-value', 'live-f1-item', liveValues.f1, liveSeen.f1);
   if (changed.r) setLiveValue('live-f2-value', 'live-f2-item', liveValues.f2, liveSeen.f2);
+  if (changed.l) setSectionLiveFader('fader1', liveValues.f1, liveSeen.f1, moved);
+  if (changed.r) setSectionLiveFader('fader2', liveValues.f2, liveSeen.f2, moved);
+}
+
+// Live values in the section heads (Frank 2026-09-30) – same sources as the Live
+// HUD, shown only while live and the card shows the bank the device is on.
+// .is-moving marks "values arriving" and drops SECTION_LIVE_SETTLE_MS after the
+// last one, so the brightening rises and fades on the glow timing (CSS).
+const SECTION_LIVE_SETTLE_MS = 350;
+const _sectionLiveTimers = {};
+function sectionLiveEl(key) { return document.getElementById(`section-live-${key}`); }
+function sectionLiveAllowed() { return connState() === 'CONNECTED_LIVE' && activeBank === liveBank; }
+function pulseSectionLive(key, flash = false) {
+  const el = sectionLiveEl(key);
+  if (!el || !sectionLiveAllowed()) return;
+  el.classList.add('is-on', 'is-moving');
+  clearTimeout(_sectionLiveTimers[key]);
+  _sectionLiveTimers[key] = setTimeout(() => {
+    const cur = sectionLiveEl(key);   // the panel may have re-rendered meanwhile
+    if (!cur) return;
+    cur.classList.remove('is-moving');
+    if (flash) cur.classList.remove('is-on');
+  }, SECTION_LIVE_SETTLE_MS);
+}
+function setSectionLiveFader(key, value, seen, moved) {
+  const el = sectionLiveEl(key);
+  if (!el) return;
+  if (!(sectionLiveAllowed() && seen && Number.isFinite(value))) { el.classList.remove('is-on', 'is-moving'); return; }
+  const text = String(value);
+  const num = el.firstElementChild;
+  if (num.textContent !== text) num.textContent = text;
+  el.style.setProperty('--live-frac', String(Math.max(0, Math.min(127, value)) / 127));
+  if (moved) pulseSectionLive(key); else el.classList.add('is-on');
+}
+function sectionRollerLiveText() {
+  const bank = cfg.banks[liveBank];
+  const mode = bank?.roller_mode || 'cc';
+  if (mode === 'cc' && encLiveVal !== null) return liveArticulationName(encLiveVal);
+  if (mode === 'keyswitch' && ksLiveNote !== null) return ksLabel(bank, ksLiveNote);
+  // Relative CC carries only a direction (firmware: roll up = 1, down = 127).
+  if (mode === 'cc_relative' && encLiveVal !== null) return encLiveVal < 64 ? '↑' : '↓';
+  return '';   // track_nav: keys go straight to the OS, nothing reaches the app
+}
+function syncSectionLive() {
+  setSectionLiveFader('fader1', liveValues.f1, liveSeen.f1, false);
+  setSectionLiveFader('fader2', liveValues.f2, liveSeen.f2, false);
+  const roller = sectionLiveEl('roller');
+  if (roller) {
+    const text = sectionLiveAllowed() ? sectionRollerLiveText() : '';
+    if (text) {
+      if (roller.textContent !== text) { roller.textContent = text; roller.title = text; }
+      roller.classList.add('is-on');
+    } else roller.classList.remove('is-on', 'is-moving');
+  }
+  if (!sectionLiveAllowed()) sectionLiveEl('macro')?.classList.remove('is-on', 'is-moving');
 }
 
 // Device context in the editor (spec 2026-09-26 §2/§4, Frank reversed the
@@ -6540,6 +6626,7 @@ function renderLiveStrip(errs = validate()){
       : mode === 'keyswitch' && ksLiveNote !== null && bank.ks_names?.[ksLiveNote] ? `${readableValue} · ${noteName(ksLiveNote)}` : readableValue;
     rollerValueEl.setAttribute('aria-label', readableValue);
   }
+  syncSectionLive();
   updateContextualLiveStrip();
 }
 function updateNvmDegradedNotice() {

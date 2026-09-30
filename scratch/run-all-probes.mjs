@@ -74,6 +74,7 @@ const PROBES = [
   'theme-switch-uniform-probe.mjs',
   'button-zone-hover-probe.mjs',
   'hover-glow-timing-probe.mjs',
+  'section-live-values-probe.mjs',
   'live-hud-square-probe.mjs',
   'live-hud-free-manipulation-probe.mjs',
   'send-note-below-probe.mjs',
