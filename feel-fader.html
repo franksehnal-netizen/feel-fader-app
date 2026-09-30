@@ -1298,7 +1298,6 @@ body:has(#welcome-screen:not(.hidden)){overflow:hidden}
 .welcome-start:active{transform:scale(.97);}
 .welcome-start:disabled{opacity:.6;cursor:default;}
 .welcome-start-msg{width:100%;height:14px;min-height:14px;margin:6px 0 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--fs-sm);line-height:14px;color:var(--danger);}
-.welcome-start-msg.is-greeting{color:var(--t2);}
 .welcome-browser-notice{display:none;width:100%;box-sizing:border-box;margin:10px 0 0;padding:9px 14px;border-radius:var(--r);font-size:var(--fs-md);line-height:1.4;color:var(--danger);background:var(--danger-bg);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);}
 .welcome-browser-notice.show{display:block;}
 .welcome-skip{
@@ -1768,6 +1767,23 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
    2026-08-16 as a fix for ghost text over the revealed app; opacity alone
    already fades it to ~0.2 well before the app is legible underneath, so
    the filter wasn't worth this regression. */
+/* Owner greeting (spec 2026-09-30-owner-name-design, overlay per Frank 2026-10-01):
+   centered, non-blocking; in 0.84s (name staggered .12s) → hold → out .6s from 2s. */
+.owner-greeting{position:fixed;inset:0;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;pointer-events:none;
+  animation:owner-greeting-out .6s var(--ease-out) 2s forwards}
+.owner-greeting::before{content:'';position:absolute;left:50%;top:50%;width:min(560px,92vw);height:240px;transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,var(--bg),transparent);opacity:.9;z-index:-1}
+.owner-greeting-pre{font:400 var(--fs-base)/1.2 'Mulish',sans-serif;color:var(--t2);animation:owner-greeting-in .72s var(--ease-hero) both}
+.owner-greeting-name{max-width:92vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:700 var(--fs-3xl)/1.15 'Mulish',sans-serif;letter-spacing:-.035em;color:var(--t1);animation:owner-greeting-in .72s var(--ease-hero) .12s both}
+@keyframes owner-greeting-in{from{opacity:0;transform:translateY(10px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes owner-greeting-out{to{opacity:0;transform:scale(.98);filter:blur(6px)}}
+@keyframes owner-greeting-fade{from{opacity:0}to{opacity:1}}
+@keyframes owner-greeting-fade-out{to{opacity:0}}
+@media(prefers-reduced-motion:reduce){
+  .owner-greeting{animation:owner-greeting-fade-out .3s ease 2s forwards}
+  .owner-greeting-pre,.owner-greeting-name{animation:owner-greeting-fade .3s ease both}
+}
 @keyframes welcome-text-out{
   from{opacity:1}
   to  {opacity:0}
@@ -6000,17 +6016,31 @@ function updateWelcomeSkip() {
   document.getElementById('welcome-text-block')?.classList.toggle('welcome-has-skip',visible);
 }
 // Owner greeting (spec 2026-09-30-owner-name-design) – at most once per page load.
+// Returns the owner name to greet, '' when there is none or it was already used.
 let _ownerGreeted = false;
 function takeOwnerGreeting(){
   if (_ownerGreeted || !DEVICE_INFO.owner) return '';
   _ownerGreeted = true;
-  return `Welcome back, ${DEVICE_INFO.owner}`;
+  return DEVICE_INFO.owner;
+}
+// Centered, non-blocking overlay that removes itself once .owner-greeting's
+// fade-out ends (timer is only a fallback for tabs that skip animations).
+function showOwnerGreeting(name){
+  document.getElementById('owner-greeting')?.remove();
+  const el = document.createElement('div');
+  el.id = 'owner-greeting'; el.className = 'owner-greeting'; el.setAttribute('role', 'status');
+  const pre = document.createElement('span'); pre.className = 'owner-greeting-pre'; pre.textContent = 'Welcome back,';
+  const nm = document.createElement('span'); nm.className = 'owner-greeting-name'; nm.textContent = name;
+  el.append(pre, nm);
+  el.addEventListener('animationend', e => { if (e.target === el) el.remove(); });
+  setTimeout(() => el.remove(), 3000);
+  document.body.appendChild(el);
 }
 function showStartBtn() {
   const btn = document.getElementById('send-btn');
   if (btn) { btn.classList.add('show'); btn.disabled = false; btn.textContent = 'Connect & load'; }
   const msg = document.getElementById('welcome-start-msg');
-  if (msg) { msg.textContent = ''; msg.removeAttribute('title'); msg.classList.remove('is-greeting'); }
+  if (msg) { msg.textContent = ''; msg.removeAttribute('title'); }
   updateWelcomeSkip();
   // Re-measure now, synchronously — any DOM mutation that changes
   // #welcome-action-slot's geometry (e.g. leaving/entering onboarding's
@@ -6029,19 +6059,18 @@ async function doStart() {
   const btn = document.getElementById('send-btn');
   const msg = document.getElementById('welcome-start-msg');
   if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
-  if (msg) { msg.textContent = ''; msg.classList.remove('is-greeting'); }
+  if (msg) msg.textContent = '';
   try {
     await loadConfigFromDevice();
     renderConnState();
-    const greeting = takeOwnerGreeting();
-    if (greeting && msg) { msg.textContent = greeting; msg.classList.add('is-greeting'); }
+    const owner = takeOwnerGreeting();
     hideWelcome();                              // transition → main page
+    if (owner) setTimeout(() => showOwnerGreeting(owner), 1100);   // after the --dur-stage connect transition
   } catch(e) {
     const cancelled = e && (e.name === 'AbortError' || e.name === 'NotFoundError' || /cancel|no port selected/i.test(e.message || ''));
     if (!cancelled) await releaseSerialPort({forget:true});
     if (btn) { btn.disabled = false; btn.textContent = cancelled ? 'Connect & load' : 'Try again'; }
     if (msg) {
-      msg.classList.remove('is-greeting');
       msg.textContent = cancelled ? '' : 'Connection failed';
       if (cancelled) msg.removeAttribute('title');
       else msg.title = /open|busy|in use|access/i.test(e.message || '')
@@ -6124,8 +6153,8 @@ async function _onDeviceConnected() {
     // instead of a seamless load (Frank 2026-08-16).
     if (onWelcome) {
       finishWelcomeInstant();
-      const greeting = takeOwnerGreeting();   // silent load of a known device – toast instead of the welcome line
-      if (greeting) toast('i', greeting);
+      const owner = takeOwnerGreeting();   // silent load of a known device
+      if (owner) showOwnerGreeting(owner);
     }
     return;
   }
