@@ -113,32 +113,69 @@ const readGreeting = () => p.evaluate(() => {
   };
 });
 
-// Connect & load (doStart): overlay only after the ~1.1s connect transition.
+// Connect & load (doStart): one continuous move on the fader-glow timing
+// (--dur-link-in / --ease-link, Frank 2026-10-01); the app chrome never pops in
+// over the gliding controller; the greeting waits until the app has settled.
+const chrome = () => p.evaluate(() => ({
+  header: +getComputedStyle(document.querySelector('header')).opacity,
+  sections: +getComputedStyle(document.getElementById('settings-col')).opacity,
+  footer: +getComputedStyle(document.querySelector('.site-footer')).opacity,
+  pending: document.body.classList.contains('app-reveal-pending'),
+  reveal: document.body.classList.contains('app-reveal'),
+  stageTransition: document.getElementById('stage-collapse').style.transition,
+  greeting: !!document.getElementById('owner-greeting'),
+}));
 async function freshStart(owner) {
   await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
   return p.evaluate(async (owner) => {
     showWelcome(); await new Promise(requestAnimationFrame);
-    window.loadConfigFromDevice = async () => { protocolVersion = 2; DEVICE_INFO.owner = owner; };
+    window.loadConfigFromDevice = async () => { protocolVersion = 2; DEVICE_INFO.owner = owner; liveValues.f1 = 20; liveValues.f2 = 110; };
     await doStart();
-    return { duringTransition: !!document.getElementById('owner-greeting'), again: takeOwnerGreeting() };
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return { thumbTransition: document.getElementById('thumb-l').style.transition,
+             duringTransition: !!document.getElementById('owner-greeting'), again: takeOwnerGreeting() };
   }, owner);
 }
+await p.setViewport({ width: 1512, height: 900 });   // desktop two-column layout – the controller glides left
 const s1 = await freshStart('Frank');
+P('faders settle on the fader-glow curve, done before the 1.1 s layout swap', /--ease-link/.test(s1.thumbTransition) && /--dur-stage\) - \.1s/.test(s1.thumbTransition), s1.thumbTransition);
 P('no overlay during the connect transition', s1.duringTransition === false, JSON.stringify(s1));
 P('greeting consumed once per page', s1.again === '', JSON.stringify(s1));
-await new Promise(r => setTimeout(r, 1500));
-const g1 = await readGreeting();
+await new Promise(r => setTimeout(r, 700));
+const c1 = await chrome();   // ≈ 0.8 s: welcome backdrop fading, app underneath
+P('app chrome held hidden while the welcome fades', c1.pending && c1.header === 0 && c1.sections === 0 && c1.footer === 0, JSON.stringify(c1));
+await new Promise(r => setTimeout(r, 450));
+const c2 = await chrome();   // ≈ 1.25 s: controller just started gliding
+P('controller keeps its --dur-stage glide (Frank: the glide itself is fine)', /--dur-stage/.test(c2.stageTransition), c2.stageTransition);
+P('sections not yet over the gliding controller', c2.reveal && c2.sections < 0.2, JSON.stringify(c2));
+P('no greeting while the app is still arriving', c2.greeting === false, JSON.stringify(c2));
+await new Promise(r => setTimeout(r, 1450));
+const g1 = await readGreeting();   // ≈ 2.7 s
 P('Connect & load → centered "Welcome back," + name', g1.present && g1.pre === 'Welcome back,' && g1.name === 'Frank' && g1.centered, JSON.stringify(g1));
 P('no toast / welcome line for the greeting', g1.msg === '' && !g1.toasts.some(t => t.includes('Welcome back')), JSON.stringify(g1));
-await new Promise(r => setTimeout(r, 2800));   // overlay age ≈ 3.2 s: past the 2.6 s fade-out
+const look = await p.evaluate(() => {
+  const nm = document.querySelector('.owner-greeting-name'), cs = getComputedStyle(nm);
+  return { size: parseFloat(cs.fontSize), dur: cs.animationDuration, ease: cs.animationTimingFunction };
+});
+P('greeting is large and eases in like the fader glow', look.size >= 40 && look.dur === '1.3s' && look.ease === 'cubic-bezier(0.22, 0.61, 0.36, 1)', JSON.stringify(look));
+const scrim = await p.evaluate(() => {
+  const cs = getComputedStyle(document.getElementById('owner-greeting'));
+  return { bg: cs.backgroundColor, blur: cs.backdropFilter };
+});
+P('greeting sits on a soft full-screen scrim', scrim.bg !== 'rgba(0, 0, 0, 0)' && /blur/.test(scrim.blur), JSON.stringify(scrim));
+await new Promise(r => setTimeout(r, 1200));   // ≈ 3.9 s: past the scrim fade-in, before the fade-out
+P('overlay survives its own fade-in (only the fade-out removes it)', (await readGreeting()).present === true);
+await new Promise(r => setTimeout(r, 4000));   // in 1.3 + hold + out 1.8 s, then removed
 P('overlay removed after it fades out', (await readGreeting()).present === false);
+const c3 = await chrome();
+P('app chrome fully in, reveal classes cleaned up', c3.header === 1 && c3.sections === 1 && c3.footer === 1 && !c3.pending && !c3.reveal, JSON.stringify(c3));
 
 await freshStart('');
-await new Promise(r => setTimeout(r, 1500));
+await new Promise(r => setTimeout(r, 2600));
 P('no owner → no overlay', (await readGreeting()).present === false);
 
 await freshStart('<b>x</b>');
-await new Promise(r => setTimeout(r, 1500));
+await new Promise(r => setTimeout(r, 2600));
 const g3 = await readGreeting();
 P('owner rendered literally (escape)', g3.name === '<b>x</b>' && !g3.bold, JSON.stringify(g3));
 
@@ -155,7 +192,7 @@ await p.evaluate(async () => {
 });
 const sl = await readGreeting();
 P('silent load → overlay with the name, no toast', sl.present && sl.name === 'Frank' && !sl.toasts.some(t => t.includes('Welcome back')), JSON.stringify(sl));
-await new Promise(r => setTimeout(r, 3300));
+await new Promise(r => setTimeout(r, 5200));
 await p.evaluate(() => onDeviceConnected());   // replug during work
 P('later reconnect does not greet again', (await readGreeting()).present === false);
 

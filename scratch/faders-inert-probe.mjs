@@ -65,10 +65,12 @@ const welcome = await p.evaluate(async () => {
   const glowAnimation = document.getElementById('device-img').getAnimations()
     .find(animation=>animation.animationName==='welcome-device-glow');
   const glowShadows = glowAnimation ? glowAnimation.effect.getKeyframes().map(frame=>frame.boxShadow||'') : [];
-  await new Promise(resolve=>setTimeout(resolve,700));
+  // Settle runs calc(--dur-stage - .1s) on --ease-link (Frank 2026-10-01) and must
+  // land before the 1.1 s layout swap – measure just before it.
+  await new Promise(resolve=>setTimeout(resolve,950));
   const settledLeft=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
   const settledRight=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
-  await new Promise(resolve=>setTimeout(resolve,650));
+  await new Promise(resolve=>setTimeout(resolve,400));
   const finalRect = document.getElementById('device-img').getBoundingClientRect();
   const homeRect = document.getElementById('device-home').getBoundingClientRect();
   return {

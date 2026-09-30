@@ -1768,20 +1768,23 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
    already fades it to ~0.2 well before the app is legible underneath, so
    the filter wasn't worth this regression. */
 /* Owner greeting (spec 2026-09-30-owner-name-design, overlay per Frank 2026-10-01):
-   centered, non-blocking; in 0.84s (name staggered .12s) → hold → out .6s from 2s. */
-.owner-greeting{position:fixed;inset:0;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;pointer-events:none;
-  animation:owner-greeting-out .6s var(--ease-out) 2s forwards}
-.owner-greeting::before{content:'';position:absolute;left:50%;top:50%;width:min(560px,92vw);height:240px;transform:translate(-50%,-50%);
+   centered, non-blocking, on the fader-glow timing – in --dur-link-in (name +.15s)
+   → hold → out --dur-link-out from 2.55s, all --ease-link. */
+.owner-greeting{position:fixed;inset:0;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;
+  /* Soft scrim so the greeting never reads over the sections beneath it. */
+  background:color-mix(in srgb,var(--bg) 70%,transparent);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  animation:owner-greeting-fade var(--dur-link-in) var(--ease-link) both,owner-greeting-out var(--dur-link-out) var(--ease-link) 2.55s forwards}
+.owner-greeting::before{content:'';position:absolute;left:50%;top:50%;width:min(760px,94vw);height:340px;transform:translate(-50%,-50%);
   background:radial-gradient(closest-side,var(--bg),transparent);opacity:.9;z-index:-1}
-.owner-greeting-pre{font:400 var(--fs-base)/1.2 'Mulish',sans-serif;color:var(--t2);animation:owner-greeting-in .72s var(--ease-hero) both}
+.owner-greeting-pre{font:400 var(--fs-xl)/1.2 'Mulish',sans-serif;color:var(--t2);animation:owner-greeting-in var(--dur-link-in) var(--ease-link) both}
 .owner-greeting-name{max-width:92vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font:700 var(--fs-3xl)/1.15 'Mulish',sans-serif;letter-spacing:-.035em;color:var(--t1);animation:owner-greeting-in .72s var(--ease-hero) .12s both}
-@keyframes owner-greeting-in{from{opacity:0;transform:translateY(10px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
-@keyframes owner-greeting-out{to{opacity:0;transform:scale(.98);filter:blur(6px)}}
+  font:700 calc(var(--fs-3xl) * 2)/1.15 'Mulish',sans-serif;letter-spacing:-.035em;color:var(--t1);animation:owner-greeting-in var(--dur-link-in) var(--ease-link) .15s both}
+@keyframes owner-greeting-in{from{opacity:0;transform:translateY(14px);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+@keyframes owner-greeting-out{to{opacity:0;transform:scale(.985);filter:blur(8px)}}
 @keyframes owner-greeting-fade{from{opacity:0}to{opacity:1}}
 @keyframes owner-greeting-fade-out{to{opacity:0}}
 @media(prefers-reduced-motion:reduce){
-  .owner-greeting{animation:owner-greeting-fade-out .3s ease 2s forwards}
+  .owner-greeting{animation:owner-greeting-fade .3s ease both,owner-greeting-fade-out .3s ease 2.55s forwards}
   .owner-greeting-pre,.owner-greeting-name{animation:owner-greeting-fade .3s ease both}
 }
 @keyframes welcome-text-out{
@@ -1797,6 +1800,14 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
   to  {opacity:1}
 }
 #welcome-screen.connecting{pointer-events:none}
+/* Connect & load → app chrome reveal (revealAppChrome(), Frank 2026-10-01). */
+body.app-reveal-pending header,body.app-reveal-pending #settings-col,body.app-reveal-pending .site-footer{opacity:0}
+/* Opacity only: a transform would make #settings-col the offsetParent mid-reveal
+   and skew every offsetTop-based scroll computed during it. */
+body.app-reveal header,body.app-reveal #settings-col,body.app-reveal .site-footer{animation:app-chrome-fade var(--dur-link-in) var(--ease-link) .35s both}
+body.app-reveal .center-col>.stage-collapse{z-index:3}
+@keyframes app-chrome-fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){body.app-reveal header,body.app-reveal #settings-col,body.app-reveal .site-footer{animation-duration:.3s;animation-timing-function:ease;animation-delay:0s}}
 #welcome-screen.connecting::before{animation:welcome-screen-out .34s ease .72s forwards}
 
 /* ── INSTRUMENT ICON PICKER ── */
@@ -6024,7 +6035,7 @@ function takeOwnerGreeting(){
   return DEVICE_INFO.owner;
 }
 // Centered, non-blocking overlay that removes itself once .owner-greeting's
-// fade-out ends (timer is only a fallback for tabs that skip animations).
+// fade-out ends – not its fade-in (timer is only a fallback for tabs that skip animations).
 function showOwnerGreeting(name){
   document.getElementById('owner-greeting')?.remove();
   const el = document.createElement('div');
@@ -6032,8 +6043,8 @@ function showOwnerGreeting(name){
   const pre = document.createElement('span'); pre.className = 'owner-greeting-pre'; pre.textContent = 'Welcome back,';
   const nm = document.createElement('span'); nm.className = 'owner-greeting-name'; nm.textContent = name;
   el.append(pre, nm);
-  el.addEventListener('animationend', e => { if (e.target === el) el.remove(); });
-  setTimeout(() => el.remove(), 3000);
+  el.addEventListener('animationend', e => { if (e.target === el && /-out$/.test(e.animationName)) el.remove(); });
+  setTimeout(() => el.remove(), 4700);
   document.body.appendChild(el);
 }
 function showStartBtn() {
@@ -6065,7 +6076,7 @@ async function doStart() {
     renderConnState();
     const owner = takeOwnerGreeting();
     hideWelcome();                              // transition → main page
-    if (owner) setTimeout(() => showOwnerGreeting(owner), 1100);   // after the --dur-stage connect transition
+    if (owner) setTimeout(() => showOwnerGreeting(owner), 2100);   // once the connect transition + app reveal have settled
   } catch(e) {
     const cancelled = e && (e.name === 'AbortError' || e.name === 'NotFoundError' || /cancel|no port selected/i.test(e.message || ''));
     if (!cancelled) await releaseSerialPort({forget:true});
@@ -7518,7 +7529,7 @@ function showWelcome() {
     ws.scrollTop = 0;
     syncWelcomeOnboardingScroll();
   }
-  document.body.classList.remove('welcome-connecting');
+  document.body.classList.remove('welcome-connecting','app-reveal-pending','app-reveal');
   const controller = sharedController();
   controller?.classList.remove('connect-success');
   if (controller) delete controller.dataset.onbFeature;
@@ -7585,15 +7596,18 @@ function connectTransitionWelcome() {
     thumbR.style.transform = `translate3d(-50%,${curR}px,0)`;
   }
 
-  // 2. Settle to the device snapshot already applied by serialReadInfo(). This uses
+  // 2. Settle to the device snapshot already applied by serialReadInfo() on the
+  //    fader-glow curve (--ease-link, Frank 2026-10-01: the old snap ease read as a
+  //    jump), finishing just before the 1.1s layout swap, which drops this
+  //    transition and would otherwise cut the settle short. This uses
   //    the same 0–127 -> travel mapping as pF(), including the real rendered thumb height.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (thumbL && railL) {
-      thumbL.style.transition = 'transform var(--dur-settle) var(--ease-settle)';
+      thumbL.style.transition = 'transform calc(var(--dur-stage) - .1s) var(--ease-link)';
       pF('track-l','thumb-l',liveValues.f1);
     }
     if (thumbR && railR) {
-      thumbR.style.transition = 'transform var(--dur-settle) var(--ease-settle)';
+      thumbR.style.transition = 'transform calc(var(--dur-stage) - .1s) var(--ease-link)';
       pF('track-r','thumb-r',liveValues.f2);
     }
   }));
@@ -7620,6 +7634,10 @@ function connectTransitionWelcome() {
   //    hardware snapshot.
   ws.classList.add('connecting');
   document.body.classList.add('welcome-connecting');
+  // Hold the app chrome hidden while the welcome backdrop fades; it rises in
+  // only once the controller glide is under way (Frank 2026-10-01: sections
+  // used to appear over the moving controller in one frame).
+  document.body.classList.add('app-reveal-pending');
   setTimeout(() => {
     resetAppScrollTop();
     // runValidation() (which sets the button's post-connect text/size —
@@ -7641,6 +7659,7 @@ function connectTransitionWelcome() {
     runValidation();
     onbAfterWelcome();
     glideStageIntoColumn(() => ws.classList.add('hidden'));
+    revealAppChrome();
     // Welcome is now closed — reveal the live HUD immediately. Its
     // .is-contextual-visible toggle keys off welcomeClosed, and without this
     // call nothing re-runs it until the first scroll, so the HUD only appeared
@@ -7680,6 +7699,20 @@ function connectTransitionWelcome() {
 
 function hideWelcome() {
   connectTransitionWelcome();
+}
+
+// Second half of the Connect & load choreography: header, sections and footer
+// fade/rise in on the fader-glow timing, delayed so the gliding controller has
+// already cleared the column. Classes drop once the sections' animation ends.
+function revealAppChrome() {
+  const body = document.body;
+  body.classList.remove('app-reveal-pending');
+  body.classList.add('app-reveal');
+  const sections = document.getElementById('settings-col');
+  let cleared = false;
+  const clear = () => { if (!cleared) { cleared = true; body.classList.remove('app-reveal'); } };
+  sections?.addEventListener('animationend', e => { if (e.target === sections) clear(); });
+  setTimeout(clear, 2200);   // fallback when animations are skipped
 }
 
 function loadDefaultDemoConfig() {
