@@ -16,6 +16,21 @@ Frankovy připomínky k dořešení. Hotové položky přesouvat do sekce **Hoto
 
 ## Hotovo
 
+### 2026-09-30 – hover s časováním záře controlleru, zvýrazněná sekce přes celou šířku
+
+- **Hover = časování záře:** najetí kurzorem na tlačítka, řádky a sekce nabíhá
+  stejně pomalu jako záře controlleru (1,3 s) a zhasíná 1,8 s. Aliasy
+  `--hover-in` / `--hover-out` odvozené z `--dur-link-in` / `--dur-link-out` /
+  `--ease-link`; base pravidlo nese OUT, `:hover` IN. Stisk (scale) a výběr
+  (`.active`, `.selected`, zelená záře Send) zůstávají rychlé; Send po odjetí
+  zhasíná na `--dur-glow` (sdílí ho se stavy idle/red/sent).
+- **Zvýrazněná sekce banky:** výplň přes celou šířku karty, bez zaoblení (poslední
+  sekce přebírá zaoblení karty); dělicí čáry nad a pod ní plynule zmizí se stejným
+  časováním. Stejně řádky nastavení (`.group-row`).
+- Probes: nový `hover-glow-timing-probe` (časování, rovná výplň, čáry mizí a vrací
+  se, rychlý výběr/stisk); `k7-details-probe` přepíná téma přes `applyTheme(,false)`.
+- Commit `4a6e500`, demo `be44edd`.
+
 ### 2026-09-29 – zvýraznění ovladačů bílým prstencem, tiché chipy v onboardingu, FEEL FADER
 
 - **Zvýraznění ovladačů:** místo syté zelené záře (zelená = jen live, spec
