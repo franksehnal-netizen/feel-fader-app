@@ -135,6 +135,7 @@ const PROBES = [
   'owner-name-probe.mjs',
   'connect-intro-motion-probe.mjs',
   'connect-glide-jump-probe.mjs',
+  'mobile-welcome-notice-greeting-probe.mjs',
   'skip-intro-probe.mjs',
 ];
 

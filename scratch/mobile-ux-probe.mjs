@@ -439,7 +439,8 @@ async function runProfile(browser, url, profile) {
       stageHeight: stage.height,
       actionGap: action.top - controller.bottom,
       visibleText,
-      continueBottomGap: window.innerHeight - document.querySelector('.welcome-skip').getBoundingClientRect().bottom,
+      // The label, not the box: on phones the floating link carries a fade band to the bottom edge (2026-10-01).
+      continueBottomGap: window.innerHeight - document.querySelector('.welcome-skip span').getBoundingClientRect().bottom,
       redundantStatusAbsent: !document.getElementById('welcome-status-row'),
       redundantSubtitleAbsent: !document.querySelector('#welcome-screen .welcome-sub'),
     };
@@ -460,7 +461,7 @@ async function runProfile(browser, url, profile) {
     Math.abs(compactWelcome.actionGap - 32) <= 1,
     `${compactWelcome.actionGap.toFixed(2)} px below controller`);
   addCheck(checks, 'Continue without device hugs the browser safe edge',
-    compactWelcome.continueBottomGap >= 9 && compactWelcome.continueBottomGap <= 11,
+    compactWelcome.continueBottomGap >= 17 && compactWelcome.continueBottomGap <= 19,   // 10 px edge + 8 px link padding
     `${compactWelcome.continueBottomGap.toFixed(2)} px`);
 
   const feedbackState = await page.evaluate(async () => {
