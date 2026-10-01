@@ -1709,7 +1709,6 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
    mobilu se nezobrazí welcome"). */
 @media(max-width:899px){
   .owner-greeting.is-handoff{z-index:240;justify-content:flex-start;padding-top:calc(28px + env(safe-area-inset-top,0px))}
-  .owner-greeting.is-handoff::before{display:none}
 }
 /* Phone: the greeting is placed flush on the controller's top edge, so its rise (translateY)
    would show it overlapping the controller mid-fade – fade/blur in place instead. */
@@ -1721,8 +1720,6 @@ body.welcome-onboarding-scrollable:has(#welcome-screen:not(.hidden) #welcome-tex
 }
 @keyframes owner-greeting-flat-out{to{opacity:0;filter:blur(8px)}}
 @keyframes owner-greeting-in-flat{from{opacity:0;filter:blur(10px)}to{opacity:1;filter:none}}
-.owner-greeting::before{content:'';position:absolute;left:50%;top:50%;width:min(760px,94vw);height:340px;transform:translate(-50%,-50%);
-  background:radial-gradient(closest-side,var(--bg),transparent);opacity:.9;z-index:-1}
 .owner-greeting-pre{font:400 var(--fs-xl)/1.2 'Mulish',sans-serif;color:var(--t2);animation:owner-greeting-in var(--dur-link-in) var(--ease-link) both}
 .owner-greeting-name{max-width:92vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font:700 calc(var(--fs-3xl) * 2)/1.15 'Mulish',sans-serif;letter-spacing:-.035em;color:var(--t1);animation:owner-greeting-in var(--dur-link-in) var(--ease-link) .15s both}
