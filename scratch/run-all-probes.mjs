@@ -134,6 +134,7 @@ const PROBES = [
   'audit/p5-heap-growth.mjs',
   'owner-name-probe.mjs',
   'connect-intro-motion-probe.mjs',
+  'skip-intro-probe.mjs',
 ];
 
 const requestedProbes = process.argv.slice(2);
