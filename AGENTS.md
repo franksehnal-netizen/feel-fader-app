@@ -21,9 +21,11 @@ otevírej pouze tehdy, když ji router přiřazuje k aktuálnímu tématu.
 - Ověř změnu nejmenším relevantním committed `.mjs` probe nebo existující testovací cestou.
 - Jeden probe spusť přes `npm test -- <cesta-ze-seznamu-v-scratch/run-all-probes.mjs>`;
   runner sám nastartuje a ukončí lokální server.
-- Nikdy nespouštěj probe přímo `node scratch/<probe>.mjs`: každý start headless Chrome s čistým profilem
-  = 1 neúspěšné přihlášení do Windows (4625) a 10 za 10 min zamkne Frankův účet i RDP (2026-09-29).
-  Víc probes: `npm test -- a.mjs b.mjs` (jeden sdílený Chrome); ad-hoc screenshoty v jednom `launch`.
+- Nikdy nespouštěj probe přímo `node scratch/<probe>.mjs`: každý start plného Chrome s čistým profilem
+  = 1 neúspěšné přihlášení do Windows (4625) a 10 za 10 min zamkne Frankův účet i RDP.
+  `npm test` (i `npm test -- a.mjs b.mjs`) jede v jednom sdíleném chrome-headless-shell = 0 neúspěšných
+  přihlášení (AE-FB-20261001-01). Ad-hoc screenshoty také v chrome-headless-shell (`headless: 'shell'`,
+  `executablePath` z `~/.cache/puppeteer/chrome-headless-shell`); plný Chrome max 2 starty za 10 min.
 - Plný `npm test` spouštěj před předáním větší změny nebo když zásah protíná více oblastí; ne po každé drobné iteraci.
 - Nepoužívej subagenty ani rozsáhlý spec/plan/review workflow jako výchozí režim. Zapoj je jen na explicitní žádost nebo u skutečně nezávislých velkých větví práce.
 - Deploy demo verze, commit, push ani externí publikaci neprováděj bez explicitního pokynu.

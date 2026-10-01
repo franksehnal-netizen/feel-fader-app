@@ -4,9 +4,10 @@
 // for what belongs in this list (TC-1, structure audit 2026-07-20).
 import http from 'http';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -165,10 +166,11 @@ function startServer() {
   });
 }
 
+const nodeOptions = [process.env.NODE_OPTIONS, '--require=./scratch/shared-browser-hook.cjs']
+  .filter(Boolean).join(' ');
+
 function runProbe(name, browserWSEndpoint) {
   return new Promise((resolve) => {
-    const nodeOptions = [process.env.NODE_OPTIONS, '--require=./scratch/shared-browser-hook.cjs']
-      .filter(Boolean).join(' ');
     const child = spawn(process.execPath, [path.join(__dirname, name)], {
       cwd: root,
       env: {
@@ -185,11 +187,45 @@ function runProbe(name, browserWSEndpoint) {
   });
 }
 
+// chrome-headless-shell, not full Chrome: full Chrome started on a fresh
+// profile (what puppeteer launches) checks "is the Windows password blank?" by
+// calling LogonUser with an empty password, which Windows counts as a failed
+// logon (Security 4625); 10 in 10 minutes lock the account
+// (AE-FB-20261001-01). The shell has no password manager: 0 failed logons
+// measured for the full suite. No fallback to full Chrome on purpose.
+function findHeadlessShell() {
+  const cache = path.join(os.homedir(), '.cache', 'puppeteer', 'chrome-headless-shell');
+  const builds = fs.existsSync(cache) ? fs.readdirSync(cache).filter((d) => d.startsWith('win64-')) : [];
+  builds.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  for (const build of builds.reverse()) {
+    const exe = path.join(cache, build, 'chrome-headless-shell-win64', 'chrome-headless-shell.exe');
+    if (fs.existsSync(exe)) return exe;
+  }
+  console.error('chrome-headless-shell not found. Install it with:\n'
+    + '  npx @puppeteer/browsers install chrome-headless-shell@stable --path "%USERPROFILE%\\.cache\\puppeteer"');
+  process.exit(2);
+}
+
+// The hook once failed silently and every probe started its own full Chrome.
+// Refuse to run unless probes really get the shared-browser launch().
+const hookCheck = spawnSync(process.execPath,
+  ['-e', "process.stdout.write(require('puppeteer-core').launch.name)"],
+  { cwd: root, encoding: 'utf8', env: { ...process.env, FF_SHARED_BROWSER_WS: 'ws://hook-check', NODE_OPTIONS: nodeOptions } });
+if (hookCheck.stdout !== 'connectToSharedBrowser') {
+  console.error(`shared-browser-hook.cjs does not redirect puppeteer.launch (got "${hookCheck.stdout}"): `
+    + 'probes would each start their own Chrome. Aborting.');
+  console.error(hookCheck.stderr);
+  process.exit(2);
+}
+
+const headlessShell = findHeadlessShell();
 const server = await startServer();
 const sharedBrowser = await puppeteer.launch({
-  executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  headless: true,
-  args: ['--no-sandbox', '--js-flags=--expose-gc'],
+  executablePath: headlessShell,
+  headless: 'shell',
+  // The shell reports prefers-reduced-motion: reduce by default; the motion
+  // probes need full Chrome's no-preference (probes can still emulate reduce).
+  args: ['--no-sandbox', '--js-flags=--expose-gc', '--force-prefers-no-reduced-motion'],
   ignoreDefaultArgs: ['--hide-scrollbars'],
 });
 let totalPass = 0, totalFail = 0, crashed = [];
