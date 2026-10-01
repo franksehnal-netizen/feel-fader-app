@@ -137,6 +137,7 @@ const PROBES = [
   'connect-glide-jump-probe.mjs',
   'mobile-welcome-notice-greeting-probe.mjs',
   'skip-intro-probe.mjs',
+  'pages-header-consistency-probe.mjs',
 ];
 
 const requestedProbes = process.argv.slice(2);
