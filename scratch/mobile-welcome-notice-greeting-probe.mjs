@@ -30,6 +30,7 @@ P('notice is plain text – no border, no card background', n.border === '0px' &
 P('notice sits below the CTA', n.belowButton, JSON.stringify(n));
 P('stage no longer reserves the top for the notice', n.stage === '0px', n.stage);
 
+const ctrlTop0 = await p.evaluate(() => document.getElementById('device-img').getBoundingClientRect().top);
 await p.evaluate(() => document.querySelector('.welcome-skip').click());
 await new Promise(r => setTimeout(r, 1000));
 const g = await p.evaluate(() => {
@@ -43,15 +44,18 @@ const g = await p.evaluate(() => {
   greeting.style.pointerEvents = name.style.pointerEvents = '';
   return { text: name.textContent.trim(), onTop: !!hit && name.contains(hit) || hit === name, opacity: +getComputedStyle(document.getElementById('owner-greeting')).opacity };
 });
-// Glyph top of "Welcome" touches the controller's top edge: ink of the first row of the text.
+// Ink bottom of "Welcome" touches the controller's top edge as it was at the welcome start
+// (ctrlTop0, read before the click) – not pinned to the controller afterwards.
 const ink = await p.evaluate(() => {
   const nm = document.querySelector('#owner-greeting .owner-greeting-name'), cs = getComputedStyle(nm);
   const c = document.createElement('canvas'), ctx = c.getContext('2d'); ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
   const m = ctx.measureText(nm.textContent), r = nm.getBoundingClientRect();
   const lineH = parseFloat(cs.lineHeight), hl = (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2;
-  return { glyphTop: r.top + hl + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent, ctrlTop: document.getElementById('device-img').getBoundingClientRect().top };
+  // r.top carries the fade-in translateY – read the layout offset instead.
+  const top = nm.offsetTop;
+  return { inkBottom: top + hl + m.fontBoundingBoxAscent + m.actualBoundingBoxDescent };
 });
-P('greeting top edge touches the controller top edge', Math.abs(ink.glyphTop - ink.ctrlTop) <= 1.5, JSON.stringify(ink));
+P('greeting bottom edge touches the controller top edge (start position)', Math.abs(ink.inkBottom - ctrlTop0) <= 1.5, JSON.stringify({ ...ink, ctrlTop0 }));
 P('"Welcome" greeting is on top, not hidden behind the controller', !g.missing && g.text === 'Welcome' && g.onTop && g.opacity > 0.9, JSON.stringify(g));
 // First-run onboarding on a phone: the beat copy scrolls under the pinned
 // "Continue without device" – the link carries a fade band that starts below
