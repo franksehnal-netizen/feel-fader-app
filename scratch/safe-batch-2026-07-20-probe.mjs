@@ -72,16 +72,18 @@ const b3 = await p.evaluate(() => {
 P('B3: .btn-remove-bank dark color is not raw red hex (#e33 etc)', !!b3.rmColor && b3.rmColor !== 'rgb(238, 51, 51)', JSON.stringify(b3));
 P('B3: .info-lbl dark color resolves to a token grey', !!b3.lblColor, JSON.stringify(b3));
 
-// B4: footer logo visible (non-washed-out) in dark mode
+// B4: footer logo visible (non-washed-out). Since 2026-10-01 the footer is an
+// always-dark band, so the logo is inverted to white in both themes.
 const b4 = await p.evaluate(() => {
   const el = document.getElementById('footer-logo');
-  const light = getComputedStyle(el).opacity;
+  const read = () => ({ opacity: parseFloat(getComputedStyle(el).opacity), inverted: getComputedStyle(el).filter.includes('invert(1)') });
+  const light = read();
   document.documentElement.classList.add('dark');
-  const dark = getComputedStyle(el).opacity;
+  const dark = read();
   document.documentElement.classList.remove('dark');
   return { light, dark };
 });
-P('B4: footer logo opacity is higher in dark mode than light mode', parseFloat(b4.dark) > parseFloat(b4.light), JSON.stringify(b4));
+P('B4: footer logo is inverted and clearly visible in both themes', [b4.light, b4.dark].every(s => s.inverted && s.opacity >= 0.85), JSON.stringify(b4));
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

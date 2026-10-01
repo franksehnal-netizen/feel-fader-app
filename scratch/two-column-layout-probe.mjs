@@ -49,7 +49,8 @@ for (const [W, H] of [[1440, 900], [1100, 760], [1080, 800], [960, 800], [900, 7
   await wait(600);
   await p.evaluate(() => window.scrollTo(0, 900)); await wait(400);
   const scrolled = { y: await p.evaluate(() => scrollY), dev: await rect(p, '#device-home') };
-  P(`${W}: controller stays in place while the editor scrolls`, scrolled.y > 300 && scrolled.dev.t === dev.t, JSON.stringify(scrolled));
+  // Not sticky since 2026-10-01 (Frank): the controller scrolls with the page.
+  P(`${W}: controller scrolls with the page (not sticky)`, scrolled.y > 300 && Math.abs(scrolled.dev.t - (dev.t - scrolled.y)) <= 1, JSON.stringify({ scrolled, startTop: dev.t }));
   await p.close();
 }
 

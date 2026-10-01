@@ -37,12 +37,15 @@ P('footer sits flush at the bottom when content is shorter than the viewport', M
 const tallContentGap = await gapAt(900);  // viewport shorter than content (normal scroll case)
 P('footer still sits flush at the true end of the page when content overflows', Math.abs(tallContentGap) < 1, String(tallContentGap));
 
+// No e-mail addresses in the footer since 2026-10-01 (Frank) – contact goes
+// through pages/contact.html. "Product sheet" stays '#' until its PDF exists.
 const links = await p.evaluate(() => ({
-  placeholders: [...document.querySelectorAll('.site-footer a')].filter(a => a.getAttribute('href') === '#').length,
-  support: document.querySelector('.site-footer a[href^="mailto:"]')?.getAttribute('href'),
+  placeholders: [...document.querySelectorAll('.site-footer a')].filter(a => a.getAttribute('href') === '#').map(a => a.textContent.trim()),
+  mailto: document.querySelectorAll('.site-footer a[href^="mailto:"]').length,
+  contact: !!document.querySelector('.site-footer a[href="pages/contact.html"]'),
 }));
-P('footer contains no placeholder links', links.placeholders === 0, JSON.stringify(links));
-P('footer exposes a direct support email link', links.support === 'mailto:support@acoustic-empire.cz', links.support || 'missing');
+P('footer contains no placeholder links (except the pending Product sheet)', links.placeholders.every(t => t === 'Product sheet'), JSON.stringify(links));
+P('footer links to the contact page instead of listing e-mail addresses', links.contact && links.mailto === 0, JSON.stringify(links));
 
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();
