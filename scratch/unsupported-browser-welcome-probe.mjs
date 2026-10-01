@@ -106,7 +106,7 @@ P('beats carousel is reachable by scrolling (short 393x659)', short.beatsReachab
 // overflow, not the fixed media query) for this to stay clean.
 const mid = await measure({ w: 393, h: 852 });
 assertNeverOverlaps(mid, 'mid 393x852');
-P('#welcome-screen falls back to scrollable (mid 393x852)', mid.scrollable);
+P('mid 393x852: tour fits or #welcome-screen scrolls (phone controller is the returning size since 2026-10-01)', mid.scrollable || mid.beatsReachableByScroll);
 P('beats carousel is reachable by scrolling (mid 393x852)', mid.beatsReachableByScroll);
 
 await b.close();
