@@ -59,11 +59,15 @@ P('Bank actions use Settings rows: label + Export-style pills + channel-style st
 
 const dup = await p.evaluate(() => { document.querySelector('[data-bank-action="duplicate"]').click(); return { count: cfg.banks.length, active: activeBank }; });
 P('Duplicate bank adds a copy', dup.count === 2, JSON.stringify(dup));
+// duplicateBank() and reorderBank() move focus in a rAF – wait for frames, not a fixed
+// delay: a late duplicate rAF used to steal focus to the name input before Enter.
+const frames = () => p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+await frames();
 
 await p.evaluate(() => { activeBank = 1; render(); });
 await p.focus('#bank-actions-body [data-bank-action="left"]');
 await p.keyboard.press('Enter');
-await wait(60);
+await frames();
 const moved = await p.evaluate(() => ({ active: activeBank, focus: document.activeElement?.dataset?.bankAction, idx: document.activeElement?.dataset?.bankIndex }));
 P('Move Earlier moves the bank and keeps focus on a Move button', moved.active === 0 && ['left', 'right'].includes(moved.focus) && moved.idx === '0', JSON.stringify(moved));
 
