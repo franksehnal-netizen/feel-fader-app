@@ -137,6 +137,7 @@ const PROBES = [
   'connect-glide-jump-probe.mjs',
   'mobile-welcome-notice-greeting-probe.mjs',
   'mobile-single-cta-probe.mjs',
+  'mobile-handoff-smooth-probe.mjs',
   'skip-intro-probe.mjs',
   'pages-header-consistency-probe.mjs',
 ];

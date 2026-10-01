@@ -81,7 +81,7 @@ P('welcome Connect & load is red primary in both themes', /welcome-start/.test(w
 P('in-app send button returns to idle glass after welcome', w.inApp !== w.red, w.inApp);
 P('default-named tab shows its name once', d.tabs[0] === 'Bank 1', JSON.stringify(d.tabs));
 P('custom-named tab keeps its number', d.tabs[1] === '2 Strings', JSON.stringify(d.tabs));
-P('mobile: inactive default tabs are just numbers, active shows the name', m[0] === 'Bank 1' && m[1] === '2', JSON.stringify(m));
+P('mobile: tabs look like desktop (default names shown on every tab)', m[0] === 'Bank 1' && m[1] === 'Bank 2', JSON.stringify(m));
 P('header has no Live monitor view switch (removed with the HUD)', d.noViewSwitch === true, String(d.noViewSwitch));
 P('macro × is neutral in dark mode too (danger only on hover)', d.xDark === d.t3Dark, `${d.xDark} vs ${d.t3Dark}`);
 P('Reset range matches the Choose range pill', !!d.reset && d.reset === d.choose && !d.resetInline, `${d.reset} vs ${d.choose}`);
