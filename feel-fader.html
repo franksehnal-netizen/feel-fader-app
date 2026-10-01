@@ -1868,6 +1868,8 @@ body.app-reveal .center-col>.stage-collapse{z-index:170}
 .section-live-fader::before{content:'';position:absolute;inset:0;transform:scaleY(var(--live-frac,0));transform-origin:bottom;background:color-mix(in srgb,var(--t2) 20%,transparent)}
 .section-live-num{position:relative;z-index:1;min-width:3ch;text-align:center;font-weight:700;font-size:var(--fs-md)}
 .section-live-roller{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+/* Navigation keys: the fader numbers' box and type, so the key reads and pulses like them. */
+.section-live-roller.section-live-keys{display:inline-flex;justify-content:center;min-width:32px;height:26px;padding:0 7px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--t2) 4%,transparent);font-weight:700;font-size:var(--fs-md)}
 .section-live-button{justify-content:center;min-width:32px;height:26px;padding:0 5px}   /* same box as .section-live-fader → the dot sits on the fader numbers' axis (Frank 2026-09-30) */
 .section-live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 rgba(var(--link-ring-rgb),0);transition:width var(--hover-out),height var(--hover-out),box-shadow var(--hover-out)}
 /* Long press (macro fired): the fader-thumb glow recipe on a ring (spec 2026-09-30). */
@@ -2979,6 +2981,7 @@ let _faderRafPending = false;
 let encIndex   = 0;
 let encLiveVal = null; // null = not yet received from device
 let ksLiveNote = null; // poslední NoteOn z ks_channel (S7b)
+let navLiveKeys = null; // last roller key combo seen as a keydown (track_nav)
 let loaded     = !!_savedCfg;
 let dirty      = false;
 let _serialGranted = false;  // true once user has granted a serial port (enables silent auto-load)
@@ -3827,6 +3830,7 @@ function syncUaccLiveRow() {
 function clearLiveRows() {
   encLiveVal = null;
   ksLiveNote = null;
+  navLiveKeys = null;
   syncUaccLiveRow();
   document.querySelectorAll('.seq-row.is-live[data-ksnote]').forEach(el => el.classList.remove('is-live'));
 }
@@ -6379,13 +6383,36 @@ function sectionRollerLiveText() {
   if (mode === 'keyswitch' && ksLiveNote !== null) return ksLabel(bank, ksLiveNote);
   // Relative CC carries only a direction (firmware: roll up = 1, down = 127).
   if (mode === 'cc_relative' && encLiveVal !== null) return encLiveVal < 64 ? '↑' : '↓';
-  return '';   // track_nav: keys go straight to the OS, nothing reaches the app
+  // track_nav sends HID keys only; they reach the app as keydowns while its window has focus.
+  if (mode === 'track_nav' && navLiveKeys) return keyComboLabel(navLiveKeys);
+  return '';
 }
+// Roller keys (track_nav) seen as a keydown: show the combo and pulse like the
+// fader numbers (Frank 2026-10-01). A real keyboard press of the same combo looks identical.
+function sameKeyCombo(a, b) { return a.length === b.length && a.every(k => b.includes(k)); }
+document.addEventListener('keydown', e => {
+  if (_keyCapture || !sectionLiveAllowed()) return;
+  const bank = cfg.banks[liveBank];
+  if (bank?.roller_mode !== 'track_nav') return;
+  const main = HID_CODES[e.code];
+  if (main === undefined || main >= 0xE0) return;
+  const combo = [main];
+  if (e.ctrlKey) combo.push(0xE0);
+  if (e.shiftKey) combo.push(0xE1);
+  if (e.altKey) combo.push(0xE2);
+  if (e.metaKey) combo.push(0xE3);
+  const keys = [bank.nav_keys_cw || [0x52], bank.nav_keys_ccw || [0x51]].find(k => sameKeyCombo(k, combo));
+  if (!keys) return;
+  navLiveKeys = keys;
+  syncSectionLive();
+  pulseSectionLive('roller');
+});
 function syncSectionLive() {
   setSectionLiveFader('fader1', liveValues.f1, liveSeen.f1, false);
   setSectionLiveFader('fader2', liveValues.f2, liveSeen.f2, false);
   const roller = sectionLiveEl('roller');
   if (roller) {
+    roller.classList.toggle('section-live-keys', cfg.banks[liveBank]?.roller_mode === 'track_nav');
     const text = sectionLiveAllowed() ? sectionRollerLiveText() : '';
     if (text) {
       if (roller.textContent !== text) { roller.textContent = text; roller.title = text; }
@@ -7411,6 +7438,7 @@ function loadDefaultDemoConfig() {
   liveSeen = { f1:false, f2:false };
   encLiveVal = null;
   ksLiveNote = null;
+  navLiveKeys = null;
   markConfigSynced();
   render();
 }
