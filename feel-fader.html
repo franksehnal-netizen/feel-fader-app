@@ -6082,9 +6082,12 @@ async function doStart() {
     if (!cancelled) await releaseSerialPort({forget:true});
     if (btn) { btn.disabled = false; btn.textContent = cancelled ? 'Connect & load' : 'Try again'; }
     if (msg) {
-      msg.textContent = cancelled ? '' : 'Connection failed';
+      // A port held by another tab is the common case (Chrome lets only one tab
+      // open it) – name it in the visible line, not only in the tooltip.
+      const busy = !cancelled && /open|busy|in use|access/i.test(e.message || '');
+      msg.textContent = cancelled ? '' : busy ? 'Port busy – close other Feel Fader tabs' : 'Connection failed';
       if (cancelled) msg.removeAttribute('title');
-      else msg.title = /open|busy|in use|access/i.test(e.message || '')
+      else msg.title = busy
         ? 'The serial port is busy. Close Feel Fader in other tabs or apps, then try again.'
         : 'Could not read the device. Check the USB connection and try again.';
     }
