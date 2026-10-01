@@ -43,6 +43,15 @@ const g = await p.evaluate(() => {
   greeting.style.pointerEvents = name.style.pointerEvents = '';
   return { text: name.textContent.trim(), onTop: !!hit && name.contains(hit) || hit === name, opacity: +getComputedStyle(document.getElementById('owner-greeting')).opacity };
 });
+// Glyph top of "Welcome" touches the controller's top edge: ink of the first row of the text.
+const ink = await p.evaluate(() => {
+  const nm = document.querySelector('#owner-greeting .owner-greeting-name'), cs = getComputedStyle(nm);
+  const c = document.createElement('canvas'), ctx = c.getContext('2d'); ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = ctx.measureText(nm.textContent), r = nm.getBoundingClientRect();
+  const lineH = parseFloat(cs.lineHeight), hl = (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2;
+  return { glyphTop: r.top + hl + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent, ctrlTop: document.getElementById('device-img').getBoundingClientRect().top };
+});
+P('greeting top edge touches the controller top edge', Math.abs(ink.glyphTop - ink.ctrlTop) <= 1.5, JSON.stringify(ink));
 P('"Welcome" greeting is on top, not hidden behind the controller', !g.missing && g.text === 'Welcome' && g.onTop && g.opacity > 0.9, JSON.stringify(g));
 // First-run onboarding on a phone: the beat copy scrolls under the pinned
 // "Continue without device" – the link carries a fade band that starts below
