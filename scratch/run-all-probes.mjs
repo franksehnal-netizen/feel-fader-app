@@ -134,6 +134,7 @@ const PROBES = [
   'audit/p5-heap-growth.mjs',
   'owner-name-probe.mjs',
   'connect-intro-motion-probe.mjs',
+  'connect-glide-jump-probe.mjs',
   'skip-intro-probe.mjs',
 ];
 

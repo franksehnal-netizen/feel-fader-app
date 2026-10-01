@@ -6674,14 +6674,18 @@ function restoreDeviceHomeNative() {
 // sticky column would trap the controller under the welcome overlay), so the
 // controller moves from the welcome center to the left column here – FLIP it
 // so it glides instead of jumping.
-function glideStageIntoColumn(closeWelcome) {
+// before: the controller's welcome rect, measured by the caller BEFORE
+// finalizeWelcomeExit() – that call already moves it back out of a scrolled
+// onboarding (restoreDeviceHomeNative()), so measuring here started the glide
+// from the post-jump spot (Frank 2026-10-01: "odskočí to dolu").
+function glideStageIntoColumn(closeWelcome, before) {
   // FLIP on the controller itself, not the stage box: the stage's padding
   // changes with the column (HUD slot), which made the controller jump ~64px
   // on the first frame, and 900–1099 px also shrinks it 220 → 166px (UX audit
   // 2026-09-28, N-4) – so glide position AND scale from the welcome spot.
   const stage = document.getElementById('stage-collapse');
   const device = document.getElementById('device-home');
-  const before = device?.getBoundingClientRect();
+  before ??= device?.getBoundingClientRect();
   closeWelcome();
   // Closing the welcome can resize the controller (900–1099 px); the tracks
   // were laid out in finalizeWelcomeExit() for the welcome size.
@@ -7205,6 +7209,7 @@ function connectTransitionWelcome(greeting = '') {
   document.body.classList.add('app-reveal-pending', 'live-note-held');
   setTimeout(() => {
     resetAppScrollTop();
+    const glideFrom = document.getElementById('device-home')?.getBoundingClientRect();   // see glideStageIntoColumn()
     // runValidation() (which sets the button's post-connect text/size —
     // "Connect & load" -> "Send to device", welcome-start's larger pill
     // padding -> the plain app size) must land in the SAME synchronous swap
@@ -7218,7 +7223,7 @@ function connectTransitionWelcome(greeting = '') {
     finalizeWelcomeExit();
     runValidation();
     onbAfterWelcome();
-    glideStageIntoColumn(() => { ws.classList.add('hidden'); syncAllFaderLinks(); });
+    glideStageIntoColumn(() => { ws.classList.add('hidden'); syncAllFaderLinks(); }, glideFrom);
     // 7. With a greeting the app chrome only fades in once the greeting is
     // gone (no cross-fade over it); without one, from mid-glide, once the
     // controller has mostly cleared the column. Delays below count from this swap.
