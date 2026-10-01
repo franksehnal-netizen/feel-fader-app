@@ -26,7 +26,8 @@ const n = await p.evaluate(() => {
 });
 P('notice shows for a browser without Web Serial (precondition)', n.shown, JSON.stringify(n));
 P('notice is plain text – no border, no card background', n.border === '0px' && /rgba\(0, 0, 0, 0\)|transparent/.test(n.bg), JSON.stringify(n));
-P('notice sits just above "Continue without device", below the Connect button', n.gapToSkip >= 0 && n.gapToSkip <= 16 && n.belowButton, JSON.stringify(n));
+// The skip link is hidden on unsupported browsers (single "Try without device" CTA, 2026-10-01).
+P('notice sits below the CTA', n.belowButton, JSON.stringify(n));
 P('stage no longer reserves the top for the notice', n.stage === '0px', n.stage);
 
 await p.evaluate(() => document.querySelector('.welcome-skip').click());
