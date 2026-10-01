@@ -4,7 +4,9 @@
 // <header> (edge-to-edge); and "FEEL FADER" used its own one-off color/size
 // instead of matching the app's wordmark (.h-title in feel-fader.html)
 // (Frank 2026-10-01: "stejně široká jako hlavní aplikaci" + "stejná barva a
-// velikost").
+// velikost"). Follow-up same day: width/brand matched but the bar was still
+// taller (18px vertical padding vs. the app header's 5px) – now also checks
+// height.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-core');
@@ -18,7 +20,10 @@ await p.setViewport({ width: 1400, height: 900 });
 await p.goto('http://localhost:8100/feel-fader.html', { waitUntil: 'networkidle0' });
 const ref = await p.evaluate(() => {
   const cs = getComputedStyle(document.querySelector('.h-title'));
-  return { color: cs.color, fontSize: cs.fontSize, fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform };
+  return {
+    color: cs.color, fontSize: cs.fontSize, fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform,
+    headerHeight: document.querySelector('header').getBoundingClientRect().height,
+  };
 });
 P('reference captured from the app .h-title', !!ref.color, JSON.stringify(ref));
 
@@ -37,12 +42,19 @@ for (const name of pages) {
       pageWidth: document.documentElement.clientWidth,
       topWidth: top.width,
       innerWidth: inner.width,
+      topHeight: top.height,
       brand: { color: cs.color, fontSize: cs.fontSize, fontWeight: cs.fontWeight, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform },
     };
   });
   P(`${name}.html: top bar spans the full app width (not capped to the reading column)`,
     r.topWidth >= r.pageWidth - 1 && r.innerWidth >= r.pageWidth - 1,
     JSON.stringify({ topWidth: r.topWidth, innerWidth: r.innerWidth, pageWidth: r.pageWidth }));
+  // 1px tolerance: .legal-top has its own 1px bottom border as a divider
+  // (the app's header has no border, just a box-shadow) – that hairline is
+  // a deliberate, separate chrome choice, not the height gap Frank flagged.
+  P(`${name}.html: top bar is the same height as the app header`,
+    Math.abs(r.topHeight - ref.headerHeight) <= 1,
+    JSON.stringify({ topHeight: r.topHeight, appHeaderHeight: ref.headerHeight }));
   P(`${name}.html: "FEEL FADER" matches the app wordmark's color + size`,
     r.brand.color === ref.color && r.brand.fontSize === ref.fontSize && r.brand.fontWeight === ref.fontWeight
       && r.brand.letterSpacing === ref.letterSpacing && r.brand.textTransform === ref.textTransform,
