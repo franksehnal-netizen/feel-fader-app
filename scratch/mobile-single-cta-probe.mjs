@@ -22,6 +22,14 @@ const s = await p.evaluate(() => {
     notice: document.getElementById('welcome-browser-notice').textContent,
     above: Math.round(wm.top), below: Math.round(dev.top - wm.bottom) };
 });
+const geo = await p.evaluate(() => {
+  const btn = document.getElementById('send-btn'), r = btn.getBoundingClientRect();
+  const range = document.createRange(); range.selectNodeContents(btn); const t = range.getBoundingClientRect();
+  const n = document.getElementById('welcome-browser-notice').getBoundingClientRect();
+  return { textOff: Math.round(((t.left + t.right) / 2) - ((r.left + r.right) / 2)), fits: t.width <= r.width, noticeBottomGap: Math.round(innerHeight - n.bottom) };
+});
+P('CTA label centred in the button', Math.abs(geo.textOff) <= 1 && geo.fits, JSON.stringify(geo));
+P('notice sits at the bottom edge', geo.noticeBottomGap <= 20, JSON.stringify(geo));
 P('CTA reads "Try without device"', s.label === 'Try without device', s.label);
 P('"Continue without device" link hidden', !s.skipShown);
 P('notice no longer repeats the explore hint', !/explore/.test(s.notice), s.notice);
