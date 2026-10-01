@@ -14,19 +14,19 @@ const result = await p.evaluate(async () => {
   skipWelcome();
   _midiState='granted'; _ffConnected=true; _serialPort={};
   liveBank=0; activeBank=0; liveSeen.f1=false; liveValues.f1=0;
-  renderConnState(); renderLiveStrip();
+  renderConnState(); renderLiveState();
 
   let diagnosticRenders=0;
   const originalDiagnosticRender=renderMidiDiagnostics;
   renderMidiDiagnostics=(...args)=>{ diagnosticRenders++; return originalDiagnosticRender(...args); };
-  let fullHudRenders=0;
-  const originalFullHudRender=renderLiveStrip;
-  renderLiveStrip=(...args)=>{ fullHudRenders++; return originalFullHudRender(...args); };
+  let fullLiveRenders=0;
+  const originalFullLiveRender=renderLiveState;
+  renderLiveState=(...args)=>{ fullLiveRenders++; return originalFullLiveRender(...args); };
 
   const now=performance.now();
   for(let i=0;i<100;i++) onMidiMsg({data:new Uint8Array([0xB0,11,i%128]),receivedTime:now});
   await new Promise(r=>setTimeout(r,320));
-  const valueAfterBurst=document.getElementById('live-f1-value').textContent;
+  const valueAfterBurst=document.getElementById('section-live-fader1')?.firstElementChild?.textContent;
 
   document.getElementById('toasts').replaceChildren();
   const stale=performance.now()-500;
@@ -38,13 +38,13 @@ const result = await p.evaluate(async () => {
   const warningCount=[...document.querySelectorAll('#toasts .toast')].filter(el=>el.textContent.includes('MIDI is delayed')).length;
 
   renderMidiDiagnostics=originalDiagnosticRender;
-  renderLiveStrip=originalFullHudRender;
-  return {diagnosticRenders,fullHudRenders,valueAfterBurst,warningText,warningCount};
+  renderLiveState=originalFullLiveRender;
+  return {diagnosticRenders,fullLiveRenders,valueAfterBurst,warningText,warningCount};
 });
 
 P('100 fader CC events coalesce to at most two diagnostic DOM renders', result.diagnosticRenders <= 2, String(result.diagnosticRenders));
-P('fader burst avoids the full live-HUD render path', result.fullHudRenders === 0, String(result.fullHudRenders));
-P('latest fader value reaches the HUD after the burst', result.valueAfterBurst === '99', result.valueAfterBurst);
+P('fader burst avoids the full live render path', result.fullLiveRenders === 0, String(result.fullLiveRenders));
+P('latest fader value reaches the section head after the burst', result.valueAfterBurst === '99', result.valueAfterBurst);
 P('sustained stale MIDI events show actionable guidance', result.warningText.includes('close other MIDI monitor tabs or apps'), result.warningText);
 P('backlog warning is cooldown-limited to one toast', result.warningCount === 1, String(result.warningCount));
 P('no page errors', errors.length===0, errors.join(' | '));

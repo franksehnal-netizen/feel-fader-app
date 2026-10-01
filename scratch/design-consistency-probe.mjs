@@ -124,14 +124,12 @@ const surf = await p.evaluate(() => {
     openBefore: getComputedStyle(open, '::before').content,
     headerBf: cs(document.querySelector('header')).backdropFilter,
     halo: getComputedStyle(document.querySelector('.send-callout'), '::before').content,
-    hud: (() => { const h = cs(document.getElementById('live-strip')); return { bf: h.backdropFilter, sh: h.boxShadow }; })(),
   };
 });
 P('body has no ambient radial gradients', !/radial-gradient/.test(surf.bodyBg), surf.bodyBg);
 P('content cards have no backdrop-filter and no shadow', surf.cards.length > 0 && surf.cards.every(c => c.bf === 'none' && c.sh === 'none'), JSON.stringify(surf.cards));
 P('open section has no tint or light gradient', surf.openBg === 'rgba(0, 0, 0, 0)|none' && ['none', 'normal'].includes(surf.openBefore), `${surf.openBg} / ${surf.openBefore}`);
 P('header keeps its glass', !!surf.headerBf && surf.headerBf !== 'none', surf.headerBf);
-P('HUD is flat (no backdrop-filter) with a soft lift', surf.hud.bf === 'none' && surf.hud.sh !== 'none', JSON.stringify(surf.hud));
 P('Send has no frosted halo', ['none', 'normal'].includes(surf.halo), surf.halo);
 
 // Section headers (spec 2026-09-26 §5): a quiet mark instead of an uppercase

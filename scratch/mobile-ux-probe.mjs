@@ -156,17 +156,6 @@ async function runDesktopFlow(browser, url) {
     renderConnState();
   });
   await settle(page, 80);
-  const hudAtController = await page.evaluate(() => {
-    const hud = document.getElementById('live-strip');
-    const rect = hud.getBoundingClientRect();
-    return {
-      visible: hud.classList.contains('is-contextual-visible'),
-      square: !hud.classList.contains('is-compact'),
-      ariaHidden: hud.getAttribute('aria-hidden'),
-      width: rect.width,
-      height: rect.height,
-    };
-  });
   // Connection status (2026-07-21): plain non-interactive dot + text, no popover —
   // Frank removed the click-to-open overview since Device & Settings > MIDI
   // diagnostics already shows the same info, and a clickable-looking status
@@ -230,8 +219,6 @@ async function runDesktopFlow(browser, url) {
     const controller = document.getElementById('device-img').getBoundingClientRect();
     const send = document.getElementById('send-btn').getBoundingClientRect();
     const quick = document.querySelector('.bank-quick-setup').getBoundingClientRect();
-    const hud = document.getElementById('live-strip');
-    const hudRect = hud.getBoundingClientRect();
     const overlap = !(send.right <= quick.left || send.left >= quick.right || send.bottom <= quick.top || send.top >= quick.bottom);
     return {
       scrollY: window.scrollY,
@@ -242,13 +229,6 @@ async function runDesktopFlow(browser, url) {
       quickTop: quick.top,
       quickBottom: quick.bottom,
       overlap,
-      hudVisible: hud.classList.contains('is-contextual-visible'),
-      hudSquare: !hud.classList.contains('is-compact'),
-      hudWidth: hudRect.width,
-      hudHeight: hudRect.height,
-      hudTech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id)?.textContent || ''),
-      hudTopGap: hudRect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
-      hudLeftGap: hudRect.left,
       cueActive: document.querySelector('.bank-quick-setup').classList.contains('is-first-run-highlight'),
       cueSeen: localStorage.getItem('ff-library-setup-cue-seen') === '1',
     };
@@ -281,40 +261,14 @@ async function runDesktopFlow(browser, url) {
   addCheck(checks, 'Desktop controller may scroll fully above the viewport',
     scrolled.controllerBottom < 0,
     `${scrolled.controllerBottom.toFixed(1)} px`);
-  addCheck(checks, 'Hardware monitor stays visible with or without the controller in view',
-    hudAtController.visible && hudAtController.ariaHidden === 'false' && scrolled.hudVisible,
-    `at controller ${hudAtController.visible} / after scroll ${scrolled.hudVisible}`);
   addCheck(checks, 'Header connection status is click/tap-to-reveal, still with no popover',
     connectionStatus.tag === 'SPAN' && connectionStatus.cursor !== 'pointer' && connectionStatus.hasOnclick && connectionStatus.popoverAbsent,
     `${connectionStatus.tag} / cursor ${connectionStatus.cursor} / onclick ${connectionStatus.hasOnclick} / popover absent ${connectionStatus.popoverAbsent}`);
   addCheck(checks, 'Long open configuration section keeps its heading below the app header',
     stickySection.open && stickySection.position === 'sticky' && stickySection.stuck && Math.abs(stickySection.topGap) <= 2 && stickySection.sectionBottom > 100,
     `${stickySection.position} / stuck ${stickySection.stuck} / top gap ${stickySection.topGap.toFixed(1)} px / section bottom ${stickySection.sectionBottom.toFixed(1)} px`);
-  // Single-column desktop is 601–899 px since UX audit 2026-09-28 N-4, where the
-  // monitor uses the compact 112 px square; 144 px (C-2) is covered at ≥900 px
-  // by live-hud-square-probe and two-column-layout-probe.
-  addCheck(checks, 'Single-column desktop monitor stays a consistent 112x112 square',
-    hudAtController.square && Math.abs(hudAtController.width - 112) <= 1 && Math.abs(hudAtController.height - 112) <= 1
-      && scrolled.hudSquare && Math.abs(scrolled.hudWidth - 112) <= 1 && Math.abs(scrolled.hudHeight - 112) <= 1,
-    `${hudAtController.width.toFixed(1)} × ${hudAtController.height.toFixed(1)} → ${scrolled.hudWidth.toFixed(1)} × ${scrolled.hudHeight.toFixed(1)} px`);
-  addCheck(checks, 'Hardware monitor centralizes the active bank technical mapping',
-    scrolled.hudTech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
-    scrolled.hudTech.join(' / '));
-  addCheck(checks, 'Desktop hardware monitor aligns below the left side of the header',
-    Math.abs(scrolled.hudTopGap - 12) <= 1 && Math.abs(scrolled.hudLeftGap - 16) <= 1,
-    `${scrolled.hudLeftGap.toFixed(1)} px left / ${scrolled.hudTopGap.toFixed(1)} px below header`);
-  await page.evaluate(() => { _midiState = 'denied'; _ffConnected = false; renderConnState(); });
-  await settle(page, 380);
-  const hudOffline = await page.evaluate(() => {
-    const hud = document.getElementById('live-strip');
-    return { visible: hud.classList.contains('is-contextual-visible'), opacity: getComputedStyle(hud).opacity };
-  });
-  // 2026-07-26: idle dimming removed — the HUD's glass matches the header at
-  // full opacity; not-live is shown by the content ("—"), not by fading the
-  // panel (Frank).
-  addCheck(checks, 'Hardware monitor stays visible at full opacity without live feedback (matches header)',
-    hudOffline.visible && Math.abs(Number.parseFloat(hudOffline.opacity) - 1) <= .01,
-    `${hudOffline.visible} / opacity ${hudOffline.opacity}`);
+  addCheck(checks, 'No live HUD (removed, Frank 2026-10-01)',
+    await page.evaluate(() => !document.getElementById('live-strip')), 'absent');
   addCheck(checks, 'No desktop page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, 'desktop-flow.png') });
   await page.close();
@@ -806,54 +760,6 @@ async function runProfile(browser, url, profile) {
     window.scrollTo(0, document.getElementById('panels-row').offsetTop + 180);
   });
   await settle(page, 420);
-  const mobileStrip = await page.evaluate(() => {
-    const hud = document.getElementById('live-strip');
-    const rect = hud.getBoundingClientRect();
-    const controller = document.getElementById('device-img').getBoundingClientRect();
-    return {
-      visible: hud.classList.contains('is-contextual-visible'),
-      square: !hud.classList.contains('is-compact'),
-      opacity: getComputedStyle(hud).opacity,
-      topGap: rect.top - document.querySelector('.top-sticky').getBoundingClientRect().bottom,
-      leftGap: rect.left,
-      width: rect.width,
-      height: rect.height,
-      controllerBottom: controller.bottom,
-      values: ['live-f1-value','live-f2-value','live-roller-value'].map(id => document.getElementById(id).textContent),
-      tech: ['live-f1-tech','live-f2-tech','live-roller-tech'].map(id => document.getElementById(id).textContent),
-      valuesUnclipped: ['live-f1-value','live-f2-value'].every(id => {
-        const value = document.getElementById(id);
-        return value.scrollWidth <= value.clientWidth + 1;
-      }),
-      rollerOverflowsCard: (() => {
-        const value = document.getElementById('live-roller-value');
-        return value.getBoundingClientRect().right > rect.right + 1;
-      })(),
-      techUnclipped: ['live-f1-tech','live-f2-tech','live-roller-tech'].every(id => {
-        const value = document.getElementById(id);
-        return value.scrollWidth <= value.clientWidth + 1;
-      }),
-      labels: ['live-f1-label-short','live-f2-label-short','live-roller-label-short'].map(id => document.getElementById(id).textContent),
-      washHeights: ['live-f1-item','live-f2-item'].map(id => parseFloat(document.getElementById(id).style.getPropertyValue('--live-level-frac'))),
-      itemRects: [...hud.querySelectorAll('.live-hud-item')].map(item => {
-        const itemRect = item.getBoundingClientRect();
-        return { top: itemRect.top, right: itemRect.right, bottom: itemRect.bottom, left: itemRect.left };
-      }),
-    };
-  });
-  addCheck(checks, 'Mobile hardware monitor remains visible while the controller scrolls away',
-    mobileStrip.visible && mobileStrip.opacity === '1' && mobileStrip.controllerBottom < 0,
-    `controller ${mobileStrip.controllerBottom.toFixed(1)} px / visible ${mobileStrip.visible} / opacity ${mobileStrip.opacity}`);
-  addCheck(checks, 'Scrolled mobile monitor becomes the permanent 112x112 square with L, R and ART (M-1)',
-    mobileStrip.square && Math.abs(mobileStrip.width - 112) <= 1 && Math.abs(mobileStrip.height - 112) <= 1
-      && mobileStrip.valuesUnclipped && mobileStrip.techUnclipped && !mobileStrip.rollerOverflowsCard
-      && mobileStrip.washHeights.every(h => h > 0)
-      && mobileStrip.labels.join(',') === 'L,R,ART' && mobileStrip.values.join(',') === '23,108,Short – Soft (Brushed)'
-      && mobileStrip.tech.join(',') === 'Ch1·CC11,Ch1·CC1,Ch1·CC32',
-    `${mobileStrip.width.toFixed(1)} × ${mobileStrip.height.toFixed(1)} px / ${mobileStrip.labels.join(' ')} / ${mobileStrip.values.join(' ')} / ${mobileStrip.tech.join(' | ')}`);
-  addCheck(checks, 'Mobile hardware monitor aligns below the left side of the header',
-    Math.abs(mobileStrip.topGap - 12) <= 1 && Math.abs(mobileStrip.leftGap - 16) <= 1,
-    `${mobileStrip.leftGap.toFixed(1)} px left / ${mobileStrip.topGap.toFixed(1)} px below header`);
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip.png`) });
   // updateMobileSendDock()/.is-mobile-docked removed entirely (Frank
   // 2026-08-18: scrolling past the button used to pop out a SECOND, fixed-
@@ -878,24 +784,6 @@ async function runProfile(browser, url, profile) {
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-performance-strip-docked.png`) });
   await page.evaluate(() => window.scrollTo(0, 0));
   await settle(page, 420);
-  const stripBackAtController = await page.evaluate(() => {
-    const hud = document.getElementById('live-strip');
-    const rect = hud.getBoundingClientRect();
-    const washHeights = ['live-f1-item','live-f2-item'].map(id => parseFloat(getComputedStyle(document.getElementById(id), '::before').height));
-    return {
-      visible: hud.classList.contains('is-contextual-visible'),
-      square: !hud.classList.contains('is-compact'),
-      opacity: getComputedStyle(hud).opacity,
-      width: rect.width,
-      height: rect.height,
-      washHeights,
-    };
-  });
-  addCheck(checks, 'Hardware monitor remains the same 112x112 square beside the controller',
-    stripBackAtController.visible && stripBackAtController.square && stripBackAtController.opacity === '1'
-      && Math.abs(stripBackAtController.width - 112) <= 1 && Math.abs(stripBackAtController.height - 112) <= 1
-      && stripBackAtController.washHeights.every(h => h > 0),
-    `${stripBackAtController.width.toFixed(1)} × ${stripBackAtController.height.toFixed(1)} px / square ${stripBackAtController.square} / opacity ${stripBackAtController.opacity}`);
   addCheck(checks, 'No page or console errors', errors.length === 0, errors.join(' | ') || 'none');
   await page.screenshot({ path: path.join(outputDir, `${profile.name}-app.png`) });
   await page.close();

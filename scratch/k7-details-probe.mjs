@@ -1,6 +1,6 @@
 // Regression probe (UX audit 2026-09-25, K-7 details): a default-named bank
-// tab doesn't repeat its number ("1 Bank 1"), the header view switch is
-// labelled, the bank × looks the same in both themes, and "Reset range" is
+// tab doesn't repeat its number ("1 Bank 1"), the header has no view switch
+// any more (Live monitor went with the HUD, Frank 2026-10-01), the bank × looks the same in both themes, and "Reset range" is
 // the same pill as "Choose range…" next to it.
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -27,8 +27,7 @@ const d = await p.evaluate(async (tabTextsSrc) => {
   cfg.banks[1].name = 'Strings';
   activeBank = 0; render();
   out.tabs = tabTexts();
-  const wrap = document.querySelector('.controller-toggle-wrap');
-  out.switchLabel = wrap?.innerText.trim();
+  out.noViewSwitch = !document.querySelector('.controller-toggle-wrap') && !document.getElementById('live-hud-switch');
   DEVICE_INFO.hid_enabled = true; cfg.macro_global = true; cfg.macro_keys = [0x2C]; _openSections.add('macro'); render();
   const x = document.getElementById('macro-clear');
   out.xLight = x && getComputedStyle(x).color;
@@ -83,7 +82,7 @@ P('in-app send button returns to idle glass after welcome', w.inApp !== w.red, w
 P('default-named tab shows its name once', d.tabs[0] === 'Bank 1', JSON.stringify(d.tabs));
 P('custom-named tab keeps its number', d.tabs[1] === '2 Strings', JSON.stringify(d.tabs));
 P('mobile: inactive default tabs are just numbers, active shows the name', m[0] === 'Bank 1' && m[1] === '2', JSON.stringify(m));
-P('header view switch (Live monitor) has a visible label', /Live monitor/.test(d.switchLabel || ''), d.switchLabel);
+P('header has no Live monitor view switch (removed with the HUD)', d.noViewSwitch === true, String(d.noViewSwitch));
 P('macro × is neutral in dark mode too (danger only on hover)', d.xDark === d.t3Dark, `${d.xDark} vs ${d.t3Dark}`);
 P('Reset range matches the Choose range pill', !!d.reset && d.reset === d.choose && !d.resetInline, `${d.reset} vs ${d.choose}`);
 P('no page errors', errs.length === 0, errs.join(' | '));

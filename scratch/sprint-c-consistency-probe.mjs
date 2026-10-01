@@ -21,24 +21,22 @@ await p.evaluate(() => skipWelcome()); await wait(1200);
 const n8 = await p.evaluate(() => {
   const bank = cfg.banks[0];
   bank.roller_mode = 'keyswitch'; bank.ks_notes = [24,25,26,27,28,29,30,31]; bank.ks_channel = 0;
-  render(); renderLiveStrip();
+  render();
   const lux = LIBRARY_PRESETS['Sonuscore LUX – Violins 1'];
   return {
     summary: rollerSectionSummary(bank).meta,
-    hud: document.getElementById('live-roller-tech').textContent,
     diag: diagnosticRollerMapping(bank),
     picker: [...new DOMParser().parseFromString(quickSetupMenuHtml('LUX – Violins 1'), 'text/html').querySelectorAll('.quick-setup-option-kind')].map(el => el.textContent)[0],
     luxNotes: lux.ks_notes.length,
   };
 });
 P('N-8: section summary range uses " → "', n8.summary === 'Ch 1 · C0 → G0', n8.summary);
-P('N-8: HUD range uses a compact "→"', n8.hud === 'Ch1·C0→G0', n8.hud);
 P('N-8: diagnostics range uses " → "', n8.diag.endsWith('C0 → G0'), n8.diag);
 P('N-8: library picker range uses " → "', / → /.test(n8.picker) && !/[A-G]#?-?\d–/.test(n8.picker), n8.picker);
 
 // N-9: prose and plain numbers in Mulish; Ch/CC and note tokens are Mulish 600
 // with tabular figures (DM Mono dropped 2026-09-29); one "Ch 1 · CC11" format
-// outside the HUD.
+// everywhere.
 const n9 = await p.evaluate(() => {
   _openSections.add('roller'); _openSections.add('fader1'); render();
   const fam = sel => { const el = document.querySelector(sel); return el ? getComputedStyle(el).fontFamily : 'missing'; };
@@ -80,7 +78,7 @@ const n10 = await p.evaluate(() => {
   const after = document.getElementById('di-firmware-summary').textContent.trim();
   _ffConnected = false; _serialPort = null; connState(); renderConnState(); render();
   return {
-    liveInHeader: header.contains(document.getElementById('live-hud-switch')),
+    liveSwitchGone: !document.getElementById('live-hud-switch') && !document.getElementById('live-strip'),
     controllerInHeader: header.contains(document.getElementById('controller-toggle-input')),
     appGroup: !!document.getElementById('app-settings-toggle-btn'),
     label: row.querySelector('.group-row-label').firstChild.textContent.trim(),
@@ -88,14 +86,11 @@ const n10 = await p.evaluate(() => {
     settingsWording: document.body.innerHTML.includes('Device &amp; Settings'),
   };
 });
-P('N-10: Live monitor switch sits in the header, Controller switch is gone', n10.liveInHeader && !n10.controllerInHeader, JSON.stringify(n10));
+P('N-10: Live monitor (HUD + switch, Frank 2026-10-01) and Controller switch are gone', n10.liveSwitchGone && !n10.controllerInHeader, JSON.stringify(n10));
 P('N-10: no separate Application settings group', !n10.appGroup);
 P('N-10: device row is called "Device"', n10.label === 'Device', n10.label);
 P('N-10: device summary says "Not connected" / "Firmware 1.3.0"', n10.before === 'Not connected' && n10.after === 'Firmware 1.3.0' && n10.disconnected === 'Not connected', JSON.stringify(n10));
 P('N-10: help and toasts no longer say "Device & Settings"', !n10.settingsWording);
-await p.evaluate(() => { const sw = document.getElementById('live-hud-switch'); sw.click(); });
-P('N-10: header switch turns the live monitor off and persists', await p.evaluate(() => !document.getElementById('live-strip').classList.contains('is-contextual-visible') && localStorage.getItem('ff_live_hud_enabled') === '0'));
-await p.evaluate(() => setLiveHudEnabled(true));
 
 // N-11: the macro button glow (32 + 17 px spread) is not cut into a box.
 const n11 = await p.evaluate(() => getComputedStyle(document.getElementById('zone-macro')).clipPath);

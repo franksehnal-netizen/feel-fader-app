@@ -25,7 +25,7 @@ P('nedostupný localStorage: appka nabootuje na fallback hodnotách',
   blockedBoot.uiAlive && blockedBoot.hasCfg && blockedBoot.noteConvention==='C-2', JSON.stringify(blockedBoot));
 const blockedActions = await blocked.evaluate(()=>{
   let threw=null;
-  try { setNoteConvention('C-1'); applyTheme(true, true); setLiveHudEnabled(false); }
+  try { setNoteConvention('C-1'); applyTheme(true, true); }
   catch(e) { threw=String(e); }
   return { threw };
 });

@@ -24,10 +24,6 @@ const r = await p.evaluate(async () => {
   out.chipAria = chip(24)?.getAttribute('aria-label');
 
   _ffConnected = true; _midiState = 'granted';
-  ksLiveNote = 31; renderLiveStrip();
-  out.hud = document.getElementById('live-roller-value')?.textContent;
-  out.hudTitle = document.getElementById('live-roller-value')?.title;
-  ksLiveNote = null;
 
   // Rename through the chip: double-click opens an inline field.
   chip(25).dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
@@ -88,7 +84,6 @@ const LUX = ['Legato','Sustain','Marcato','Staccato','Spiccato','Pizzicato','Tre
 P('LUX Violins 1 preset names its keyswitches', LUX.every((n, i) => r.names[24 + i] === n), JSON.stringify(r.names));
 P('chip leads with the articulation name', r.chipPrimary === 'Legato' && /C0/.test(r.chipText), `${r.chipPrimary} / ${r.chipText}`);
 P('chip accessible name includes the articulation', /^Legato, C0, MIDI 24/.test(r.chipAria || ''), r.chipAria);
-P('Live HUD shows the keyswitch name', r.hud === 'Portamento' && /G0/.test(r.hudTitle || ''), `${r.hud} / ${r.hudTitle}`);
 P('double-click opens an inline name field', r.editorOpened === true);
 P('Enter saves the new name', r.renamed === 'Long' && r.renamedChip === 'Long', `${r.renamed} / ${r.renamedChip}`);
 P('Escape cancels the edit', r.afterEscape === 'Marcato', r.afterEscape);

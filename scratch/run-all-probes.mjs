@@ -55,8 +55,6 @@ const PROBES = [
   'toast-flat-style-probe.mjs',
   'a3-nvm-degraded-notice-probe.mjs',
   'send-without-web-serial-probe.mjs',
-  'live-hud-meter-value-gap-probe.mjs',
-  'art-row-stable-height-probe.mjs',
   'footer-pinned-to-bottom-probe.mjs',
   'status-pill-polish-probe.mjs',
   'faders-inert-probe.mjs',
@@ -64,7 +62,6 @@ const PROBES = [
   'fader-response-probe.mjs',
   'sonuscore-lux-preset-probe.mjs',
   'help-trim-probe.mjs',
-  'livecolor-probe.mjs',
   'midi-backlog-guard-probe.mjs',
   'mobile-ux-probe.mjs',
   'unsupported-browser-welcome-probe.mjs',
@@ -80,8 +77,6 @@ const PROBES = [
   'button-zone-hover-probe.mjs',
   'hover-glow-timing-probe.mjs',
   'section-live-values-probe.mjs',
-  'live-hud-square-probe.mjs',
-  'live-hud-free-manipulation-probe.mjs',
   'send-note-below-probe.mjs',
   'welcome-heading-gap-probe.mjs',
   'section-toggle-focus-ring-probe.mjs',
@@ -91,13 +86,11 @@ const PROBES = [
   'sections-independent-probe.mjs',
   'fader-name-input-width-probe.mjs',
   'validation-single-signal-probe.mjs',
-  'live-strip-validation-signal-probe.mjs',
   'per-bank-macro-probe.mjs',
   'serial-utf8-chunk-probe.mjs',
   'serial-port-retry-probe.mjs',
   'connect-reveal-sync-probe.mjs',
   'live-note-centered-probe.mjs',
-  'nav-hid-live-combo-probe.mjs',
   'hover-tip-probe.mjs',
   'onb-swipe-probe.mjs',
   'roller-mode-timing-sync-probe.mjs',
@@ -140,6 +133,7 @@ const PROBES = [
   'audit/p4-no-webserial-degradation.mjs',
   'audit/p5-heap-growth.mjs',
   'owner-name-probe.mjs',
+  'connect-intro-motion-probe.mjs',
 ];
 
 const requestedProbes = process.argv.slice(2);
@@ -250,7 +244,7 @@ async function runProbeWorker() {
       console.log(out.split('\n').slice(0, 6).join('\n'));
     } else if (code !== 0 && fail === 0) {
       // Died after printing some PASS lines: the remaining checks never ran
-      // (live-hud-free-manipulation hid a stale function name this way).
+      // (a probe once hid a stale function name this way).
       crashed.push(probe);
       console.log(`CRASH ${probe} (exit ${code}) – stopped after ${pass} pass`);
       console.log(out.trim().split('\n').slice(-6).join('\n'));

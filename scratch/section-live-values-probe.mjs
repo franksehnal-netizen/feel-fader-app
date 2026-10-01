@@ -57,7 +57,7 @@ const r = await p.evaluate(async () => {
   out.flashAfter = state('macro');
 
   // Disconnect → nothing.
-  _ffConnected = false; renderConnState(); renderLiveStrip();
+  _ffConnected = false; renderConnState(); renderLiveState();
   out.disconnected = ['fader1','fader2','roller','macro'].map(state).every(s => !s.on);
 
   const cs = getComputedStyle(slot('fader1'));

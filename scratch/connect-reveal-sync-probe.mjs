@@ -12,7 +12,7 @@
 // snapped opacity back to its own `from{opacity:0}` keyframe and re-animated
 // up — a visible flash, only when a paint landed in that gap. Fix: call
 // revealPostConnectUI() directly inside the SAME callback as
-// finalizeWelcomeExit()/updateContextualLiveStrip(), so the browser only
+// finalizeWelcomeExit(), so the browser only
 // ever paints the final state. This probe locks that down: exactly one
 // setTimeout(…,1100) is scheduled by connectTransitionWelcome() (not two),
 // and revealPostConnectUI() actually runs as part of that single callback.
@@ -48,7 +48,7 @@ const r = await p.evaluate(async () => {
   const timers1100 = [];
   const origSetTimeout = window.setTimeout;
   window.setTimeout = function(fn, delay, ...args) {
-    if (delay === 1100) timers1100.push(fn);
+    if (Math.abs(delay - 1300 / 3) < 1) timers1100.push(fn);   // CONNECT_SWAP_MS = --dur-link-in / 3
     return origSetTimeout.call(window, fn, delay, ...args);
   };
   const origReveal = revealPostConnectUI;
@@ -66,19 +66,19 @@ const r = await p.evaluate(async () => {
   window.revealPostConnectUI = origReveal;
 
   const btn = document.getElementById('send-btn');
-  revealPostConnectUI();
+  revealPostConnectUI(900);
   const animationStr = btn.style.animation;
-  const animationDuration = getComputedStyle(btn).animationDuration;
+  const cs = getComputedStyle(btn);
+  const animationDuration = cs.animationDuration, animationDelay = cs.animationDelay, animationEase = cs.animationTimingFunction;
 
-  return { timerCount: timers1100.length, revealCalledInsideTimer, animationStr, animationDuration };
+  return { timerCount: timers1100.length, revealCalledInsideTimer, animationStr, animationDuration, animationDelay, animationEase };
 });
 
-P('connectTransitionWelcome schedules exactly one T+1100ms timer (not two racing ones)', r.timerCount === 1, `timerCount=${r.timerCount}`);
+P('connectTransitionWelcome schedules exactly one T+433ms (swap) timer (not two racing ones)', r.timerCount === 1, `timerCount=${r.timerCount}`);
 P('revealPostConnectUI runs inside that same T+1100ms callback', r.revealCalledInsideTimer);
-// Checks the RESOLVED duration (via getComputedStyle), not the raw
-// btn.style.animation string, since that duration is now var(--dur-reveal)
-// -- shared with the live HUD reveal it must land together with (Frank
-// 2026-08-17 timing-consistency pass) -- rather than a literal ".6s".
-P('welcome-btn-reveal animation duration is .6s (shared --dur-reveal token, also used by the live HUD opacity transition, Frank 2026-08-10/17)', /welcome-btn-reveal/.test(r.animationStr) && r.animationDuration === '0.6s', r.animationStr + ' / ' + r.animationDuration);
+// Checks the RESOLVED timing (via getComputedStyle): the reveal rides the
+// fader-glow clock shared with the live HUD and the app chrome (Frank
+// 2026-10-01), delayed with fill:both so it never flashes during the delay.
+P('welcome-btn-reveal runs on --dur-link-in / --ease-link with the given delay, fill both', /welcome-btn-reveal/.test(r.animationStr) && /both/.test(r.animationStr) && r.animationDuration === '1.3s' && r.animationDelay === '0.9s' && r.animationEase === 'cubic-bezier(0.22, 0.61, 0.36, 1)', JSON.stringify(r));
 P('no page errors', errs.length===0, errs.join(' | '));
 await b.close();

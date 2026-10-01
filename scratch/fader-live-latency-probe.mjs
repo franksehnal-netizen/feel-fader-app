@@ -12,9 +12,9 @@ await p.evaluate(() => skipWelcome());
 const result = await p.evaluate(async () => {
   _ffConnected = true; _midiState = 'granted';
   const thumb = document.getElementById('thumb-l');
-  const faderFill = document.getElementById('live-f1-item');
+  const faderFill = document.getElementById('section-live-fader1');
   const thumbStyle = getComputedStyle(thumb);
-  const fillStyle = getComputedStyle(faderFill, '::before');
+  const fillStyle = faderFill ? getComputedStyle(faderFill, '::before') : null;
   const cc = cfg.banks[liveBank].fader1.cc;
   const ch = cfg.banks[liveBank].fader1.channel;
   const originalArrayFrom = Array.from;
@@ -31,7 +31,7 @@ const result = await p.evaluate(async () => {
   return {
     thumbTransitionDuration: thumbStyle.transitionDuration,
     thumbTransitionProperty: thumbStyle.transitionProperty,
-    fillTransitionProperty: fillStyle.transitionProperty,
+    fillTransitionProperty: fillStyle ? fillStyle.transitionProperty : 'missing',
     diagnosticArrayCopies,
     liveValue: liveValues.f1,
   };
@@ -41,7 +41,7 @@ const result = await p.evaluate(async () => {
 const transitioned = result.thumbTransitionProperty.split(',').map(s => s.trim())
   .filter((prop, i) => (result.thumbTransitionDuration.split(',')[i] || result.thumbTransitionDuration.split(',')[0]).trim() !== '0s');
 P('live controller thumb has no CSS transform catch-up transition', !transitioned.some(prop => prop === 'transform' || prop === 'all'), JSON.stringify(result));
-P('Live HUD fader fill does not animate its transform', !result.fillTransitionProperty.includes('transform'), result.fillTransitionProperty);
+P('section live fader fill does not animate its transform', result.fillTransitionProperty !== 'missing' && !result.fillTransitionProperty.includes('transform'), result.fillTransitionProperty);
 P('high-rate fader diagnostics avoid per-message allocations', result.diagnosticArrayCopies <= 1, String(result.diagnosticArrayCopies));
 P('coalesced fader messages still retain the latest live value', result.liveValue === 39, String(result.liveValue));
 await p.close();

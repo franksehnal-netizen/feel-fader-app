@@ -113,9 +113,10 @@ const readGreeting = () => p.evaluate(() => {
   };
 });
 
-// Connect & load (doStart): one continuous move on the fader-glow timing
-// (--dur-link-in / --ease-link, Frank 2026-10-01); the app chrome never pops in
-// over the gliding controller; the greeting waits until the app has settled.
+// Connect & load (doStart) on the fader-glow clock, overlapping beats (Frank
+// 2026-10-01): 0 s faders settle + greeting rises + welcome dissolves (gone by
+// 0.43 s) → 0.43 s swap, controller glides 1.8 s on --ease-glide above the
+// greeting → 2 s greeting fades out (1.3 s) → 3.3 s app chrome fades in (1.3 s).
 const chrome = () => p.evaluate(() => ({
   header: +getComputedStyle(document.querySelector('header')).opacity,
   sections: +getComputedStyle(document.getElementById('settings-col')).opacity,
@@ -123,6 +124,7 @@ const chrome = () => p.evaluate(() => ({
   pending: document.body.classList.contains('app-reveal-pending'),
   reveal: document.body.classList.contains('app-reveal'),
   stageTransition: document.getElementById('stage-collapse').style.transition,
+  stageZ: getComputedStyle(document.getElementById('stage-collapse')).zIndex,
   greeting: !!document.getElementById('owner-greeting'),
 }));
 async function freshStart(owner) {
@@ -133,24 +135,26 @@ async function freshStart(owner) {
     await doStart();
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     return { thumbTransition: document.getElementById('thumb-l').style.transition,
-             duringTransition: !!document.getElementById('owner-greeting'), again: takeOwnerGreeting() };
+             greetingWithFaders: !!document.getElementById('owner-greeting'), again: takeOwnerGreeting() };
   }, owner);
 }
+// The connect choreography has a reduced-motion branch; pin the full-motion one.
+await p.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
 await p.setViewport({ width: 1512, height: 900 });   // desktop two-column layout – the controller glides left
 const s1 = await freshStart('Frank');
-P('faders settle on the fader-glow curve, done before the 1.1 s layout swap', /--ease-link/.test(s1.thumbTransition) && /--dur-stage\) - \.1s/.test(s1.thumbTransition), s1.thumbTransition);
-P('no overlay during the connect transition', s1.duringTransition === false, JSON.stringify(s1));
+P('faders settle with ramp-in + landing on the glow clock', /--ease-glide/.test(s1.thumbTransition) && /var\(--dur-link-in\)/.test(s1.thumbTransition), s1.thumbTransition);
+P('greeting rises together with the faders', s1.greetingWithFaders === true, JSON.stringify(s1));
 P('greeting consumed once per page', s1.again === '', JSON.stringify(s1));
-await new Promise(r => setTimeout(r, 700));
-const c1 = await chrome();   // ≈ 0.8 s: welcome backdrop fading, app underneath
+await new Promise(r => setTimeout(r, 150));
+const c1 = await chrome();   // ≈ 0.2 s: welcome dissolving, app underneath
 P('app chrome held hidden while the welcome fades', c1.pending && c1.header === 0 && c1.sections === 0 && c1.footer === 0, JSON.stringify(c1));
-await new Promise(r => setTimeout(r, 450));
-const c2 = await chrome();   // ≈ 1.25 s: controller just started gliding
-P('controller keeps its --dur-stage glide (Frank: the glide itself is fine)', /--dur-stage/.test(c2.stageTransition), c2.stageTransition);
-P('sections not yet over the gliding controller', c2.reveal && c2.sections < 0.2, JSON.stringify(c2));
-P('no greeting while the app is still arriving', c2.greeting === false, JSON.stringify(c2));
-await new Promise(r => setTimeout(r, 1450));
-const g1 = await readGreeting();   // ≈ 2.7 s
+await new Promise(r => setTimeout(r, 650));
+const c2 = await chrome();   // ≈ 0.9 s: controller gliding (from 0.43 s), faders still landing
+P('controller glides on --dur-link-out with ramp-in (--ease-glide)', /--dur-link-out/.test(c2.stageTransition) && /--ease-glide/.test(c2.stageTransition), c2.stageTransition);
+P('gliding controller stays above the greeting', c2.greeting && Number(c2.stageZ) > 160, JSON.stringify(c2));
+P('sections not over the gliding controller', c2.reveal && c2.sections < 0.05, JSON.stringify(c2));
+await new Promise(r => setTimeout(r, 600));
+const g1 = await readGreeting();   // ≈ 1.6 s
 P('Connect & load → centered "Welcome back," + name', g1.present && g1.pre === 'Welcome back,' && g1.name === 'Frank' && g1.centered, JSON.stringify(g1));
 P('no toast / welcome line for the greeting', g1.msg === '' && !g1.toasts.some(t => t.includes('Welcome back')), JSON.stringify(g1));
 const look = await p.evaluate(() => {
@@ -159,20 +163,30 @@ const look = await p.evaluate(() => {
 });
 P('greeting is large and eases in like the fader glow', look.size >= 40 && look.dur === '1.3s' && look.ease === 'cubic-bezier(0.22, 0.61, 0.36, 1)', JSON.stringify(look));
 const scrim = await p.evaluate(() => {
-  const cs = getComputedStyle(document.getElementById('owner-greeting'));
-  return { bg: cs.backgroundColor, blur: cs.backdropFilter };
+  const el = document.getElementById('owner-greeting'), cs = getComputedStyle(el);
+  return { handoff: el.classList.contains('is-handoff'), bg: cs.backgroundColor, blur: cs.backdropFilter };
 });
-P('greeting sits on a soft full-screen scrim', scrim.bg !== 'rgba(0, 0, 0, 0)' && /blur/.test(scrim.blur), JSON.stringify(scrim));
-await new Promise(r => setTimeout(r, 1200));   // ≈ 3.9 s: past the scrim fade-in, before the fade-out
-P('overlay survives its own fade-in (only the fade-out removes it)', (await readGreeting()).present === true);
-await new Promise(r => setTimeout(r, 4000));   // in 1.3 + hold + out 1.8 s, then removed
-P('overlay removed after it fades out', (await readGreeting()).present === false);
+P('hand-off greeting has no scrim (it would veil the gliding controller)', scrim.handoff && scrim.bg === 'rgba(0, 0, 0, 0)' && scrim.blur === 'none', JSON.stringify(scrim));
+P('sections still held while the greeting holds', (await chrome()).sections < 0.05);
+const out = await p.evaluate(() => getComputedStyle(document.getElementById('owner-greeting')).animationDelay);
+P('hand-off greeting is short: fade-out starts at 2 s', /,\s*2s$/.test(out), out);
+await new Promise(r => setTimeout(r, 1000));   // ≈ 2.7 s: greeting fading out
 const c3 = await chrome();
-P('app chrome fully in, reveal classes cleaned up', c3.header === 1 && c3.sections === 1 && c3.footer === 1 && !c3.pending && !c3.reveal, JSON.stringify(c3));
+P('app waits while the greeting fades out (no cross-fade over it)', c3.greeting && c3.sections < 0.05, JSON.stringify(c3));
+await new Promise(r => setTimeout(r, 1250));   // ≈ 3.95 s: greeting gone 3.3 s, chrome 3.3 → 4.6 s
+const c3b = await chrome();
+P('greeting gone, then the app fades in', !c3b.greeting && c3b.sections > 0.3 && c3b.sections < 1, JSON.stringify(c3b));
+await new Promise(r => setTimeout(r, 1100));   // ≈ 5.05 s
+P('overlay removed after it fades out', (await readGreeting()).present === false);
+const c4 = await chrome();
+P('app chrome fully in, reveal classes cleaned up', c4.header === 1 && c4.sections === 1 && c4.footer === 1 && !c4.pending && !c4.reveal, JSON.stringify(c4));
 
 await freshStart('');
-await new Promise(r => setTimeout(r, 2600));
+await new Promise(r => setTimeout(r, 850));   // ≈ 0.95 s: mid-glide, chrome not in yet (from 1.33 s)
+P('no owner → chrome waits for mid-glide', (await chrome()).sections < 0.05);
+await new Promise(r => setTimeout(r, 2100));   // ≈ 3.05 s: reveal 1.33 → 2.63 s
 P('no owner → no overlay', (await readGreeting()).present === false);
+P('no owner → chrome in once the glide has settled', (await chrome()).sections === 1);
 
 await freshStart('<b>x</b>');
 await new Promise(r => setTimeout(r, 2600));
@@ -192,6 +206,8 @@ await p.evaluate(async () => {
 });
 const sl = await readGreeting();
 P('silent load → overlay with the name, no toast', sl.present && sl.name === 'Frank' && !sl.toasts.some(t => t.includes('Welcome back')), JSON.stringify(sl));
+const slScrim = await p.evaluate(() => { const cs = getComputedStyle(document.getElementById('owner-greeting')); return { bg: cs.backgroundColor, blur: cs.backdropFilter }; });
+P('silent load greeting keeps its soft scrim over the visible app', slScrim.bg !== 'rgba(0, 0, 0, 0)' && /blur/.test(slScrim.blur), JSON.stringify(slScrim));
 await new Promise(r => setTimeout(r, 5200));
 await p.evaluate(() => onDeviceConnected());   // replug during work
 P('later reconnect does not greet again', (await readGreeting()).present === false);

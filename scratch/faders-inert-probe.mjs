@@ -65,12 +65,16 @@ const welcome = await p.evaluate(async () => {
   const glowAnimation = document.getElementById('device-img').getAnimations()
     .find(animation=>animation.animationName==='welcome-device-glow');
   const glowShadows = glowAnimation ? glowAnimation.effect.getKeyframes().map(frame=>frame.boxShadow||'') : [];
-  // Settle runs calc(--dur-stage - .1s) on --ease-link (Frank 2026-10-01) and must
-  // land before the 1.1 s layout swap – measure just before it.
-  await new Promise(resolve=>setTimeout(resolve,950));
+  // Settle runs --dur-link-in on --ease-glide (Frank 2026-10-01), on through the
+  // 0.43 s layout swap – measure once it has landed.
+  await new Promise(resolve=>setTimeout(resolve,1300));
+  // The controller may change size at the layout swap (the settle scales with
+  // it, % of the thumb height) – expect the snapshot in the FINAL geometry.
   const settledLeft=l.thumb.getBoundingClientRect().top-l.rail.getBoundingClientRect().top;
   const settledRight=r.thumb.getBoundingClientRect().top-r.rail.getBoundingClientRect().top;
-  await new Promise(resolve=>setTimeout(resolve,400));
+  const finalL=sample('thumb-l','track-l',110), finalR=sample('thumb-r','track-r',15);
+  const scaleNow=document.getElementById('device-visual').getBoundingClientRect().width/document.getElementById('device-visual').offsetWidth||1;
+  await new Promise(resolve=>setTimeout(resolve,200));
   const finalRect = document.getElementById('device-img').getBoundingClientRect();
   const homeRect = document.getElementById('device-home').getBoundingClientRect();
   return {
@@ -81,10 +85,10 @@ const welcome = await p.evaluate(async () => {
     homeRect:{top:homeRect.top,left:homeRect.left,width:homeRect.width},
     freezeDeltaLeft:Math.abs(frozenL-beforeL),
     freezeDeltaRight:Math.abs(frozenR-beforeR),
-    left:settledLeft,
-    leftExpected:l.expected,
-    right:settledRight,
-    rightExpected:r.expected,
+    left:settledLeft/scaleNow,
+    leftExpected:finalL.expected,
+    right:settledRight/scaleNow,
+    rightExpected:finalR.expected,
     settleLeftTransition,
     settleRightTransition,
     sameDeviceNode:deviceImg===document.getElementById('device-img'),
@@ -101,8 +105,10 @@ out('welcome right settles on device snapshot', Math.abs(welcome.right-welcome.r
   `${welcome.right.toFixed(1)}px / ${welcome.rightExpected}px`);
 out('welcome settle stays on transform compositor path',
   welcome.settleLeftTransition.startsWith('transform') && welcome.settleRightTransition.startsWith('transform'));
-out('connect confirmation uses the restrained halo, outline and shimmer treatment',
-  ['welcome-device-glow','welcome-device-halo','welcome-device-shimmer'].every(name=>welcome.successAnimationNames.includes(name)) &&
+// No light pass over the device: it read as one fader flaring up (Frank 2026-10-01).
+out('connect confirmation uses the restrained halo + outline treatment, no shimmer',
+  ['welcome-device-glow','welcome-device-halo'].every(name=>welcome.successAnimationNames.includes(name)) &&
+  !welcome.successAnimationNames.includes('welcome-device-shimmer') &&
   welcome.glowShadows.every(shadow=>!shadow.includes('160px')&&!shadow.includes('90px')),
   welcome.successAnimationNames.join(', '));
 out('welcome transition always resets a previously scrolled app to top',
@@ -185,22 +191,18 @@ for (const viewport of [{name:'desktop',width:880,height:900},{name:'mobile',wid
     const welcome=device.getBoundingClientRect();
     let firstFrame=null;
     const glide=window.glideStageIntoColumn;
-    let preGlide=null, hudDuringGlide=null, glideStart=null;
-    const hudLeft=()=>Math.round(document.getElementById('live-strip').getBoundingClientRect().left);
+    let preGlide=null, glideStart=null;
     window.glideStageIntoColumn=closeWelcome=>{ const q=document.getElementById('device-img').getBoundingClientRect(); preGlide={top:q.top,left:q.left,width:q.width}; glide(closeWelcome); const r=document.getElementById('device-img').getBoundingClientRect(); firstFrame={top:r.top,left:r.left,width:r.width}; glideStart=performance.now(); };
     connectTransitionWelcome();
-    await new Promise(resolve=>setTimeout(resolve,1450));
+    await new Promise(resolve=>setTimeout(resolve,1650));
     if (glideStart!==null) {
-      // Mid-glide (the stage is scaled/translated) vs after the glide settled.
-      await new Promise(resolve=>setTimeout(resolve,Math.max(0,glideStart+400-performance.now())));
-      updateContextualLiveStrip(); hudDuringGlide=hudLeft();
-      await new Promise(resolve=>setTimeout(resolve,1600));
+      await new Promise(resolve=>setTimeout(resolve,1600));   // let the glide settle
     }
     const app=document.getElementById('device-img').getBoundingClientRect();
     const tracks=()=>['track-l','track-r','thumb-r'].map(id=>document.getElementById(id).style.cssText).join('|');
     const tracksAfter=tracks(); layoutFaders(); const tracksFresh=tracks()===tracksAfter;
     return {
-      tracksFresh, hudDuringGlide, hudFinal:hudLeft(),
+      tracksFresh,
       scrollY:window.scrollY,
       sameNode:device===document.getElementById('device-img'),
       welcome:{top:welcome.top,left:welcome.left,width:welcome.width},
@@ -216,8 +218,6 @@ for (const viewport of [{name:'desktop',width:880,height:900},{name:'mobile',wid
   out(`${viewport.name} fader tracks are laid out for the final controller size`, rects.tracksFresh, JSON.stringify(rects));
   if (viewport.glides) {
     const f = rects.firstFrame, w = rects.preGlide;
-    out(`${viewport.name} docked HUD already sits in its final slot during the glide`,
-      rects.hudDuringGlide !== null && Math.abs(rects.hudDuringGlide - rects.hudFinal) <= 1, JSON.stringify({ during: rects.hudDuringGlide, final: rects.hudFinal }));
     out(`${viewport.name} glide starts exactly where the welcome controller was (no jump)`,
       !!f && Math.abs(f.left-w.left)<1.5 && Math.abs(f.top-w.top)<1.5 && Math.abs(f.width-w.width)<1.5, JSON.stringify(rects));
   }

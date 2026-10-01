@@ -19,8 +19,6 @@ const result = await p.evaluate(() => {
   render();
   renderConnState();
   const tabs = [...document.querySelectorAll('.bank-block-tab')];
-  const bank = document.getElementById('live-hud-bank');
-  const hud = document.getElementById('live-strip');
   const dot = tabs[0].querySelector('.bank-tab-device-dot');
   const out = {
     activeIsSelected: tabs[2].classList.contains('active'),
@@ -30,18 +28,12 @@ const result = await p.evaluate(() => {
     dotVisible: !!dot && getComputedStyle(dot).display !== 'none',
     dotColor: dot && getComputedStyle(dot).backgroundColor,
     deviceAria: tabs[0].getAttribute('aria-label'),
-    hudDotCount: bank.querySelectorAll('.live-hud-bank-dot').length,
-    hudActiveDot: bank.querySelectorAll('.live-hud-bank-dot.is-active').length,
-    hudLabel: bank.getAttribute('aria-label'),
-    bankCount: cfg.banks.length,
-    hudBankDisplay: getComputedStyle(bank).display,
-    hudVisible: hud.classList.contains('is-contextual-visible'),
-    hudState: hud.dataset.state,
+    noHud: !document.getElementById('live-strip') && !document.getElementById('live-hud-bank'),
   };
   const probe = document.createElement('span'); probe.style.color = 'var(--green)'; document.body.appendChild(probe);
   out.green = getComputedStyle(probe).color; probe.remove();
   // Device follows a Program Change to the edited bank while the config is dirty.
-  dirty = true; liveBank = 2; renderLiveStrip();
+  dirty = true; liveBank = 2; renderLiveState();
   out.afterPc = [...document.querySelectorAll('.bank-block-tab')].map(t => t.classList.contains('is-on-device'));
   const ey = document.getElementById('bank-eyebrow-device');
   out.eyebrowShown = !!ey && !ey.hidden;
@@ -56,6 +48,6 @@ P('device tab says "active on device" to assistive tech', /active on device/i.te
 P('device dot follows a Program Change without a full render', result.afterPc.every((v,i)=>v===(i===2)), JSON.stringify(result.afterPc));
 P('card eyebrow shows "active on device" for the device bank', result.eyebrowShown === true, String(result.eyebrowShown));
 P('disconnect clears the device dot', result.afterDisconnect === false);
-P('Live HUD maps the active physical bank immediately on connection', result.hudVisible && result.hudState === 'CONNECTED_LIVE' && result.hudBankDisplay === 'flex' && result.hudDotCount === result.bankCount && result.hudActiveDot === 1 && result.hudLabel === `Active device bank: 1 of ${result.bankCount}`, JSON.stringify(result));
+P('no live HUD any more (Frank 2026-10-01) – the tab dot carries the device bank', result.noHud === true, JSON.stringify(result));
 await p.close();
 await b.close();
