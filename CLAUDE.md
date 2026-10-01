@@ -46,6 +46,18 @@ Feel Fader web app dává smysl **jen na desktopu s fyzicky připojeným control
 - Mobil držet jen regresně funkční a nerozbitý — **neoptimalizovat** ho jako samostatný pracovní workflow.
 - Konkrétně: mobilní překryv status baru není problém k řešení (Frank 2026-07-14).
 
+## Konzistence je klíč
+
+`pages/*.html` (Contact, Our story, Privacy, Terms, Impressum, Documentation —
+linkované z patičky appky) sdílí vizuální jazyk s `feel-fader.html`, ale žije
+ve vlastním `pages/pages.css` bez appčiných CSS proměnných — nic se nedědí
+automaticky. Při úpravě hlavičky, wordmarku, patičky nebo tokenu (barva,
+velikost, spacing) v `feel-fader.html` zkontroluj, jestli stejný prvek existuje
+i v `pages/pages.css`, a naopak. Vizuální nekonzistence mezi appkou a
+odkazovanými stránkami je bug, i když každá stránka zvlášť vypadá v pořádku
+(Frank 2026-10-01: horní lišta a wordmark „Feel Fader" se rozjely od hlavičky
+appky — viz `scratch/pages-header-consistency-probe.mjs`).
+
 ## Browser ověření — eskalační žebřík
 
 1. Statická kontrola cílového výřezu.
