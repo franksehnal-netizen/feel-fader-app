@@ -98,7 +98,7 @@ P("#welcome-screen doesn't need to scroll (iPhone Pro Max)", !promax.scrollable)
 // overlap into the first paint.
 const short = await measure({ w: 393, h: 659 });
 assertNeverOverlaps(short, 'short 393x659');
-P('#welcome-screen falls back to scrollable (short 393x659)', short.scrollable);
+P('phone has no tour, nothing to scroll (short 393x659)', !short.scrollable);
 P('beats carousel is reachable by scrolling (short 393x659)', short.beatsReachableByScroll);
 
 // Mid-height viewport (~852px, e.g. standard non-Pro iPhones) — just above the static
@@ -106,7 +106,7 @@ P('beats carousel is reachable by scrolling (short 393x659)', short.beatsReachab
 // overflow, not the fixed media query) for this to stay clean.
 const mid = await measure({ w: 393, h: 852 });
 assertNeverOverlaps(mid, 'mid 393x852');
-P('mid 393x852: tour fits or #welcome-screen scrolls (phone controller is the returning size since 2026-10-01)', mid.scrollable || mid.beatsReachableByScroll);
+P('phone has no tour, nothing to scroll (mid 393x852)', !mid.scrollable);
 P('beats carousel is reachable by scrolling (mid 393x852)', mid.beatsReachableByScroll);
 
 await b.close();

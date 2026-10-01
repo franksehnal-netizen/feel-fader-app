@@ -72,8 +72,7 @@ const o = await p2.evaluate(() => {
     floating: skip.classList.contains('welcome-skip-floating'), fade: cs.backgroundImage.includes('linear-gradient'),
     bandTop: Math.round(r.top), btnBottom: Math.round(btn.bottom) };
 });
-P('phone onboarding: pinned link fades the copy behind it', o.onb && o.floating && o.fade, JSON.stringify(o));
-P('phone onboarding: the fade band starts below the Connect button', o.bandTop >= o.btnBottom, JSON.stringify(o));
+P('phone first run shows no onboarding tour (Frank 2026-10-01)', !o.onb, JSON.stringify(o));
 
 P('no page errors', errs.length === 0, errs.join(' | '));
 await b.close();
