@@ -1869,8 +1869,8 @@ body.app-reveal .center-col>.stage-collapse{z-index:170}
 .section-live-fader::before{content:'';position:absolute;inset:0;transform:scaleY(var(--live-frac,0));transform-origin:bottom;background:color-mix(in srgb,var(--t2) 20%,transparent)}
 .section-live-num{position:relative;z-index:1;min-width:3ch;text-align:center;font-weight:700;font-size:var(--fs-md)}
 .section-live-roller{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis}
-/* Navigation keys: the fader numbers' box and type, so the key reads and pulses like them. */
-.section-live-roller.section-live-keys{display:inline-flex;justify-content:center;min-width:32px;height:26px;padding:0 7px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--t2) 4%,transparent);font-weight:700;font-size:var(--fs-md)}
+/* Navigation keys / Relative CC arrow: the Button dot's box, flashed and faded like the dot (Frank 2026-10-01). */
+.section-live-roller.section-live-flash{display:inline-flex;justify-content:center;min-width:32px;height:26px;padding:0 5px;font-weight:700;font-size:var(--fs-md)}
 .section-live-button{justify-content:center;min-width:32px;height:26px;padding:0 5px}   /* same box as .section-live-fader → the dot sits on the fader numbers' axis (Frank 2026-09-30) */
 .section-live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 rgba(var(--link-ring-rgb),0);transition:width var(--hover-out),height var(--hover-out),box-shadow var(--hover-out)}
 /* Long press (macro fired): the fader-thumb glow recipe on a ring (spec 2026-09-30). */
@@ -5525,7 +5525,7 @@ function onMidiMsg(event){
       const idx = bank.uacc_values.indexOf(val);
       if(idx !== -1) encIndex = idx;
       syncUaccLiveRow();
-      pulseSectionLive('roller');
+      if (rollerFlashes(bank.roller_mode)) flashRollerLive(); else pulseSectionLive('roller');
       maybeHintUnsentLive();
     }
 
@@ -6399,21 +6399,32 @@ function sectionRollerLiveText() {
   if (mode === 'track_nav' && navLiveKeys) return keyComboLabel(navLiveKeys);
   return '';
 }
-// The roller sent its Keys combo (CMD_EVT 0x02 cw / 0x03 ccw): show it and pulse
-// like the fader numbers (Frank 2026-10-01).
+// Keys and Relative CC only report a step, not a position: the slot flashes the
+// combo / arrow and fades out like the Button dot (Frank 2026-10-01).
+function rollerFlashes(mode) { return mode === 'track_nav' || mode === 'cc_relative'; }
+function flashRollerLive() {
+  const roller = sectionLiveEl('roller');
+  const text = roller && sectionLiveAllowed() ? sectionRollerLiveText() : '';
+  if (!text) return;
+  if (roller.textContent !== text) { roller.textContent = text; roller.title = text; }
+  pulseSectionLive('roller', true);
+}
+// The roller sent its Keys combo (CMD_EVT 0x02 cw / 0x03 ccw).
 function onRollerNavEvent(cw) {
   const bank = cfg.banks[liveBank];
   if (bank?.roller_mode !== 'track_nav') return;
   navLiveKeys = cw ? (bank.nav_keys_cw || [0x52]) : (bank.nav_keys_ccw || [0x51]);
-  syncSectionLive();
-  pulseSectionLive('roller');
+  flashRollerLive();
 }
 function syncSectionLive() {
   setSectionLiveFader('fader1', liveValues.f1, liveSeen.f1, false);
   setSectionLiveFader('fader2', liveValues.f2, liveSeen.f2, false);
   const roller = sectionLiveEl('roller');
-  if (roller) {
-    roller.classList.toggle('section-live-keys', cfg.banks[liveBank]?.roller_mode === 'track_nav');
+  const flashes = rollerFlashes(cfg.banks[liveBank]?.roller_mode);
+  if (roller) roller.classList.toggle('section-live-flash', flashes);
+  if (roller && flashes) {   // lit only by flashRollerLive()
+    if (!sectionLiveAllowed()) roller.classList.remove('is-on', 'is-moving');
+  } else if (roller) {
     const text = sectionLiveAllowed() ? sectionRollerLiveText() : '';
     if (text) {
       if (roller.textContent !== text) { roller.textContent = text; roller.title = text; }
