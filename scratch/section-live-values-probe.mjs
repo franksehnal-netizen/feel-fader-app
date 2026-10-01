@@ -43,21 +43,21 @@ const r = await p.evaluate(async () => {
   out.roller = state('roller');
   out.rollerExpected = uaccName(val);
 
-  // Navigation (Keys): the HID key reaches the app as a keydown → show it, pulse like the faders.
-  const key = (code, mods = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles:true, ...mods }));
+  // Navigation (Keys): firmware reports the sent combo (CMD_EVT 0x02 = cw, 0x03 = ccw) → show it, pulse like the faders.
+  const evt = e => onMidiMsg({ data:new Uint8Array([0xF0, 0x7D, 0x01, 0x08, e, 0xF7]), timeStamp:performance.now() });
   bank.roller_mode = 'track_nav'; bank.nav_keys_cw = [0x52]; bank.nav_keys_ccw = [0xE0, 0x51]; render();
   out.navIdle = state('roller');
-  key('KeyA'); await wait(30);
-  out.navOther = state('roller');
-  key('ArrowUp'); await wait(30);
+  document.dispatchEvent(new KeyboardEvent('keydown', { code:'ArrowUp', bubbles:true })); await wait(30);
+  out.navKeyboard = state('roller');
+  evt(0x02); await wait(30);
   out.navUp = state('roller');
   out.navBox = slot('roller').classList.contains('section-live-keys');
   await wait(450);
   out.navUpSettled = state('roller');
-  key('ArrowDown'); await wait(30);
-  out.navDownNoCtrl = state('roller');
-  key('ArrowDown', { ctrlKey:true }); await wait(30);
+  evt(0x03); await wait(30);
   out.navDown = state('roller');
+  evt(0x7F); await wait(450);
+  out.navUnknown = state('roller');
   bank.roller_mode = 'cc'; render();
   onMidiMsg({ data:new Uint8Array([0xB0 | bank.encoder.channel, bank.encoder.cc, val]), timeStamp:performance.now() });
 
@@ -90,10 +90,11 @@ P('fader value appears with the number and level wash, brightening while it move
 P('untouched fader stays empty', !r.fader2Idle.on, JSON.stringify(r.fader2Idle));
 P('brightening settles after the last value, value stays', r.faderSettled.on && !r.faderSettled.moving, JSON.stringify(r.faderSettled));
 P('roller shows the articulation name', r.roller.on && r.roller.text === r.rollerExpected, JSON.stringify(r.roller));
-P('Keys: nothing before a roller key', !r.navIdle.on && !r.navOther.on, JSON.stringify({ idle: r.navIdle, other: r.navOther }));
-P('Keys: roll-up key shows its glyph in the fader-number box, brightening', r.navUp.on && r.navUp.moving && r.navUp.text === '↑' && r.navBox, JSON.stringify(r.navUp));
+P('Keys: nothing before a roller event; a real keyboard key does not count', !r.navIdle.on && !r.navKeyboard.on, JSON.stringify({ idle: r.navIdle, keyboard: r.navKeyboard }));
+P('Keys: CMD_EVT 0x02 shows the roll-up combo in the fader-number box, brightening', r.navUp.on && r.navUp.moving && r.navUp.text === '↑' && r.navBox, JSON.stringify(r.navUp));
 P('Keys: brightening settles, glyph stays', r.navUpSettled.on && !r.navUpSettled.moving && r.navUpSettled.text === '↑', JSON.stringify(r.navUpSettled));
-P('Keys: combo must match exactly (Ctrl+↓, not ↓)', r.navDownNoCtrl.text === '↑' && !r.navDownNoCtrl.moving && r.navDown.text === 'Ctrl+↓' && r.navDown.moving, JSON.stringify({ plain: r.navDownNoCtrl, ctrl: r.navDown }));
+P('Keys: CMD_EVT 0x03 shows the roll-down combo', r.navDown.on && r.navDown.moving && r.navDown.text === 'Ctrl+↓', JSON.stringify(r.navDown));
+P('Keys: unknown event changes nothing', r.navUnknown.text === 'Ctrl+↓' && !r.navUnknown.moving, JSON.stringify(r.navUnknown));
 P('card on another bank than the device shows nothing', r.otherBank);
 P('back on the device bank the values return', r.backOnDeviceBank);
 P('short press flashes the button slot, then it fades', r.flash.on && r.flash.moving && !r.flashAfter.on, JSON.stringify({ flash: r.flash, after: r.flashAfter }));
