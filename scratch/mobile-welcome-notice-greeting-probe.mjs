@@ -53,9 +53,9 @@ const ink = await p.evaluate(() => {
   const lineH = parseFloat(cs.lineHeight), hl = (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2;
   // r.top carries the fade-in translateY – read the layout offset instead.
   const top = nm.offsetTop;
-  return { inkBottom: top + hl + m.fontBoundingBoxAscent + m.actualBoundingBoxDescent };
+  return { inkBottom: top + hl + m.fontBoundingBoxAscent + m.actualBoundingBoxDescent, rectInkBottom: r.top + hl + m.fontBoundingBoxAscent + m.actualBoundingBoxDescent };
 });
-P('greeting bottom edge touches the controller top edge (start position)', Math.abs(ink.inkBottom - ctrlTop0) <= 1.5, JSON.stringify({ ...ink, ctrlTop0 }));
+P('greeting bottom edge touches the controller top edge (start position)', Math.abs(ink.inkBottom - ctrlTop0) <= 1.5 && Math.abs(ink.rectInkBottom - ctrlTop0) <= 1.5, JSON.stringify({ ...ink, ctrlTop0 }));
 P('"Welcome" greeting is on top, not hidden behind the controller', !g.missing && g.text === 'Welcome' && g.onTop && g.opacity > 0.9, JSON.stringify(g));
 // First-run onboarding on a phone: the beat copy scrolls under the pinned
 // "Continue without device" – the link carries a fade band that starts below
